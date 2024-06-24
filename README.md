@@ -63,7 +63,7 @@ The Notes Application is a Java-based desktop application designed to help users
 
 1. Run the application:
     ```bash
-    java -jar target/Evernote.jar
+    java -jar target/Forevernote.jar
     ```
 
 2. Use the GUI to create, edit, delete, and organize your notes.
