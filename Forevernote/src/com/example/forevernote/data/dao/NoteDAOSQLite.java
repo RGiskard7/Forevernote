@@ -9,12 +9,17 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+import com.example.forevernote.config.LoggerConfig;
 import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.Notebook;
 import com.example.forevernote.data.models.Tag;
 
 public class NoteDAOSQLite implements INoteDAO {
+	
+	private static final Logger logger = LoggerConfig.getLogger(NoteDAOSQLite.class);
 	
 	private Connection connection;
 	private final SimpleDateFormat dtf = new SimpleDateFormat("dd/MM/yyyy - HH:mm");
@@ -29,7 +34,7 @@ public class NoteDAOSQLite implements INoteDAO {
 	        return -1; // Indica que el título o el contenido son nulos
 	    }
 
-	    String insertSQL = "INSERT INTO notas (titulo, texto, fecha_creacion) VALUES (?, ?, ?)";
+	    String insertSQL = "INSERT INTO notes (title, content, creation_date) VALUES (?, ?, ?)";
 	    PreparedStatement pstmt = null;
 	    ResultSet generatedKeys = null;
 	    int newId = -1; // Valor predeterminado para el ID generado
@@ -47,20 +52,20 @@ public class NoteDAOSQLite implements INoteDAO {
 	            newId = generatedKeys.getInt(1); // Asigna el ID de la nueva nota
 	        }
 	    } catch (SQLException e) {
-	        System.err.println(e.getMessage());
+	    	logger.log(Level.SEVERE, "Error createNote(): " + e.getMessage(), e);
 	    } finally {
 	        if (generatedKeys != null) {
 	            try {
 	                generatedKeys.close();
 	            } catch (SQLException e) {
-	                System.err.println(e.getMessage());
+	            	logger.log(Level.SEVERE, "Error createNote(): " + e.getMessage(), e);
 	            }
 	        }
 	        if (pstmt != null) {
 	            try {
 	                pstmt.close();
 	            } catch (SQLException e) {
-	                System.err.println(e.getMessage());
+	            	logger.log(Level.SEVERE, "Error createNote(): " + e.getMessage(), e);
 	            }
 	        }
 	    }
@@ -75,7 +80,7 @@ public class NoteDAOSQLite implements INoteDAO {
 	        return null;
 	    }
 
-	    String selectSQL = "SELECT * FROM notas WHERE nota_id = ?";
+	    String selectSQL = "SELECT * FROM notes WHERE nota_id = ?";
 	    PreparedStatement pstmt = null;
 	    ResultSet rs = null;
 	    Note note = null;
@@ -98,20 +103,20 @@ public class NoteDAOSQLite implements INoteDAO {
 	            note = new Note(noteId, title, content, getNotebookByNoteId(notebookId), tags, creationDate);
 	        }
 	    } catch (SQLException e) {
-	        System.out.println(e.getMessage());
+	    	logger.log(Level.SEVERE, "Error getNoteById(): " + e.getMessage(), e);
 	    } finally {
 	        if (rs != null) {
 	            try {
 	                rs.close();
 	            } catch (SQLException e) {
-	                System.out.println(e.getMessage());
+	            	logger.log(Level.SEVERE, "Error getNoteById(): " + e.getMessage(), e);
 	            }
 	        }
 	        if (pstmt != null) {
 	            try {
 	                pstmt.close();
 	            } catch (SQLException e) {
-	                System.out.println(e.getMessage());
+	            	logger.log(Level.SEVERE, "Error getNoteById(): " + e.getMessage(), e);
 	            }
 	        }
 	    }
@@ -122,8 +127,30 @@ public class NoteDAOSQLite implements INoteDAO {
 
 	@Override
 	public void editNote(int id, String title, String content) {
-		// TODO Auto-generated method stub
+		if (id <= 0) {
+			return;
+		}
 		
+		String updateSQL = "UPDATE notes SET title = ?, content = ? WHERE note_id = ?";
+		PreparedStatement pstmt = null;
+		
+	    try {
+	        pstmt = connection.prepareStatement(updateSQL);
+	        pstmt.setString(1, title);
+	        pstmt.setString(2, content);
+	        pstmt.setInt(3, id);
+	        pstmt.executeUpdate();
+	    } catch (SQLException e) {
+	    	logger.log(Level.SEVERE, "Error editNote(): " + e.getMessage(), e);
+	    } finally {
+	        if (pstmt != null) {
+	            try {
+	                pstmt.close();
+	            } catch (SQLException e) {
+	            	logger.log(Level.SEVERE, "Error editNote(): " + e.getMessage(), e);
+	            }
+	        }
+	    }
 	}
 
 	@Override
@@ -140,13 +167,13 @@ public class NoteDAOSQLite implements INoteDAO {
 	        pstmt.setInt(1, id);
 	        pstmt.executeUpdate();
 		} catch (SQLException e) {
-		    System.out.println(e.getMessage());
+			logger.log(Level.SEVERE, "Error deleteNote(): " + e.getMessage(), e);
 		} finally {
 	        if (pstmt != null) {
 	            try {
 	            	pstmt.close();
 	            } catch (SQLException e) {
-	                System.out.println(e.getMessage());
+	            	logger.log(Level.SEVERE, "Error deleteNote(): " + e.getMessage(), e);
 	            }
 	        }
 		}	
@@ -180,20 +207,20 @@ public class NoteDAOSQLite implements INoteDAO {
 	            list.add(new Note(noteId, title, content, getNotebookByNoteId(notebookId), tags, creationDate));
 		    }
 		} catch (SQLException e) {
-		    System.out.println(e.getMessage());
+			logger.log(Level.SEVERE, "Error getAllNotes(): " + e.getMessage(), e);
 		} finally {
 	        if (rs != null) {
 	            try {
 	                rs.close();
 	            } catch (SQLException e) {
-	                System.out.println(e.getMessage());
+	            	logger.log(Level.SEVERE, "Error getAllNotes(): " + e.getMessage(), e);
 	            }
 	        }
 	        if (stmt != null) {
 	            try {
 	            	stmt.close();
 	            } catch (SQLException e) {
-	                System.out.println(e.getMessage());
+	            	logger.log(Level.SEVERE, "Error getAllNotes(): " + e.getMessage(), e);
 	            }
 	        }
 		}		
@@ -223,7 +250,7 @@ public class NoteDAOSQLite implements INoteDAO {
 			return;
 		}
 		
-		String selectSQL = "SELECT DISTINCT tags.tag_id, tags.title, tags.creation_Date FROM " +
+		String selectSQL = "SELECT DISTINCT tags.tag_id, tags.title, tags.creation_date FROM " +
                 "tagsNotes NATURAL JOIN tags WHERE note_id = ?";
 
 		PreparedStatement pstmt = null;
@@ -235,26 +262,26 @@ public class NoteDAOSQLite implements INoteDAO {
             rs = pstmt.executeQuery();
 
 		    while (rs.next()) {
-		        int id = rs.getInt("id");
+		        int id = rs.getInt("tag_id");
 		        String title = rs.getString("title");
 		        String creationDate = rs.getString("creation_date");
 		        list.add(new Tag(id, title, creationDate));
 		    }
 		} catch (SQLException e) {
-		    System.out.println(e.getMessage());
+			logger.log(Level.SEVERE, "Error getAllTagsFromNote(): " + e.getMessage(), e);
 		} finally {
 	        if (rs != null) {
 	            try {
 	                rs.close();
 	            } catch (SQLException e) {
-	                System.out.println(e.getMessage());
+	            	logger.log(Level.SEVERE, "Error getAllTagsFromNote(): " + e.getMessage(), e);
 	            }
 	        }
 	        if (pstmt != null) {
 	            try {
 	                pstmt.close();
 	            } catch (SQLException e) {
-	                System.out.println(e.getMessage());
+	            	logger.log(Level.SEVERE, "Error getAllTagsFromNote(): " + e.getMessage(), e);
 	            }
 	        }
 		}

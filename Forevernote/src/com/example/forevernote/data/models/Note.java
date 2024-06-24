@@ -13,6 +13,7 @@ public class Note implements Serializable {
 	private Notebook notebook;
 	private Set<Tag> tags;
 	private String creationDate;
+	private String updateDate;
 	
     public Note(int id, String title, String content, Notebook notebook, List<Tag> tags, String creationDate) {
         this.id = id;
@@ -21,6 +22,7 @@ public class Note implements Serializable {
         this.notebook = notebook;
         this.creationDate = creationDate;
         this.tags = new HashSet<>(tags);
+        updateDate = null;
     }
 
     public int getId() {
@@ -51,8 +53,16 @@ public class Note implements Serializable {
         return creationDate;
     }
 
-    public void setCreationDate(String fechaCreacion) {
-        this.creationDate = fechaCreacion;
+    public void setCreationDate(String creationDate) {
+        this.creationDate = creationDate;
+    }
+    
+    public String getUpdateDate() {
+        return updateDate;
+    }
+
+    public void setUpdateDate(String updateDate) {
+        this.updateDate = updateDate;
     }
 
     public Notebook getNotebook() {
@@ -73,8 +83,13 @@ public class Note implements Serializable {
 
     @Override
     public String toString() {
-        return "Notw{" +
+        /*return "Note{" +
                 "title='" + title + '\'' +
-                '}';
+                '}';*/
+    	return "Note{" +
+    	"id='" + id + '\'' +
+        "title='" + title + '\'' +
+        "content='" + content + '\'' +
+        '}';
     }
 }

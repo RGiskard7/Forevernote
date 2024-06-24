@@ -10,12 +10,14 @@ public class Notebook implements Serializable {
     private String title;
     private List<Note> notes;
     private String creationDate;
+    private String updateDate;
 
     public Notebook(int id, String title, List<Note> notes, String creationDate) {
         this.id = id;
         this.title = title;
         this.notes = notes;
         this.creationDate = creationDate;
+        updateDate = null;
     }
 
     public Notebook(int id, String title, String creationDate) {
@@ -23,6 +25,7 @@ public class Notebook implements Serializable {
         this.title = title;
         notes = new ArrayList<Note>();
         this.creationDate = creationDate;
+        updateDate = null;
     }
 
     public int getId() {
@@ -55,6 +58,14 @@ public class Notebook implements Serializable {
 
     public void setCreationDate(String creationDate) {
         this.creationDate = creationDate;
+    }
+    
+    public String getUpdateDate() {
+        return updateDate;
+    }
+
+    public void setUpdateDate(String updateDate) {
+        this.updateDate = updateDate;
     }
 
     public Boolean isEmpty() {

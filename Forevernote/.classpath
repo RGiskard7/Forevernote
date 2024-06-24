@@ -6,6 +6,9 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry kind="src" path="src"/>
-	<classpathentry kind="lib" path="/Users/edu/eclipse-workspace/Forevernote/lib/sqlite-jdbc-3.46.0.0.jar"/>
+	<classpathentry kind="src" path="resources"/>
+	<classpathentry kind="lib" path="/Users/edu/git/Forevernote/Forevernote/lib/slf4j-api-1.7.36.jar"/>
+	<classpathentry kind="lib" path="/Users/edu/git/Forevernote/Forevernote/lib/sqlite-jdbc-3.46.0.0.jar"/>
+	<classpathentry kind="lib" path="/Users/edu/git/Forevernote/Forevernote/lib/slf4j-jdk14-1.7.36.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
