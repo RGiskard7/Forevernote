@@ -48,7 +48,7 @@ public class SQLiteDB {
         + "update_date TEXT"
         + ")";
 
-    private static final String notebooksNotes = 
+    private static final String createTableNotebooksNotes = 
         "CREATE TABLE IF NOT EXISTS notebooksNotes("
         + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
         + "notebook_id INTEGER, "
@@ -59,7 +59,7 @@ public class SQLiteDB {
         + "MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE"
         + ")";
 
-    private static final String tagsNotes = 
+    private static final String createTableTagsNotes = 
         "CREATE TABLE IF NOT EXISTS tagsNotes("
         + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
         + "tag_id INTEGER, "
@@ -149,8 +149,8 @@ public class SQLiteDB {
             stmt.executeUpdate(createTableNotes);
             stmt.executeUpdate(createTableNotebooks);
             stmt.executeUpdate(createTableLabels);
-            stmt.executeUpdate(notebooksNotes);
-            stmt.executeUpdate(tagsNotes);
+            stmt.executeUpdate(createTableNotebooksNotes);
+            stmt.executeUpdate(createTableTagsNotes);
             
             connection.commit();
             closeConnection(connection);

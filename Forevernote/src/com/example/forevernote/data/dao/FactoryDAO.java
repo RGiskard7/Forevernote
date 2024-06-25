@@ -5,11 +5,11 @@ import java.sql.Connection;
 public abstract class FactoryDAO {
 	public static final int SQLITE_FACTORY = 1;
 	
-    public abstract INoteDAO getNotaDao();
+    public abstract INoteDAO getNoteDAO();
 
-    public abstract  INotebookDAO getLibretaDao();
+    public abstract  INotebookDAO getNotebookDAO();
 
-    public abstract ITagDAO getEtiquetaDao();
+    public abstract ITagDAO getEtiquetaDAO();
 
     public static FactoryDAO getFactory(int keyFactory, Connection connection) {
         switch(keyFactory) {

@@ -57,7 +57,7 @@ public interface INoteDAO {
      * @param noteId The ID of the note.
      * @return The notebook associated with the note, or null if not found.
      */
-    public Notebook getNotebookByNoteId(int noteId);
+    //public Notebook getNotebookByNoteId(int noteId);
 
     /**
      * Removes a note from a notebook.
@@ -65,7 +65,7 @@ public interface INoteDAO {
      * @param noteId     The ID of the note to remove.
      * @param notebookId The ID of the notebook from which to remove the note.
      */
-    public void removeNoteFromNotebook(int noteId, int notebookId);
+    //public void removeNoteFromNotebook(int noteId, int notebookId);
 
     /**
      * Adds tags to a note.

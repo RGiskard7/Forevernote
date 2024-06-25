@@ -1,9 +1,7 @@
 package com.example.forevernote.data.models;
 
 import java.io.Serializable;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class Note implements Serializable {    
 	private static final long serialVersionUID = 1L;
@@ -11,18 +9,28 @@ public class Note implements Serializable {
 	private String title;
 	private String content;
 	private Notebook notebook;
-	private Set<Tag> tags;
+	private List<Tag> tags; //Set
 	private String creationDate;
 	private String updateDate;
 	
-    public Note(int id, String title, String content, Notebook notebook, List<Tag> tags, String creationDate) {
+    public Note(int id, String title, String content, Notebook notebook, List<Tag> tags, String creationDate, String updateDate) {
         this.id = id;
         this.title = title;
         this.content = content;
         this.notebook = notebook;
         this.creationDate = creationDate;
-        this.tags = new HashSet<>(tags);
-        updateDate = null;
+        this.tags = new ArrayList<>(tags); //HashSet
+        this.updateDate = updateDate;
+    }
+    
+    public Note(int id, String title, String content, Notebook notebook, String creationDate, String updateDate) {
+        this.id = id;
+        this.title = title;
+        this.content = content;
+        this.notebook = notebook;
+        this.creationDate = creationDate;
+        this.tags = new ArrayList<>();
+        this.updateDate = updateDate;
     }
 
     public int getId() {
@@ -73,11 +81,11 @@ public class Note implements Serializable {
         this.notebook = notebook;
     }
 
-    public Set<Tag> getTags() {
+    public List<Tag> getTags() {
         return tags;
     }
 
-    public void setTags(Set<Tag> tags) {
+    public void setTags(List<Tag> tags) {
         this.tags = tags;
     }
 
@@ -91,5 +99,10 @@ public class Note implements Serializable {
         "title='" + title + '\'' +
         "content='" + content + '\'' +
         '}';
+    }
+    
+    @Override
+    public int hashCode() {
+        return Objects.hash(title);
     }
 }

@@ -25,6 +25,14 @@ public interface INotebookDAO {
      * @return The notebook with the specified ID, or null if not found.
      */
     public Notebook getNotebookById(int id);
+    
+    /**
+     * Retrieves the notebook associated with a note.
+     *
+     * @param noteId The ID of the note.
+     * @return The notebook associated with the note, or null if not found.
+     */
+    public Notebook getNotebookByNoteId(int noteId);
 
     /**
      * Edits an existing notebook with the specified ID, updating its title.
@@ -59,10 +67,10 @@ public interface INotebookDAO {
     /**
      * Adds a note to a notebook.
      *
-     * @param noteId     The ID of the note to add.
      * @param notebookId The ID of the notebook to add the note to.
+     * @param noteId     The ID of the note to add.
      */
-    public void addNoteToNotebook(int noteId, int notebookId);
+    public void addNoteToNotebook(int notebookId, int noteId);
 
     /**
      * Retrieves all notes associated with a notebook and populates the provided list.
@@ -75,10 +83,10 @@ public interface INotebookDAO {
     /**
      * Removes a note from a notebook.
      *
-     * @param noteId     The ID of the note to remove.
      * @param notebookId The ID of the notebook from which to remove the note.
+     * @param noteId     The ID of the note to remove.
      */
-    public void removeNoteFromNotebook(int noteId, int notebookId);
+    public void removeNoteFromNotebook(int notebookId, int noteId);
 }
 
 

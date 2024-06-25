@@ -1,8 +1,7 @@
 package com.example.forevernote.data.models;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class Notebook implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -12,20 +11,20 @@ public class Notebook implements Serializable {
     private String creationDate;
     private String updateDate;
 
-    public Notebook(int id, String title, List<Note> notes, String creationDate) {
+    public Notebook(int id, String title, List<Note> notes, String creationDate, String updateDate) {
         this.id = id;
         this.title = title;
-        this.notes = notes;
+        this.notes = new ArrayList<Note>(notes);
         this.creationDate = creationDate;
-        updateDate = null;
+        this.updateDate = updateDate;
     }
 
-    public Notebook(int id, String title, String creationDate) {
+    public Notebook(int id, String title, String creationDate, String updateDate) {
         this.id = id;
         this.title = title;
         notes = new ArrayList<Note>();
         this.creationDate = creationDate;
-        updateDate = null;
+        this.updateDate = updateDate;
     }
 
     public int getId() {

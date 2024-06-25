@@ -13,9 +13,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.example.forevernote.config.LoggerConfig;
-import com.example.forevernote.data.models.Note;
-import com.example.forevernote.data.models.Notebook;
-import com.example.forevernote.data.models.Tag;
+import com.example.forevernote.data.models.*;
+import com.example.forevernote.exceptions.*;
 
 public class NoteDAOSQLite implements INoteDAO {
 	
@@ -30,16 +29,19 @@ public class NoteDAOSQLite implements INoteDAO {
 
 	@Override
 	public int createNote(String title, String content) {
-	    if (title == null || content == null) {
-	        return -1; // Indica que el título o el contenido son nulos
-	    }
-
+		// Declaración de variables
 	    String insertSQL = "INSERT INTO notes (title, content, creation_date) VALUES (?, ?, ?)";
 	    PreparedStatement pstmt = null;
 	    ResultSet generatedKeys = null;
 	    int newId = -1; // Valor predeterminado para el ID generado
+	    
+	    // Verificación de parámetros
+	    if (title == null || content == null) { // Indica que el título o el contenido son nulos
+	    	throw new InvalidParameterException("Title and content cannot be null");
+	    }
 
 	    try {
+	    	// Preparar y ejecutar la declaración SQL
 	        pstmt = connection.prepareStatement(insertSQL, Statement.RETURN_GENERATED_KEYS);
 	        pstmt.setString(1, title);
 	        pstmt.setString(2, content);
@@ -54,6 +56,7 @@ public class NoteDAOSQLite implements INoteDAO {
 	    } catch (SQLException e) {
 	    	logger.log(Level.SEVERE, "Error createNote(): " + e.getMessage(), e);
 	    } finally {
+	    	// Cerrar los recursos
 	        if (generatedKeys != null) {
 	            try {
 	                generatedKeys.close();
@@ -70,37 +73,54 @@ public class NoteDAOSQLite implements INoteDAO {
 	        }
 	    }
 	    
-	    return newId; // Retorna el ID de la nueva nota o -1 si hubo un error
+	    // Retorna el ID de la nueva nota o -1 si hubo un error
+	    return newId; 
 	}
 
 
 	@Override
 	public Note getNoteById(int id) {
-	    if (id <= 0) {
-	        return null;
-	    }
-
+		// SQL query to select the note by ID
 	    String selectSQL = "SELECT * FROM notes WHERE nota_id = ?";
 	    PreparedStatement pstmt = null;
 	    ResultSet rs = null;
+	    NotebookDAOSQLite notebookDAO = null;
+	    Notebook notebook = null;
 	    Note note = null;
+		
+	    // Check if the provided ID is valid
+	    if (id <= 0) {
+	    	throw new IllegalArgumentException("Note ID must be greater than zero");
+	        
+	    }
 
 	    try {
+	    	// Prepare the SQL statement
 	        pstmt = connection.prepareStatement(selectSQL);
 	        pstmt.setInt(1, id);
+	        
+	        // Execute the query
 	        rs = pstmt.executeQuery();
 
+	        // Process the result set
 	        if (rs.next()) {
 	            int noteId = rs.getInt("note_id");
 	            String title = rs.getString("title");
 	            String content = rs.getString("content");
 	            int notebookId = rs.getInt("notebook");
 	            String creationDate = rs.getString("creation_date");
+	            String updateDate = rs.getString("update_date");
+	            
+	            // Retrieve the notebook associated with the note
+	            notebookDAO = new NotebookDAOSQLite(connection);
+	            notebook = notebookDAO.getNotebookById(notebookId);
 
+	            // Retrieve all tags associated with the note
 	            List<Tag> tags = new ArrayList<>();
 	            getAllTagsFromNote(id, tags);
 
-	            note = new Note(noteId, title, content, getNotebookByNoteId(notebookId), tags, creationDate);
+	            // Create a new Note object
+	            note = new Note(noteId, title, content, notebook, tags, creationDate, updateDate);
 	        }
 	    } catch (SQLException e) {
 	    	logger.log(Level.SEVERE, "Error getNoteById(): " + e.getMessage(), e);
@@ -121,19 +141,20 @@ public class NoteDAOSQLite implements INoteDAO {
 	        }
 	    }
 
+	    // Return the Note object or null if not found
 	    return note;
 	}
 
 
 	@Override
 	public void editNote(int id, String title, String content) {
-		if (id <= 0) {
-			return;
-		}
-		
 		String updateSQL = "UPDATE notes SET title = ?, content = ? WHERE note_id = ?";
 		PreparedStatement pstmt = null;
 		
+		if (id <= 0) {
+			throw new IllegalArgumentException("Note ID must be greater than zero");
+		}
+				
 	    try {
 	        pstmt = connection.prepareStatement(updateSQL);
 	        pstmt.setString(1, title);
@@ -155,12 +176,12 @@ public class NoteDAOSQLite implements INoteDAO {
 
 	@Override
 	public void deleteNoteById(int id) {
-		if (id <= 0) {
-			return;
-		}
-		
 	    String deleteSQL = "DELETE FROM notes WHERE note_id = ?";
 	    PreparedStatement pstmt = null;
+		
+		if (id <= 0) {
+			throw new IllegalArgumentException("Note ID must be greater than zero");
+		}
 		
 		try {		    
 	        pstmt = connection.prepareStatement(deleteSQL);
@@ -181,14 +202,15 @@ public class NoteDAOSQLite implements INoteDAO {
 
 	@Override
 	public void getAllNotes(List<Note> list) {
-		if (list == null) { // Revisar esta comprobación
-			return;
-		}
-		
 		String selectSQL = "SELECT * FROM notes";
-
 		Statement stmt = null;
 		ResultSet rs = null;
+		NotebookDAOSQLite notebookDAO = null;
+		Notebook notebook = null;
+		
+		if (list == null) {
+			throw new InvalidParameterException("The provided list cannot be null");
+		}
 
 		try {		    
 			stmt = connection.createStatement();      	
@@ -200,11 +222,15 @@ public class NoteDAOSQLite implements INoteDAO {
 	            String content = rs.getString("content");
 	            int notebookId = rs.getInt("notebook");
 	            String creationDate = rs.getString("creation_date");
+	            String updateDate = rs.getString("update_date");
+	            
+	            notebookDAO = new NotebookDAOSQLite(connection);
+	            notebook = notebookDAO.getNotebookById(notebookId);
 
 	            List<Tag> tags = new ArrayList<>();
 	            getAllTagsFromNote(noteId, tags);
 
-	            list.add(new Note(noteId, title, content, getNotebookByNoteId(notebookId), tags, creationDate));
+	            list.add(new Note(noteId, title, content, notebook , tags, creationDate, updateDate));
 		    }
 		} catch (SQLException e) {
 			logger.log(Level.SEVERE, "Error getAllNotes(): " + e.getMessage(), e);
@@ -226,17 +252,17 @@ public class NoteDAOSQLite implements INoteDAO {
 		}		
 	}
 
-	@Override
-	public Notebook getNotebookByNoteId(int noteId) {
+	/*@Override
+	public Notebook getNotebookByNoteId(int noteId) { // Revisar, quizá eliminar
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
-	public void removeNoteFromNotebook(int noteId, int notebookId) {
+	public void removeNoteFromNotebook(int noteId, int notebookId) { // Revisar, quizá eliminar
 		// TODO Auto-generated method stub
 		
-	}
+	}*/
 
 	@Override
 	public void addTagsToNote(int noteId, List<Tag> tags) {
@@ -246,15 +272,14 @@ public class NoteDAOSQLite implements INoteDAO {
 
 	@Override
 	public void getAllTagsFromNote(int noteId, List<Tag> list) {
-		if (noteId <= 0 || list == null) {
-			return;
-		}
-		
-		String selectSQL = "SELECT DISTINCT tags.tag_id, tags.title, tags.creation_date FROM " +
+		String selectSQL = "SELECT DISTINCT tags.tag_id, tags.title, tags.creation_date, tags.update_date FROM " +
                 "tagsNotes NATURAL JOIN tags WHERE note_id = ?";
-
 		PreparedStatement pstmt = null;
 		ResultSet rs = null;
+		
+		if (noteId <= 0 || list == null) {
+			throw new InvalidParameterException("Invalid note ID or provided list is null");
+		}
 
 		try {		    
         	pstmt = connection.prepareStatement(selectSQL);
@@ -265,7 +290,8 @@ public class NoteDAOSQLite implements INoteDAO {
 		        int id = rs.getInt("tag_id");
 		        String title = rs.getString("title");
 		        String creationDate = rs.getString("creation_date");
-		        list.add(new Tag(id, title, creationDate));
+		        String updateDate = rs.getString("update_date");
+		        list.add(new Tag(id, title, creationDate, updateDate));
 		    }
 		} catch (SQLException e) {
 			logger.log(Level.SEVERE, "Error getAllTagsFromNote(): " + e.getMessage(), e);

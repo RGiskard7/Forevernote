@@ -11,18 +11,17 @@ public class FactoryDAOSQLite extends FactoryDAO {
 	}
 
 	@Override
-	public INoteDAO getNotaDao() {
+	public INoteDAO getNoteDAO() {
 		return new NoteDAOSQLite(connection);
 	}
 
 	@Override
-	public INotebookDAO getLibretaDao() {
-		// TODO Auto-generated method stub
-		return null;
+	public INotebookDAO getNotebookDAO() {
+		return new NotebookDAOSQLite(connection);
 	}
 
 	@Override
-	public ITagDAO getEtiquetaDao() {
+	public ITagDAO getEtiquetaDAO() {
 		// TODO Auto-generated method stub
 		return null;
 	}

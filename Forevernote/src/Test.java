@@ -9,6 +9,7 @@ import com.example.forevernote.config.LoggerConfig;
 import com.example.forevernote.data.SQLiteDB;
 import com.example.forevernote.data.dao.FactoryDAO;
 import com.example.forevernote.data.dao.INoteDAO;
+import com.example.forevernote.data.dao.INotebookDAO;
 import com.example.forevernote.data.models.Note;
 
 public class Test {
@@ -25,12 +26,22 @@ public class Test {
 		Connection connection = db.openConnection();
 		
 		FactoryDAO dao = FactoryDAO.getFactory(FactoryDAO.SQLITE_FACTORY, connection);
-		INoteDAO noteDAO = dao.getNotaDao();
+		INoteDAO noteDAO = dao.getNoteDAO();
+		INotebookDAO notebookDAO = dao.getNotebookDAO();
 		
-		noteDAO.createNote("Nota 1", "Esto es la nota número 1");
-		noteDAO.createNote("Nota 2", "Esto es la nota número 2");
-		noteDAO.createNote("Nota 3", "Esto es la nota número 3");
-		noteDAO.createNote("Nota 4", "Esto es la nota número 4");
+		int notebookID = notebookDAO.createNotebook("Libreta Default");
+		
+		int noteID = noteDAO.createNote("Nota 1", "Esto es la nota número 1");
+		notebookDAO.addNoteToNotebook(notebookID, noteID);
+		
+		noteID = noteDAO.createNote("Nota 2", "Esto es la nota número 2");
+		notebookDAO.addNoteToNotebook(notebookID, noteID);
+		
+		noteID = noteDAO.createNote("Nota 3", "Esto es la nota número 3");
+		notebookDAO.addNoteToNotebook(notebookID, noteID);
+		
+		noteID = noteDAO.createNote("Nota 4", "Esto es la nota número 4");
+		notebookDAO.addNoteToNotebook(notebookID, noteID);
 		
 		List<Note> notas = new ArrayList<>();
 		noteDAO.getAllNotes(notas);
