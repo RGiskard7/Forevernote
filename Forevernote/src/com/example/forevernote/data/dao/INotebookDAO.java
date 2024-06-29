@@ -40,14 +40,14 @@ public interface INotebookDAO {
      * @param id    The ID of the notebook to edit.
      * @param title The new title for the notebook.
      */
-    public void editNotebook(int id, String title);
+    public void updateNotebook(int id, String title);
 
     /**
      * Deletes a notebook with the specified ID.
      *
      * @param id The ID of the notebook to delete.
      */
-    public void deleteNotebookById(int id);
+    public void deleteNoteboo(int id);
 
     /**
      * Retrieves all notebooks and populates the provided list.

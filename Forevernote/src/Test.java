@@ -1,5 +1,9 @@
 import java.sql.Connection;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -33,17 +37,27 @@ public class Test {
 		
 		int noteID = noteDAO.createNote("Nota 1", "Esto es la nota número 1");
 		notebookDAO.addNoteToNotebook(notebookID, noteID);
+		System.out.println(noteDAO.getNotebookOfNote(noteID));
+		
+		
+		List<Note> notes = new ArrayList<>();
+		notebookDAO.getAllNotesFromNotebook(notebookID, notes);
+		System.out.println(notes);
+		
+		Note note = new Note(0, "nota", "nota", null, null);
 		
 		noteID = noteDAO.createNote("Nota 2", "Esto es la nota número 2");
-		notebookDAO.addNoteToNotebook(notebookID, noteID);
+		//notebookDAO.addNoteToNotebook(notebookID, noteID);
 		
 		noteID = noteDAO.createNote("Nota 3", "Esto es la nota número 3");
-		notebookDAO.addNoteToNotebook(notebookID, noteID);
+		//notebookDAO.addNoteToNotebook(notebookID, noteID);
 		
 		noteID = noteDAO.createNote("Nota 4", "Esto es la nota número 4");
-		notebookDAO.addNoteToNotebook(notebookID, noteID);
+		//notebookDAO.addNoteToNotebook(notebookID, noteID);
 		
-		List<Note> notas = new ArrayList<>();
+		noteDAO.getNotebookOfNote(noteID);
+		
+		/*List<Note> notas = new ArrayList<>();
 		noteDAO.getAllNotes(notas);
 		
 		System.out.println(notas);
@@ -53,7 +67,7 @@ public class Test {
 		
 		noteDAO.getAllNotes(notas);
 		
-		System.out.println(notas);
+		System.out.println(notas);*/
 		
 		db.closeConnection(connection);
 	}

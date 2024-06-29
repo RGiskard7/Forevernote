@@ -35,14 +35,14 @@ public interface INoteDAO {
      * @param title   The new title for the note.
      * @param content The new content for the note.
      */
-    public void editNote(int id, String title, String content);
+    public void updateNote(Note note);
 
     /**
      * Deletes a note with the specified ID.
      *
      * @param id The ID of the note to delete.
      */
-    public void deleteNoteById(int id);
+    public void deleteNote(int id);
 
     /**
      * Retrieves all notes and populates the provided list.
@@ -57,7 +57,7 @@ public interface INoteDAO {
      * @param noteId The ID of the note.
      * @return The notebook associated with the note, or null if not found.
      */
-    //public Notebook getNotebookByNoteId(int noteId);
+    public Notebook getNotebookOfNote(int noteId);
 
     /**
      * Removes a note from a notebook.
@@ -66,14 +66,14 @@ public interface INoteDAO {
      * @param notebookId The ID of the notebook from which to remove the note.
      */
     //public void removeNoteFromNotebook(int noteId, int notebookId);
-
+    
     /**
-     * Adds tags to a note.
+     * Adds tag to a note.
      *
      * @param noteId The ID of the note.
-     * @param tags   The tags to add to the note.
+     * @param tagId  The ID of the tag to add.
      */
-    public void addTagsToNote(int noteId, List<Tag> tags);
+    public void addTagToNote(int noteId, int tagId);
 
     /**
      * Retrieves all tags associated with a note and populates the provided list.
@@ -84,11 +84,11 @@ public interface INoteDAO {
     public void getAllTagsFromNote(int noteId, List<Tag> list);
 
     /**
-     * Removes tags from a note.
+     * Removes tag from a note.
      *
-     * @param noteId The ID of the note.
-     * @param tags   The tags to remove from the note.
+     * @param noteId The ID of the note from which to remove the tag.
+     * @param tagId  The ID of the tag to remove.
      */
-    public void removeTagsFromNote(int noteId, List<Tag> tags);
+    public void removeTagFromNote(int noteId, int tagId);
 }
 

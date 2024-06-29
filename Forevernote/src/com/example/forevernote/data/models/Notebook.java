@@ -3,44 +3,18 @@ package com.example.forevernote.data.models;
 import java.io.Serializable;
 import java.util.*;
 
-public class Notebook implements Serializable {
+public class Notebook extends BaseModel implements Serializable {
     private static final long serialVersionUID = 1L;
-	private int id;
-    private String title;
     private List<Note> notes;
-    private String creationDate;
-    private String updateDate;
 
-    public Notebook(int id, String title, List<Note> notes, String creationDate, String updateDate) {
-        this.id = id;
-        this.title = title;
+    public Notebook(int id, String title, List<Note> notes, String createdDate, String modifiedDate) {
+    	super(id, title, createdDate, modifiedDate);
         this.notes = new ArrayList<Note>(notes);
-        this.creationDate = creationDate;
-        this.updateDate = updateDate;
     }
 
-    public Notebook(int id, String title, String creationDate, String updateDate) {
-        this.id = id;
-        this.title = title;
+    public Notebook(int id, String title, String createdDate, String modifiedDate) {
+    	super(id, title, createdDate, modifiedDate);
         notes = new ArrayList<Note>();
-        this.creationDate = creationDate;
-        this.updateDate = updateDate;
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
     }
 
     public List<Note> getNotes() {
@@ -50,21 +24,12 @@ public class Notebook implements Serializable {
     public void setNotes(List<Note> notes) {
         this.notes = notes;
     }
-
-    public String getCreationDate() {
-        return creationDate;
-    }
-
-    public void setCreationDate(String creationDate) {
-        this.creationDate = creationDate;
-    }
     
-    public String getUpdateDate() {
-        return updateDate;
-    }
-
-    public void setUpdateDate(String updateDate) {
-        this.updateDate = updateDate;
+    public void addNote(Note note) {
+    	if (note == null) {
+    		return;
+    	}
+    	notes.add(note);
     }
 
     public Boolean isEmpty() {
@@ -73,13 +38,20 @@ public class Notebook implements Serializable {
         }
         return false;
     }
+    
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Notebook notebook = (Notebook) o;
+        return getTitle().equals(notebook.getTitle());
+    }
 
     @Override
     public String toString() {
         return "Notebook{" +
-                "id=" + id +
-                ", title='" + title + '\'' +
+                "id=" + getId() +
+                ", title='" + getTitle() + '\'' +
                 '}';
     }
-
 }

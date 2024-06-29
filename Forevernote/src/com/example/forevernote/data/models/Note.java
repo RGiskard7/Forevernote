@@ -3,50 +3,42 @@ package com.example.forevernote.data.models;
 import java.io.Serializable;
 import java.util.*;
 
-public class Note implements Serializable {    
+public class Note extends BaseModel implements Serializable {    
 	private static final long serialVersionUID = 1L;
-	private int id;
-	private String title;
 	private String content;
 	private Notebook notebook;
 	private List<Tag> tags; //Set
-	private String creationDate;
-	private String updateDate;
-	
-    public Note(int id, String title, String content, Notebook notebook, List<Tag> tags, String creationDate, String updateDate) {
-        this.id = id;
-        this.title = title;
+
+    public Note(int id, String title, String content, Notebook notebook, List<Tag> tags, String createdDate, String modifiedDate) {
+        super(id, title, createdDate, modifiedDate);
+        
         this.content = content;
         this.notebook = notebook;
-        this.creationDate = creationDate;
         this.tags = new ArrayList<>(tags); //HashSet
-        this.updateDate = updateDate;
     }
     
-    public Note(int id, String title, String content, Notebook notebook, String creationDate, String updateDate) {
-        this.id = id;
-        this.title = title;
+    public Note(int id, String title, String content, Notebook notebook, String createdDate, String modifiedDate) {
+    	super(id, title, createdDate, modifiedDate);
+    	
         this.content = content;
         this.notebook = notebook;
-        this.creationDate = creationDate;
         this.tags = new ArrayList<>();
-        this.updateDate = updateDate;
     }
-
-    public int getId() {
-        return id;
+    
+    public Note(int id, String title, String content, List<Tag> tags, String createdDate, String modifiedDate) {
+    	super(id, title, createdDate, modifiedDate);
+    	
+        this.content = content;
+        notebook = null;
+        this.tags = new ArrayList<>(tags);
     }
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
+    
+    public Note(int id, String title, String content, String createdDate, String modifiedDate) {
+    	super(id, title, createdDate, modifiedDate);
+    	
+        this.content = content;
+        notebook = null;
+        this.tags = new ArrayList<>();
     }
 
     public String getContent() {
@@ -55,22 +47,6 @@ public class Note implements Serializable {
 
     public void setContent(String content) {
         this.content = content;
-    }
-
-    public String getCreationDate() {
-        return creationDate;
-    }
-
-    public void setCreationDate(String creationDate) {
-        this.creationDate = creationDate;
-    }
-    
-    public String getUpdateDate() {
-        return updateDate;
-    }
-
-    public void setUpdateDate(String updateDate) {
-        this.updateDate = updateDate;
     }
 
     public Notebook getNotebook() {
@@ -88,6 +64,14 @@ public class Note implements Serializable {
     public void setTags(List<Tag> tags) {
         this.tags = tags;
     }
+    
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Note note = (Note) o;
+        return getTitle().equals(note.getTitle());
+    }
 
     @Override
     public String toString() {
@@ -95,14 +79,9 @@ public class Note implements Serializable {
                 "title='" + title + '\'' +
                 '}';*/
     	return "Note{" +
-    	"id='" + id + '\'' +
-        "title='" + title + '\'' +
+    	"id='" + getId() + '\'' +
+        "title='" + getTitle() + '\'' +
         "content='" + content + '\'' +
         '}';
-    }
-    
-    @Override
-    public int hashCode() {
-        return Objects.hash(title);
     }
 }
