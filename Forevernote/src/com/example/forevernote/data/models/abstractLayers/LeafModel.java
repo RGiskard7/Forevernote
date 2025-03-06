@@ -4,13 +4,37 @@ import java.util.List;
 
 import com.example.forevernote.data.models.interfaces.Component;
 
+/**
+ * Abstract class representing a leaf node in a hierarchical structure.
+ * A leaf node is a component that cannot have children.
+ * This class extends {@link BaseModel} and implements {@link Component}.
+ */
 public abstract class LeafModel extends BaseModel implements Component {
+	
+    /**
+     * The parent component of this leaf model.
+     */
 	private Component parent = null;
 
+    /**
+     * Constructs a LeafModel with an ID, title, creation date, and modification date.
+     *
+     * @param id           The unique identifier of the model.
+     * @param title        The title of the model.
+     * @param createdDate  The creation date of the model.
+     * @param modifiedDate The last modified date of the model.
+     */
 	public LeafModel(int id, String title, String createdDate, String modifiedDate) {
 		super(id, title, createdDate, modifiedDate);
 	}
 	
+    /**
+     * Constructs a LeafModel with a title, creation date, and modification date, assuming the ID will be assigned later.
+     *
+     * @param title        The title of the model.
+     * @param createdDate  The creation date of the model.
+     * @param modifiedDate The last modified date of the model.
+     */
 	public LeafModel(String title, String createdDate, String modifiedDate) {
 		super(title, createdDate, modifiedDate);
 	}
@@ -62,5 +86,4 @@ public abstract class LeafModel extends BaseModel implements Component {
 	        return parentFolder.getPath() + "/" + getTitle();
 	    }
 	}
-
 }

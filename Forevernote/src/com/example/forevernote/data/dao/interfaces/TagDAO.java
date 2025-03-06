@@ -6,27 +6,55 @@ import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.Tag;
 
 /**
- * This interface provides methods to interact with tags in a data access layer.
+ * This interface defines the contract for data access operations related to tags.
+ * It provides methods for creating, retrieving, updating, and deleting tags,
+ * as well as managing their relationships with notes.
  */
 public interface TagDAO {
 
+    /**
+     * Creates a new tag in the database.
+     *
+     * @param tag The tag to be created.
+     * @return The generated ID of the created tag.
+     */
     public int createTag(Tag tag);
 
+    /**
+     * Updates an existing tag in the database.
+     *
+     * @param tag The tag containing updated data.
+     */
+    public void updateTag(Tag tag);
+
+    /**
+     * Deletes a tag by its ID.
+     *
+     * @param id The ID of the tag to be deleted.
+     */
+    public void deleteTag(int id);
+    
     /**
      * Retrieves a tag by its unique identifier.
      *
      * @param id The ID of the tag to retrieve.
      * @return The tag with the specified ID, or null if not found.
      */
-    
-    public void updateTag(Tag tag);
-
-    public void deleteTag(int id);
-    
     public Tag getTagById(int id);
 
+    /**
+     * Fetches all tags from the database.
+     *
+     * @return A list of all available tags.
+     */
     public List<Tag> fetchAllTags();
 
+    /**
+     * Retrieves all notes that are associated with a given tag.
+     *
+     * @param tagId The ID of the tag.
+     * @return A list of notes that have the specified tag.
+     */
     public List<Note> fetchAllNotesWithTag(int tagId);
 
     /**

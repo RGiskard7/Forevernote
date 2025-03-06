@@ -4,6 +4,13 @@ import java.io.Serializable;
 
 import com.example.forevernote.data.models.abstractLayers.CompositeModel;
 
+import java.io.Serializable;
+
+/**
+ * Represents a folder (or notebook) in the application.
+ * This class extends CompositeModel to inherit hierarchical properties 
+ * and implements Serializable for persistence.
+ */
 public class Folder extends CompositeModel implements Serializable {
     private static final long serialVersionUID = 1L;
     
