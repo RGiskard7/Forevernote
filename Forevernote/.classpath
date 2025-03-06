@@ -10,5 +10,7 @@
 	<classpathentry kind="lib" path="/Users/edu/git/Forevernote/Forevernote/lib/slf4j-api-1.7.36.jar"/>
 	<classpathentry kind="lib" path="/Users/edu/git/Forevernote/Forevernote/lib/sqlite-jdbc-3.46.0.0.jar"/>
 	<classpathentry kind="lib" path="/Users/edu/git/Forevernote/Forevernote/lib/slf4j-jdk14-1.7.36.jar"/>
+	<classpathentry kind="lib" path="/Users/edu/git/Forevernote/Forevernote/lib/h2-2.3.230.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/5"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

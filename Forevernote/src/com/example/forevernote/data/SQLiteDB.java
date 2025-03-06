@@ -44,12 +44,12 @@ public class SQLiteDB {
         + "ON DELETE NULL "
         + ")";*/
     
-    private static final String createTableNotes = 
+    /*private static final String createTableNotes = 
 	    "CREATE TABLE IF NOT EXISTS notes ("
 		    + "note_id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		    + "parent_id INTEGER, "
 		    + "title TEXT NOT NULL, "
-		    + "content TEXT, "
+		    + "content TEXT de, "
 		    + "created_date TEXT NOT NULL, "
 		    + "modified_date TEXT, "
 		    + "latitude REAL NOT NULL DEFAULT 0 CHECK (latitude BETWEEN -90 AND 90), "
@@ -68,7 +68,34 @@ public class SQLiteDB {
 	    + "CREATE INDEX idx_note_title ON notes (title);"
 	    + "CREATE INDEX idx_created_date ON notes (created_date);"
 	    + "CREATE INDEX idx_modified_date ON notes (modified_date);"
-	    + "CREATE INDEX idx_is_todo ON notes (is_todo);";
+	    + "CREATE INDEX idx_is_todo ON notes (is_todo);";*/
+    
+    private static final String createTableNotes = 
+		"CREATE TABLE IF NOT EXISTS notes ("
+			+ "note_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+			+ "parent_id INTEGER, "
+			+ "title TEXT NOT NULL UNIQUE, "
+			+ "content TEXT DEFAULT NULL, "
+			+ "created_date TEXT NOT NULL, "
+			+ "modified_date TEXT DEFAULT NULL, "
+			+ "latitude REAL NOT NULL DEFAULT 0 CHECK (latitude BETWEEN -90 AND 90), "
+			+ "longitude REAL NOT NULL DEFAULT 0 CHECK (longitude BETWEEN -180 AND 180), "
+			+ "author TEXT DEFAULT NULL, "
+			+ "source_url TEXT DEFAULT NULL, "
+			+ "is_todo INTEGER NOT NULL DEFAULT 0 CHECK (is_todo IN (0, 1)), "
+			+ "todo_due TEXT DEFAULT NULL, "
+			+ "todo_completed TEXT DEFAULT NULL, "
+			+ "source TEXT DEFAULT NULL, "
+			+ "source_application TEXT DEFAULT NULL, "
+			+ "FOREIGN KEY (parent_id) REFERENCES folders(folder_id) "
+			+ "ON UPDATE CASCADE "
+			+ "ON DELETE SET NULL"
+		+ ");";
+		/*+ "CREATE INDEX idx_note_title ON notes (title);"
+		+ "CREATE INDEX idx_created_date ON notes (created_date);"
+		+ "CREATE INDEX idx_modified_date ON notes (modified_date);"
+		+ "CREATE INDEX idx_is_todo ON notes (is_todo);";*/
+
 
 
     /*private static final String createTableNotebooks = 
@@ -83,27 +110,27 @@ public class SQLiteDB {
         + "ON DELETE NULL "
         + ")";*/
     
-    private static final String createTableNotebooks = 
-	    "CREATE TABLE IF NOT EXISTS notebooks ("
-		    + "notebook_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+    private static final String createTableFolders = 
+	    "CREATE TABLE IF NOT EXISTS folders ("
+		    + "folder_id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		    + "parent_id INTEGER, "
 		    + "title TEXT NOT NULL UNIQUE, "
 		    + "created_date TEXT NOT NULL, "
-		    + "modified_date TEXT, "
-		    + "FOREIGN KEY (parent_id) REFERENCES notebooks(notebook_id) "
+		    + "modified_date TEXT DEFAULT NULL, "
+		    + "FOREIGN KEY (parent_id) REFERENCES folders(folder_id) "
 		    + "ON UPDATE CASCADE "
 		    + "ON DELETE SET NULL"
-	    + ");"
-	    + "CREATE INDEX idx_notebooks_title ON notebooks (title);";
+	    + ");";
+	    /*+ "CREATE INDEX idx_notebooks_title ON notebooks (title);";*/
 
 
     private static final String createTableTags = 
         "CREATE TABLE IF NOT EXISTS tags("
-        + "tag_id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        + "title TEXT NOT NULL UNIQUE, "
-        + "created_date TEXT NOT NULL, "
-        + "modified_date TEXT"
-        + ")";
+	        + "tag_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+	        + "title TEXT NOT NULL UNIQUE, "
+	        + "created_date TEXT NOT NULL, "
+	        + "modified_date TEXT DEFAULT NULL"
+	        + ")";
 
     /*private static final String createTableNotebooksNotes = 
         "CREATE TABLE IF NOT EXISTS notebooksNotes("
@@ -122,7 +149,7 @@ public class SQLiteDB {
         + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
         + "tag_id INTEGER, "
         + "note_id INTEGER, "
-        + "added_date TEXT, "
+        + "added_date TEXT NOT NULL, "
         + "FOREIGN KEY (tag_id) REFERENCES tags(tag_id) "
         + "MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE, "
         + "FOREIGN KEY (note_id) REFERENCES notes(note_id) "
@@ -205,8 +232,8 @@ public class SQLiteDB {
         try (Connection connection = openConnection();
              Statement stmt = connection.createStatement()) {
         	
+        	stmt.executeUpdate(createTableFolders);
             stmt.executeUpdate(createTableNotes);
-            stmt.executeUpdate(createTableNotebooks);
             stmt.executeUpdate(createTableTags);
             stmt.executeUpdate(createTableTagsNotes);
             

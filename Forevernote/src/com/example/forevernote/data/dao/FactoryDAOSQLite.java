@@ -2,6 +2,11 @@ package com.example.forevernote.data.dao;
 
 import java.sql.Connection;
 
+import com.example.forevernote.data.dao.abstractLayers.FactoryDAO;
+import com.example.forevernote.data.dao.interfaces.NoteDAO;
+import com.example.forevernote.data.dao.interfaces.FolderDAO;
+import com.example.forevernote.data.dao.interfaces.TagDAO;
+
 public class FactoryDAOSQLite extends FactoryDAO {
 	
 	private Connection connection;
@@ -11,19 +16,18 @@ public class FactoryDAOSQLite extends FactoryDAO {
 	}
 
 	@Override
-	public INoteDAO getNoteDAO() {
+	public NoteDAO getNoteDAO() {
 		return new NoteDAOSQLite(connection);
 	}
 
 	@Override
-	public INotebookDAO getNotebookDAO() {
-		return new NotebookDAOSQLite(connection);
+	public FolderDAO getFolderDAO() {
+		return new FolderDAOSQLite(connection);
 	}
 
 	@Override
-	public ITagDAO getEtiquetaDAO() {
-		// TODO Auto-generated method stub
-		return null;
+	public TagDAO getLabelDAO() {
+		return new TagDAOSQLite(connection);
 	}
 
 }
