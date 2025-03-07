@@ -12,6 +12,7 @@ import com.example.forevernote.data.models.Folder;
  */
 public interface FolderDAO {
 
+	// CRUD Operations
     /**
      * Creates a new folder in the database.
      *
@@ -42,6 +43,7 @@ public interface FolderDAO {
      */
 	public Folder getFolderById(int id);
 	
+	// Retrieval Methods
     /**
      * Retrieves a folder that contains a specific note.
      *
@@ -64,8 +66,8 @@ public interface FolderDAO {
      */
 	public Folder fetchAllFoldersAsTree();
 	
+	// Note Management
 	//public void addNote(int folderId, int noteId);
-	
     /**
      * Adds a note to a folder.
      *
@@ -93,6 +95,7 @@ public interface FolderDAO {
 	
 	//public void addSubFolder(int parentId, int subFolderId);
 	
+	// Folder Hierarchy Management
     /**
      * Adds a subfolder to a parent folder.
      *
@@ -148,6 +151,7 @@ public interface FolderDAO {
      */
 	public void loadParentFolder(Folder folder);
 	
+	// Parent Folder Retrieval
     /**
      * Retrieves the parent folder of a given folder by its ID.
      *
@@ -164,6 +168,7 @@ public interface FolderDAO {
      */
 	public Folder getParentFolder(Folder folder);
 	
+	// Other Utility Methods
     /**
      * Retrieves the full path of a folder based on its ID.
      *
@@ -179,5 +184,4 @@ public interface FolderDAO {
      * @return True if a folder with the given title exists, false otherwise.
      */
 	public boolean existsByTitle(String title);
-
 }

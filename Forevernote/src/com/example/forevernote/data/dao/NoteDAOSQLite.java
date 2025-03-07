@@ -11,7 +11,14 @@ import com.example.forevernote.data.dao.interfaces.*;
 import com.example.forevernote.data.models.*;
 import com.example.forevernote.exceptions.*;
 
+/**
+ * SQLite implementation of the NoteDAO interface.
+ * This class provides methods for interacting with notes in the SQLite database,
+ * including creation, retrieval, updating, deletion, and tag management.
+ */
 public class NoteDAOSQLite implements NoteDAO {
+	
+	// SQL Queries
     private static final String INSERT_NOTE_SQL = "INSERT INTO notes (title, content, created_date, modified_date, "
     		+ "latitude, longitude, author, source_url, source, source_application, is_todo, todo_due, todo_completed) "
 			+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
@@ -37,10 +44,16 @@ public class NoteDAOSQLite implements NoteDAO {
 	private static final Logger logger = LoggerConfig.getLogger(NoteDAOSQLite.class);
     private Connection connection;
 
+    /**
+     * Constructs a NoteDAOSQLite with the given database connection.
+     *
+     * @param connection The database connection to be used.
+     */
 	public NoteDAOSQLite(Connection connection) {
 		this.connection = connection;
 	}
 
+	// CRUD Methods
 	@Override
 	public int createNote(Note note) {
 	    int newId = -1;
@@ -155,6 +168,7 @@ public class NoteDAOSQLite implements NoteDAO {
 		}	
 	}
 	
+	// Retrieval Methods
 	@Override
 	public List<Note> fetchNotesByFolderId(int folderId) {
 		if (folderId <= 0) {
@@ -222,6 +236,7 @@ public class NoteDAOSQLite implements NoteDAO {
 	    return folderDAO.getFolderByNoteId(noteId);
 	}
 	
+	// Tag Management Methods
 	@Override
 	public void addTag(int noteId, int tagId) {
 	    if (noteId <= 0 || tagId <= 0) {
@@ -313,6 +328,7 @@ public class NoteDAOSQLite implements NoteDAO {
 	    note.addAllTags(tags);
 	}
 	
+	// Helper Methods (protected/private)
 	protected Note mapResultSetToNote(ResultSet rs) throws SQLException {
 		Note note = null;
 		

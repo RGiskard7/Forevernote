@@ -18,8 +18,14 @@ import com.example.forevernote.data.models.Tag;
 import com.example.forevernote.data.models.Note;
 import com.example.forevernote.exceptions.InvalidParameterException;
 
+/**
+ * SQLite implementation of the TagDAO interface.
+ * This class provides methods for interacting with tags in the SQLite database,
+ * including creation, retrieval, updating, deletion, and managing notes associated with tags.
+ */
 public class TagDAOSQLite implements TagDAO {
 	
+	// SQL Queries
 	private static final String INSERT_TAG_SQL = "INSERT INTO tags (title, created_date) VALUES (?, ?)";
 	
 	private static final String SELECT_EXIST_TITLE = "SELECT COUNT(*) FROM tags WHERE title = ?";
@@ -37,10 +43,16 @@ public class TagDAOSQLite implements TagDAO {
 	private static final Logger logger = LoggerConfig.getLogger(NoteDAOSQLite.class);
 	private Connection connection;
 	
+    /**
+     * Constructs a TagDAOSQLite with the given database connection.
+     *
+     * @param connection The database connection to be used.
+     */
 	public TagDAOSQLite(Connection connection) {
 		this.connection = connection;
 	}
 
+	// CRUD Methods
 	@Override
 	public int createTag(Tag tag) {
 	    int newId = -1;
@@ -128,6 +140,7 @@ public class TagDAOSQLite implements TagDAO {
 	    return tag;
 	}
 
+	// Retrieval Methods
 	@Override
 	public List<Tag> fetchAllTags() {
 		List<Tag> list = new ArrayList<>();
@@ -192,6 +205,7 @@ public class TagDAOSQLite implements TagDAO {
 	    return false;
 	}
 	
+	// Helper Methods (protected/private)
 	protected Tag mapResultSetToTag(ResultSet rs) throws SQLException {
 		Tag tag = null;
 		
@@ -206,5 +220,4 @@ public class TagDAOSQLite implements TagDAO {
 		
 		return tag;
 	}
-
 }

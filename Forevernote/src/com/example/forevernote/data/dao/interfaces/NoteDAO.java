@@ -13,6 +13,7 @@ import com.example.forevernote.data.models.Folder;
  */
 public interface NoteDAO {
 
+	// CRUD Operations
     /**
      * Creates a new note in the database.
      *
@@ -43,6 +44,7 @@ public interface NoteDAO {
      */
     public void deleteNote(int id);
 
+    // Retrieval Methods
     /**
      * Fetches all notes from the database.
      *
@@ -73,6 +75,7 @@ public interface NoteDAO {
      */
     public Folder getFolderOfNote(int noteId);
 
+    // Tag Management
     /**
      * Assigns a tag to a note using their respective IDs.
      *

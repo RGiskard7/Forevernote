@@ -4,6 +4,11 @@ import java.io.Serializable;
 
 import com.example.forevernote.data.models.abstractLayers.BaseModel;
 
+/**
+ * Represents a tag in the application.
+ * A tag is used to categorize and organize notes.
+ * It consists of an ID, title, and optional timestamps for creation and modification.
+ */
 public class Tag extends BaseModel implements Serializable {
     private static final long serialVersionUID = 1L;
     

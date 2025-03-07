@@ -5,6 +5,11 @@ import java.util.*;
 
 import com.example.forevernote.data.models.abstractLayers.LeafModel;
 
+/**
+ * Represents a note in the application.
+ * A note has a title, content, optional metadata such as location, author, and source information,
+ * and can be associated with multiple tags.
+ */
 public class Note extends LeafModel implements Serializable {    
 	private static final long serialVersionUID = 1L;
 	private String content;

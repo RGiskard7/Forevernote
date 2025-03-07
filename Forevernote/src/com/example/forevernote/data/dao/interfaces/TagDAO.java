@@ -12,6 +12,7 @@ import com.example.forevernote.data.models.Tag;
  */
 public interface TagDAO {
 
+	// CRUD Operations
     /**
      * Creates a new tag in the database.
      *
@@ -42,6 +43,7 @@ public interface TagDAO {
      */
     public Tag getTagById(int id);
 
+    // Retrieval Methods
     /**
      * Fetches all tags from the database.
      *
@@ -57,6 +59,7 @@ public interface TagDAO {
      */
     public List<Note> fetchAllNotesWithTag(int tagId);
 
+    // Utility Methods
     /**
      * Checks if a tag with the given title exists.
      *
@@ -65,5 +68,3 @@ public interface TagDAO {
      */
     public boolean existsByTitle(String title);
 }
-
-
