@@ -1,269 +1,169 @@
-# Forevernote - Notes Application
+# Forevernote
 
-## Description
-
-The Notes Application is a Java-based desktop application designed to help users manage their notes effectively. It provides a user-friendly interface for creating, updating, and organizing notes into notebooks and tags. The application is ideal for both personal and professional use, offering robust features to enhance productivity and organization. The application also supports comprehensive logging to monitor activities and troubleshoot issues efficiently.
+A lightweight desktop application for managing notes with hierarchical organization through folders and tags. Built with Java and JavaFX, featuring SQLite for persistent storage.
 
 ## Features
 
-- **Create Notes**: Easily create new notes with titles and content. Example: Create a note titled "Meeting Notes" with key points from a meeting.
-- **Edit Notes**: Update existing notes with new information. Example: Add additional details to a note after a brainstorming session.
-- **Delete Notes**: Remove notes that are no longer needed to keep your workspace organized.
-- **Notebooks/Folders Management**: Create and delete notebooks/folders, providing a hierarchical organization for their notes. Notes can be added to or removed from notebooks/folders.
-- **Labels Management**: Create and delete labels, and assign them to notes for better categorization and searchability.
-- **Logging**: Comprehensive logging setup to track application behavior and errors, aiding in troubleshooting and monitoring.
+- **Note Management**: Create, edit, and delete notes with titles and content
+- **Folder Organization**: Organize notes hierarchically using notebooks/folders
+- **Tags**: Categorize and search notes using tags
+- **To-Do Support**: Mark notes as to-do items with completion tracking
+- **Logging**: Comprehensive application logging for debugging and monitoring
 
 ## Technology Stack
 
-- **Java**: The core programming language used for the application, providing a robust and platform-independent environment.
-- **SQLite**: A lightweight database engine used for storing notes, notebooks, and tags, ensuring data persistence and reliability.
-- **Logging**: Java's built-in `java.util.logging` for capturing and recording log messages, facilitating debugging and analysis.
+- **Java 17**: Core programming language
+- **JavaFX 21**: Desktop user interface framework
+- **SQLite**: Lightweight relational database
+- **Maven 3.9+**: Build automation and dependency management
+- **JUnit 5**: Unit testing framework
 
-## Installation
+## Prerequisites
 
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/RGiskard7/Forevernote.git
-    cd Forevernote
-    ```
+- **JDK 17** or later
+- **Apache Maven 3.6+** (or use the scripts for automatic setup)
 
-2. Set up your environment:
-    - Ensure you have Java installed (JDK 8 or later).
-    - Include the necessary libraries in your project (e.g., `sqlite-jdbc`, `slf4j-api`, `slf4j-jdk14`, logging libraries).
+### Verify Installation
 
-3. Create the `logging.properties` file:
-    ```properties
-    handlers= java.util.logging.ConsoleHandler, java.util.logging.FileHandler
+```bash
+java -version
+mvn -version
+```
 
-    # ConsoleHandler Configuration
-    java.util.logging.ConsoleHandler.level = SEVERE
-    java.util.logging.ConsoleHandler.formatter = java.util.logging.SimpleFormatter
+## Quick Start
 
-    # Other consoleHandler Configuration for level INFO
-    java.util.logging.ConsoleHandler.level = INFO
-    java.util.logging.ConsoleHandler.formatter = java.util.logging.SimpleFormatter
+### 1. Clone the Repository
 
-    # FileHandler Configuration
-    java.util.logging.FileHandler.level = ALL
-    java.util.logging.FileHandler.pattern = logs/app.log
-    java.util.logging.FileHandler.append = true
-    java.util.logging.FileHandler.formatter = java.util.logging.SimpleFormatter
+```bash
+git clone https://github.com/RGiskard7/Forevernote.git
+cd Forevernote
+```
 
-    # Root logger configuration
-    .level = ALL
-    ```
+### 2. Build the Project
 
-4. Run the application:
-    ```bash
-    java -cp .:path/to/sqlite-jdbc.jar com.example.forevernote.Main
-    ```
+**Windows (PowerShell):**
+```powershell
+.\scripts\build_all.ps1
+```
 
-## Usage
+**macOS/Linux (Bash):**
+```bash
+./scripts/build_all.sh
+```
 
-1. Run the application:
-    ```bash
-    java -jar target/Forevernote.jar
-    ```
+This creates an executable JAR at `Forevernote/target/forevernote-1.0.0-uber.jar`.
 
-2. Use the GUI to create, edit, delete, and organize your notes.
+### 3. Run the Application
 
-## Configuration
+**Windows (PowerShell):**
+```powershell
+.\scripts\run_all.ps1
+```
 
-The application uses a custom logger configuration to manage logging output. The configuration file `logging.properties` should be placed in the `resources` directory. Ensure the directory is included in the classpath.
+Or directly:
+```powershell
+.\launch.bat
+```
+
+**macOS/Linux (Bash):**
+```bash
+./scripts/run_all.sh
+```
+
+Or directly:
+```bash
+./launch.sh
+```
+
+## Alternative: Build and Run Manually
+
+### Build
+
+```bash
+mvn -f Forevernote/pom.xml clean package -DskipTests
+```
+
+### Run JAR
+
+```bash
+java -jar Forevernote/target/forevernote-1.0.0-uber.jar
+```
+
+### Run from Source (Development)
+
+```bash
+mvn -f Forevernote/pom.xml exec:java -Dexec.mainClass="com.example.forevernote.Main"
+```
 
 ## Project Structure
 
 ```
 Forevernote/
+├── Forevernote/                          # Main project module
+│   ├── src/
+│   │   ├── main/
+│   │   │   ├── java/com/example/forevernote/
+│   │   │   │   ├── Main.java            # Application entry point
+│   │   │   │   ├── config/              # Configuration classes
+│   │   │   │   ├── data/                # Data access layer
+│   │   │   │   │   ├── SQLiteDB.java    # Database connection management
+│   │   │   │   │   ├── dao/             # Data Access Objects
+│   │   │   │   │   └── models/          # Data models (Note, Folder, Tag)
+│   │   │   │   ├── exceptions/          # Custom exceptions
+│   │   │   │   └── ui/                  # User interface
+│   │   │   │       ├── controller/      # JavaFX controllers
+│   │   │   │       ├── view/            # FXML layouts
+│   │   │   │       └── css/             # Stylesheets
+│   │   │   └── resources/               # Configuration and assets
+│   │   └── test/                        # Unit tests
+│   ├── pom.xml                          # Maven configuration
+│   ├── target/                          # Build output directory
+│   └── data/                            # Runtime data directory
 │
-├── data/                    # Directory for data files and resources
-│   ├── ...
-├── lib/                     # External libraries and dependencies
-│   ├── ...
-├── logs/                    # Directory for log files
-│   ├── ...
-├── resources/               # Additional resources such as configuration files
-│   ├── ...
-├── src/                     # Source code directory
-│   ├── com/
-│       ├── example/
-│           ├── forevernote/
-│               ├── config/  # Configuration classes
-│               │   ├── LoggerConfig.java
-│               ├── data/    # Data access and model classes
-│               │   ├── SQLiteDB.java
-│               │   ├── dao/ # Data Access Object classes
-│               │   │   ├── TagDAOSQLite.java
-│               │   │   ├── NoteDAOSQLite.java
-│               │   │   ├── FolderDAOSQLite.java
-│               │   │   ├── FactoryDAOSQLite.java
-│               │   │   ├── interfaces/ # DAO interfaces
-│               │   │   │   ├── TagDAO.java
-│               │   │   │   ├── NoteDAO.java
-│               │   │   │   ├── FolderDAO.java
-│               │   │   ├── abstractLayers/ # Abstract DAO layers
-│               │   │   │   ├── FactoryDAO.java
-│               │   ├── models/ # Model classes
-│               │   │   ├── ToDoNote.java
-│               │   │   ├── Tag.java
-│               │   │   ├── Note.java
-│               │   │   ├── Folder.java
-│               │   │   ├── interfaces/ # Model interfaces
-│               │   │   │   ├── Component.java
-│               │   │   ├── abstractLayers/ # Abstract model layers
-│               │   │   │   ├── LeafModel.java
-│               │   │   │   ├── CompositeModel.java
-│               │   │   │   ├── BaseModel.java
-│               ├── exceptions/ # Custom exception classes
-│               │   ├── NoteNotFoundException.java
-│               │   ├── NoteException.java
-│               │   ├── DataAccessException.java
-│               │   ├── InvalidParameterException.java
-│               ├── tests/ # Test classes
-│               │   ├── Test.java
-│               │   ├── NoteDAOSQLiteTest.java
-│               ├── ui/    # User interface components
-│               │   ├── ...
+├── scripts/
+│   ├── build_all.ps1                    # Windows build script
+│   ├── build_all.sh                     # Unix build script
+│   ├── run_all.ps1                      # Windows run script
+│   ├── run_all.sh                       # Unix run script
+│   ├── schema.txt                       # SQLite schema example
+│   └── README.md                        # Scripts documentation
+│
+├── logs/                                # Application logs directory
+├── .gitignore                           # Git ignore rules
+├── .vscode/
+│   └── tasks.json                       # VS Code build tasks
+├── README.md                            # This file
+├── SETUP.md                             # Quick setup guide
+├── BUILD.md                             # Build documentation
+└── LICENSE                              # MIT License
 ```
+
+## Configuration
+
+### Database
+
+The application automatically creates a SQLite database at `Forevernote/data/database.db` on first run. The database includes tables for notes, folders, tags, and their relationships.
+
+### Logging
+
+Logging configuration is defined in `src/main/resources/logging.properties`. Logs are written to the `logs/` directory by default.
+
+### JavaFX Module-Path
+
+The build and run scripts automatically detect JavaFX modules from your Maven repository (`~/.m2/repository/org/openjfx/`). If running the JAR directly fails, use the provided scripts which handle module-path configuration automatically.
+
+## VS Code Integration
+
+The project includes `.vscode/tasks.json` with predefined build and run tasks:
+
+- **Build Forevernote** (Ctrl+Shift+B): Compiles and packages the project
+- **Run Forevernote (Script)**: Executes via PowerShell/Bash script
+- **Run Forevernote (Direct)**: Executes via launch.bat/launch.sh
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
-Contributions are welcome! Please fork the repository and submit a pull request for any enhancements or bug fixes.
-
----
-
-# Aplicación de Notas
-
-## Descripción
-
-Esta es una aplicación de toma de notas que permite a los usuarios crear, gestionar y organizar sus notas de manera eficiente. La aplicación soporta la creación y gestión de cuadernos/carpetas, notas y etiquetas, ofreciendo una solución completa para las necesidades de toma de notas personales y profesionales. La aplicación también soporta un registro completo para monitorear actividades y solucionar problemas de manera eficiente.
-
-## Funcionalidades
-
-- **Crear Notas**: Crear nuevas notas fácilmente con títulos y contenido.
-- **Editar Notas**: Actualizar notas existentes con nueva información.
-- **Eliminar Notas**: Eliminar notas que ya no se necesitan.
-- **Gestión de Cuadernos/Carpetas**: Los usuarios pueden crear y eliminar cuadernos/carpetas, proporcionando una organización jerárquica para sus notas. Las notas pueden ser añadidas o eliminadas de los cuadernos/carpetas.
-- **Gestión de Etiquetas**: Los usuarios pueden crear y eliminar etiquetas, y asignarlas a notas para una mejor categorización y facilidad de búsqueda.
-- **Registro**: Configuración de registro completa para rastrear el comportamiento y los errores de la aplicación.
-
-## Tecnología
-
-- **Java**: El lenguaje de programación principal utilizado para la aplicación.
-- **SQLite**: Un motor de base de datos ligero utilizado para almacenar notas, cuadernos y etiquetas.
-- **Logging**: `java.util.logging` de Java para capturar y registrar mensajes de registro.
-
-## Instalación
-
-1. Clona el repositorio:
-    ```bash
-    git clone https://github.com/RGiskard7/Forevernote.git
-    cd Forevernote
-    ```
-
-2. Configura tu entorno:
-    - Asegúrate de tener Java instalado (JDK 8 o posterior).
-    - Incluye las bibliotecas necesarias en tu proyecto (por ejemplo, `sqlite-jdbc`, bibliotecas de logging).
-
-3. Crea el archivo `logging.properties`:
-    ```properties
-    handlers= java.util.logging.ConsoleHandler, java.util.logging.FileHandler
-
-    # Configuración del ConsoleHandler
-    java.util.logging.ConsoleHandler.level = SEVERE
-    java.util.logging.ConsoleHandler.formatter = java.util.logging.SimpleFormatter
-
-    # Configuración del FileHandler
-    java.util.logging.FileHandler.level = ALL
-    java.util.logging.FileHandler.pattern = logs/app.log
-    java.util.logging.FileHandler.append = true
-    java.util.logging.FileHandler.formatter = java.util.logging.SimpleFormatter
-
-    # Configuración del logger root
-    .level = ALL
-    ```
-
-4. Ejecuta la aplicación:
-    ```bash
-    java -cp .:path/to/sqlite-jdbc.jar com.example.forevernote.Main
-    ```
-
-## Uso
-
-1. Ejecuta la aplicación:
-    ```bash
-    java -jar target/Forevernote.jar
-    ```
-
-2. Usa la interfaz gráfica para crear, editar, eliminar y organizar tus notas.
-
-## Configuración
-
-La aplicación utiliza una configuración personalizada del logger para gestionar la salida de los logs. El archivo de configuración logging.properties debe colocarse en el directorio resources. Asegúrate de que el directorio esté incluido en el classpath.
-
-## Estructura del Proyecto
-
-```
-Forevernote/
-│
-├── data/                    # Directorio para archivos de datos y recursos
-│   ├── ...
-├── lib/                     # Bibliotecas externas y dependencias
-│   ├── ...
-├── logs/                    # Directorio para archivos de registro
-│   ├── ...
-├── resources/               # Recursos adicionales como archivos de configuración
-│   ├── ...
-├── src/                     # Directorio del código fuente
-│   ├── com/
-│       ├── example/
-│           ├── forevernote/
-│               ├── config/  # Clases de configuración
-│               │   ├── LoggerConfig.java
-│               ├── data/    # Clases de acceso a datos y modelos
-│               │   ├── SQLiteDB.java
-│               │   ├── dao/ # Clases de acceso a datos (DAO)
-│               │   │   ├── TagDAOSQLite.java
-│               │   │   ├── NoteDAOSQLite.java
-│               │   │   ├── FolderDAOSQLite.java
-│               │   │   ├── FactoryDAOSQLite.java
-│               │   │   ├── interfaces/ # Interfaces de DAO
-│               │   │   │   ├── TagDAO.java
-│               │   │   │   ├── NoteDAO.java
-│               │   │   │   ├── FolderDAO.java
-│               │   │   ├── abstractLayers/ # Capas abstractas de DAO
-│               │   │   │   ├── FactoryDAO.java
-│               │   ├── models/ # Clases de modelos
-│               │   │   ├── ToDoNote.java
-│               │   │   ├── Tag.java
-│               │   │   ├── Note.java
-│               │   │   ├── Folder.java
-│               │   │   ├── interfaces/ # Interfaces de modelos
-│               │   │   │   ├── Component.java
-│               │   │   ├── abstractLayers/ # Capas abstractas de modelos
-│               │   │   │   ├── LeafModel.java
-│               │   │   │   ├── CompositeModel.java
-│               │   │   │   ├── BaseModel.java
-│               ├── exceptions/ # Clases de excepciones personalizadas
-│               │   ├── NoteNotFoundException.java
-│               │   ├── NoteException.java
-│               │   ├── DataAccessException.java
-│               │   ├── InvalidParameterException.java
-│               ├── tests/ # Clases de pruebas
-│               │   ├── Test.java
-│               │   ├── NoteDAOSQLiteTest.java
-│               ├── ui/    # Componentes de la interfaz de usuario
-│               │   ├── ...
-```
-
-## Licencia
-
-Este proyecto está licenciado bajo la Licencia MIT - consulta el archivo [LICENSE](LICENSE) para más detalles.
-
-## Contribuciones
-
-¡Las contribuciones son bienvenidas! Por favor, bifurca el repositorio y envía una solicitud de extracción para cualquier mejora o corrección de errores.
+Contributions are welcome! Please feel free to submit a Pull Request.

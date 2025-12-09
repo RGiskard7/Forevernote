@@ -209,8 +209,8 @@ public class TagDAOSQLite implements TagDAO {
 	protected Tag mapResultSetToTag(ResultSet rs) throws SQLException {
 		Tag tag = null;
 		
-		if (rs != null) {
-            int tagId = rs.getInt("folder_id");
+if (rs != null) {
+            int tagId = rs.getInt("tag_id");
             String title = rs.getString("title");
             String cratedDate = rs.getString("created_date");
             String modifiedDate = rs.getString("modified_date");

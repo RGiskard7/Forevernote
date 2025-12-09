@@ -380,17 +380,17 @@ public class FolderDAOSQLite implements FolderDAO {
 	    	throw new IllegalArgumentException("Note ID and folder ID must be greater than zero");
 	    }
 		
-		try (PreparedStatement pstmt = connection.prepareStatement(UPDATE_FOLDER_REMOVE_NOTE_SQL)) { 	    
+try (PreparedStatement pstmt = connection.prepareStatement(UPDATE_FOLDER_REMOVE_NOTE_SQL)) {	    
 	        pstmt.setString(1, DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
-	        pstmt.setInt(1, noteId);
-	        pstmt.setInt(2, folderId);
+	        pstmt.setInt(2, noteId);
+	        pstmt.setInt(3, folderId);
 	        pstmt.executeUpdate();
 	        connection.commit();
 	        
 	        updateModifiedDateFolder(folderId);
 		} catch (SQLException e) {
 			logger.log(Level.SEVERE, "Error removeNote(): " + e.getMessage(), e);
-		}	
+		}
 	}
 	
 	protected void addSubFolder(int parentId, int subFolderId) {

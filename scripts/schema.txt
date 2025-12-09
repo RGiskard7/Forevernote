@@ -1,0 +1,43 @@
+-- Esquema de ejemplo para SQLite
+-- Copia y pega esto en un fichero .sql y ejecútalo con sqlite3:
+--    sqlite3 data/database.db < scripts/schema.txt
+
+PRAGMA foreign_keys = ON;
+
+CREATE TABLE IF NOT EXISTS folders (
+  folder_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  parent_id INTEGER,
+  title TEXT NOT NULL UNIQUE,
+  created_date TEXT NOT NULL,
+  modified_date TEXT DEFAULT NULL,
+  FOREIGN KEY (parent_id) REFERENCES folders(folder_id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS tags (
+  tag_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL UNIQUE,
+  created_date TEXT NOT NULL,
+  modified_date TEXT DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS notes (
+  note_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  parent_id INTEGER,
+  title TEXT NOT NULL,
+  content TEXT,
+  created_date TEXT NOT NULL,
+  modified_date TEXT,
+  is_todo INTEGER NOT NULL DEFAULT 0,
+  todo_due INTEGER DEFAULT NULL,
+  todo_completed INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY (parent_id) REFERENCES folders(folder_id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS tagsNotes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  tag_id INTEGER,
+  note_id INTEGER,
+  added_date TEXT,
+  FOREIGN KEY (tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE,
+  FOREIGN KEY (note_id) REFERENCES notes(note_id) ON DELETE CASCADE
+);
