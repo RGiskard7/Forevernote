@@ -16,8 +16,8 @@ fi
 # Build JavaFX module path from Maven repository
 JAVAFX_MODULES=""
 if [ -d "$M2_REPO/org/openjfx" ]; then
-    # Include all required JavaFX modules
-    for module in javafx-base javafx-controls javafx-fxml javafx-graphics javafx-web; do
+    # Include all required JavaFX modules (javafx.web requires javafx.media)
+    for module in javafx-base javafx-controls javafx-fxml javafx-graphics javafx-media javafx-web; do
         for module_dir in "$M2_REPO"/org/openjfx/$module/21*; do
             if [ -d "$module_dir" ]; then
                 if [ -z "$JAVAFX_MODULES" ]; then
@@ -35,7 +35,7 @@ fi
 if [ -n "$JAVAFX_MODULES" ]; then
     echo "Launching Forevernote with JavaFX module-path..."
     echo "Module path: $JAVAFX_MODULES"
-    java --module-path "$JAVAFX_MODULES" --add-modules javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.web -jar "$JAR"
+    java --module-path "$JAVAFX_MODULES" --add-modules javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.media,javafx.web -jar "$JAR"
 else
     echo "JavaFX modules not found in Maven repository. Attempting standard JAR launch..."
     java -jar "$JAR"

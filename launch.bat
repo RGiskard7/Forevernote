@@ -70,6 +70,18 @@ for /d %%v in ("%M2_REPO%\org\openjfx\javafx-graphics\21*") do (
 )
 :found_graphics
 
+for /d %%v in ("%M2_REPO%\org\openjfx\javafx-media\21*") do (
+    if exist "%%v" (
+        if not "!JAVAFX_MODULES!"=="" (
+            set "JAVAFX_MODULES=!JAVAFX_MODULES!;%%v"
+        ) else (
+            set "JAVAFX_MODULES=%%v"
+        )
+        goto :found_media
+    )
+)
+:found_media
+
 for /d %%v in ("%M2_REPO%\org\openjfx\javafx-web\21*") do (
     if exist "%%v" (
         if not "!JAVAFX_MODULES!"=="" (
@@ -85,7 +97,7 @@ for /d %%v in ("%M2_REPO%\org\openjfx\javafx-web\21*") do (
 REM Launch with module-path if JavaFX modules were found
 if not "!JAVAFX_MODULES!"=="" (
     echo Launching Forevernote with JavaFX module-path...
-    java --module-path "!JAVAFX_MODULES!" --add-modules javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.web -jar "%JAR%"
+    java --module-path "!JAVAFX_MODULES!" --add-modules javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.media,javafx.web -jar "%JAR%"
 ) else (
     echo JavaFX modules not found. Attempting standard JAR launch...
     java -jar "%JAR%"

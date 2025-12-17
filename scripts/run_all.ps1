@@ -21,13 +21,15 @@ if (Test-Path $jar) {
     $javafxModules = @()
     
     if (Test-Path $m2Repo) {
-        $javafxBase = "$m2Repo\org\openjfx\javafx-base\21*"
-        $javafxControls = "$m2Repo\org\openjfx\javafx-controls\21*"
-        $javafxFxml = "$m2Repo\org\openjfx\javafx-fxml\21*"
-        $javafxGraphics = "$m2Repo\org\openjfx\javafx-graphics\21*"
-        $javafxWeb = "$m2Repo\org\openjfx\javafx-web\21*"
-        
-        $modulesToCheck = @($javafxBase, $javafxControls, $javafxFxml, $javafxGraphics, $javafxWeb)
+        # javafx.web requires javafx.media, so we need to include it
+        $modulesToCheck = @(
+            "$m2Repo\org\openjfx\javafx-base\21*",
+            "$m2Repo\org\openjfx\javafx-controls\21*",
+            "$m2Repo\org\openjfx\javafx-fxml\21*",
+            "$m2Repo\org\openjfx\javafx-graphics\21*",
+            "$m2Repo\org\openjfx\javafx-media\21*",
+            "$m2Repo\org\openjfx\javafx-web\21*"
+        )
         
         foreach ($modulePath in $modulesToCheck) {
             $dirs = Get-ChildItem -Path $modulePath -Directory -ErrorAction SilentlyContinue
@@ -42,7 +44,7 @@ if (Test-Path $jar) {
     if ($javafxModules.Count -gt 0) {
         $modulePath = $javafxModules -join ';'
         Write-Host "Using JavaFX module-path: $modulePath" -ForegroundColor Cyan
-        & java --module-path $modulePath --add-modules javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.web -jar $jar
+        & java --module-path $modulePath --add-modules javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.media,javafx.web -jar $jar
     } else {
         Write-Host "JavaFX modules not found. Attempting standard JAR launch..." -ForegroundColor Yellow
         & java -jar $jar
