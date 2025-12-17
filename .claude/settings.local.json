@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(mvn clean compile:*)",
+      "Bash(mvn clean package:*)",
+      "Bash(timeout 10 mvn javafx:run:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

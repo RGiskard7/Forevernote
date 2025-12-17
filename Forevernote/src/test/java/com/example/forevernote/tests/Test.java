@@ -1,10 +1,7 @@
 package com.example.forevernote.tests;
+
 import java.sql.Connection;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -23,7 +20,7 @@ public class Test {
 	private static final Logger logger = LoggerConfig.getLogger(Test.class);
 	private static final SimpleDateFormat dtf = new SimpleDateFormat("dd/MM/yyyy - HH:mm");
 	
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) {
 		logger.info("INICIO TEST - " + dtf.format(Calendar.getInstance().getTime()));
 		
 		SQLiteDB.configure("data/database.db");

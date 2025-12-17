@@ -3,6 +3,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
+<?import javafx.scene.web.WebView?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" 
             fx:controller="com.example.forevernote.ui.controller.MainController">
@@ -166,8 +167,7 @@
                         </HBox>
                         
                         <!-- Note Content Editor -->
-                        <TextArea fx:id="noteContentArea" promptText="Start writing your note..." 
-                                  styleClass="note-content" wrapText="true" VBox.vgrow="ALWAYS"/>
+                        <TextArea fx:id="noteContentArea" promptText="Write your note here..." wrapText="true" styleClass="note-content-area" VBox.vgrow="ALWAYS"/>
                         
                         <!-- Editor Toolbar -->
                         <HBox styleClass="editor-toolbar" alignment="CENTER_LEFT" spacing="5">
@@ -193,9 +193,7 @@
                 <!-- Preview / Attachments Area -->
                 <TabPane fx:id="previewTabPane" styleClass="preview-tabs">
                     <Tab text="📝 Preview" closable="false">
-                        <ScrollPane styleClass="preview-scroll">
-                            <TextArea fx:id="previewTextArea" editable="false" styleClass="preview-text" wrapText="true"/>
-                        </ScrollPane>
+                        <WebView fx:id="previewWebView"/>
                     </Tab>
                     
                     <Tab text="📎 Attachments" closable="false">

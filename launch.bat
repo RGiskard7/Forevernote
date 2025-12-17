@@ -25,46 +25,67 @@ REM Build JavaFX module path from Maven repository
 REM Look for specific javafx modules in version 21
 set JAVAFX_MODULES=
 
-if exist "%M2_REPO%\org\openjfx\javafx-base\21" (
-    set "JAVAFX_MODULES=!JAVAFX_MODULES!%M2_REPO%\org\openjfx\javafx-base\21"
-)
-
-if exist "%M2_REPO%\org\openjfx\javafx-controls\21" (
-    if not "!JAVAFX_MODULES!"=="" (
-        set "JAVAFX_MODULES=!JAVAFX_MODULES!;%M2_REPO%\org\openjfx\javafx-controls\21"
-    ) else (
-        set "JAVAFX_MODULES=%M2_REPO%\org\openjfx\javafx-controls\21"
+REM Find the actual version directory (e.g., 21.0.1)
+for /d %%v in ("%M2_REPO%\org\openjfx\javafx-base\21*") do (
+    if exist "%%v" (
+        set "JAVAFX_MODULES=%%v"
+        goto :found_base
     )
 )
+:found_base
 
-if exist "%M2_REPO%\org\openjfx\javafx-fxml\21" (
-    if not "!JAVAFX_MODULES!"=="" (
-        set "JAVAFX_MODULES=!JAVAFX_MODULES!;%M2_REPO%\org\openjfx\javafx-fxml\21"
-    ) else (
-        set "JAVAFX_MODULES=%M2_REPO%\org\openjfx\javafx-fxml\21"
+for /d %%v in ("%M2_REPO%\org\openjfx\javafx-controls\21*") do (
+    if exist "%%v" (
+        if not "!JAVAFX_MODULES!"=="" (
+            set "JAVAFX_MODULES=!JAVAFX_MODULES!;%%v"
+        ) else (
+            set "JAVAFX_MODULES=%%v"
+        )
+        goto :found_controls
     )
 )
+:found_controls
 
-if exist "%M2_REPO%\org\openjfx\javafx-graphics\21" (
-    if not "!JAVAFX_MODULES!"=="" (
-        set "JAVAFX_MODULES=!JAVAFX_MODULES!;%M2_REPO%\org\openjfx\javafx-graphics\21"
-    ) else (
-        set "JAVAFX_MODULES=%M2_REPO%\org\openjfx\javafx-graphics\21"
+for /d %%v in ("%M2_REPO%\org\openjfx\javafx-fxml\21*") do (
+    if exist "%%v" (
+        if not "!JAVAFX_MODULES!"=="" (
+            set "JAVAFX_MODULES=!JAVAFX_MODULES!;%%v"
+        ) else (
+            set "JAVAFX_MODULES=%%v"
+        )
+        goto :found_fxml
     )
 )
+:found_fxml
 
-if exist "%M2_REPO%\org\openjfx\javafx-media\21" (
-    if not "!JAVAFX_MODULES!"=="" (
-        set "JAVAFX_MODULES=!JAVAFX_MODULES!;%M2_REPO%\org\openjfx\javafx-media\21"
-    ) else (
-        set "JAVAFX_MODULES=%M2_REPO%\org\openjfx\javafx-media\21"
+for /d %%v in ("%M2_REPO%\org\openjfx\javafx-graphics\21*") do (
+    if exist "%%v" (
+        if not "!JAVAFX_MODULES!"=="" (
+            set "JAVAFX_MODULES=!JAVAFX_MODULES!;%%v"
+        ) else (
+            set "JAVAFX_MODULES=%%v"
+        )
+        goto :found_graphics
     )
 )
+:found_graphics
+
+for /d %%v in ("%M2_REPO%\org\openjfx\javafx-web\21*") do (
+    if exist "%%v" (
+        if not "!JAVAFX_MODULES!"=="" (
+            set "JAVAFX_MODULES=!JAVAFX_MODULES!;%%v"
+        ) else (
+            set "JAVAFX_MODULES=%%v"
+        )
+        goto :found_web
+    )
+)
+:found_web
 
 REM Launch with module-path if JavaFX modules were found
 if not "!JAVAFX_MODULES!"=="" (
     echo Launching Forevernote with JavaFX module-path...
-    java --module-path "!JAVAFX_MODULES!" --add-modules javafx.controls,javafx.fxml,javafx.graphics,javafx.media -jar "%JAR%"
+    java --module-path "!JAVAFX_MODULES!" --add-modules javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.web -jar "%JAR%"
 ) else (
     echo JavaFX modules not found. Attempting standard JAR launch...
     java -jar "%JAR%"

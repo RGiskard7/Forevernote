@@ -5,6 +5,21 @@
 - **Java 17** or higher
 - **Apache Maven 3.6** or higher
 
+Note: If `mvn` is not on your PATH, you can call a local Maven installation directly (example Windows):
+
+```powershell
+& 'C:\Users\<you>\.maven\maven-3.9.11\bin\mvn.cmd' -v
+```
+
+Environment variables (temporary examples):
+
+PowerShell (temporary for session):
+
+```powershell
+$env:JAVA_HOME = 'C:\Program Files\Java\jdk-17'
+$env:Path = 'C:\Users\<you>\.maven\maven-3.9.11\bin;' + $env:Path
+```
+
 Verify installation:
 ```bash
 java -version
@@ -95,6 +110,8 @@ If you see "JavaFX runtime components are missing" when running the JAR directly
 
 1. Use the run scripts which automatically configure the module-path
 2. Or run via Maven: `mvn exec:java -Dexec.mainClass="com.example.forevernote.Main"`
+
+If you must run the JAR directly and encounter JavaFX module errors, run the app with the appropriate `--module-path` and `--add-modules` flags pointing at your JavaFX SDK or the JavaFX jars in your local Maven repository. The provided `launch.*` scripts already perform this step for you.
 
 ### Compilation Errors
 

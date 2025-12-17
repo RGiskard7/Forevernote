@@ -741,3 +741,95 @@
 .tab {
     -fx-transition: all 0.2s ease-in-out;
 }
+
+/* ========================================
+   MARKDOWN EDITOR STYLES
+   ======================================== */
+
+.markdown-editor {
+    -fx-background-color: #ffffff;
+}
+
+.markdown-toolbar {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #dee2e6 transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 8px 12px;
+    -fx-spacing: 5px;
+}
+
+.markdown-format-button {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #dee2e6;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-padding: 4px 8px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #495057;
+    -fx-cursor: hand;
+    -fx-min-width: 30px;
+    -fx-font-size: 11px;
+}
+
+.markdown-format-button:hover {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #007bff;
+    -fx-text-fill: #007bff;
+}
+
+.markdown-format-button:pressed {
+    -fx-background-color: #e9ecef;
+    -fx-border-color: #0056b3;
+}
+
+.markdown-mode-toggle {
+    -fx-background-color: transparent;
+    -fx-border-color: #dee2e6;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-padding: 6px 12px;
+    -fx-text-fill: #495057;
+    -fx-cursor: hand;
+    -fx-font-size: 11px;
+}
+
+.markdown-mode-toggle:selected {
+    -fx-background-color: #007bff;
+    -fx-border-color: #007bff;
+    -fx-text-fill: white;
+}
+
+.markdown-editor-area {
+    -fx-font-family: "Consolas", "Monaco", monospace;
+    -fx-font-size: 14px;
+    -fx-line-spacing: 1.4;
+    -fx-text-fill: #212529;
+    -fx-wrap-text: true;
+    -fx-padding: 16px;
+    -fx-background-color: #ffffff;
+    -fx-border-color: transparent;
+}
+
+.markdown-editor-area:focused {
+    -fx-border-color: transparent;
+    -fx-background-color: #ffffff;
+}
+
+.markdown-preview-area {
+    -fx-background-color: #ffffff;
+    -fx-border-color: transparent;
+}
+
+.markdown-split-pane {
+    -fx-background-color: #f8f9fa;
+}
+
+.markdown-split-pane:horizontal > .split-pane-divider {
+    -fx-background-color: #dee2e6;
+    -fx-padding: 0 1px 0 1px;
+    -fx-cursor: h-resize;
+}
+
+.markdown-split-pane:horizontal > .split-pane-divider:hover {
+    -fx-background-color: #007bff;
+}

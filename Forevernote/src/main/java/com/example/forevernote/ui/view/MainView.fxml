@@ -166,8 +166,7 @@
                         </HBox>
                         
                         <!-- Note Content Editor -->
-                        <TextArea fx:id="noteContentArea" promptText="Start writing your note..." 
-                                  styleClass="note-content" wrapText="true" VBox.vgrow="ALWAYS"/>
+                        <AnchorPane fx:id="noteEditorContainer" prefHeight="400.0" VBox.vgrow="ALWAYS"/>
                         
                         <!-- Editor Toolbar -->
                         <HBox styleClass="editor-toolbar" alignment="CENTER_LEFT" spacing="5">
@@ -194,7 +193,7 @@
                 <TabPane fx:id="previewTabPane" styleClass="preview-tabs">
                     <Tab text="📝 Preview" closable="false">
                         <ScrollPane styleClass="preview-scroll">
-                            <WebView fx:id="previewWebView" styleClass="preview-web"/>
+                            <TextArea fx:id="previewTextArea" styleClass="preview-content" wrapText="true" editable="false"/>
                         </ScrollPane>
                     </Tab>
                     

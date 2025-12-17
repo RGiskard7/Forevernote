@@ -1,9 +1,34 @@
 package com.example.forevernote.ui.controller;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
-import javafx.collections.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.ContextMenu;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.Separator;
+import javafx.scene.control.SplitPane;
+import javafx.scene.control.TabPane;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.ToggleButton;
+import javafx.scene.control.Tooltip;
+import javafx.scene.control.TreeCell;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
+import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+import javafx.scene.web.WebView;
 import javafx.event.ActionEvent;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.KeyCode;
@@ -13,13 +38,17 @@ import javafx.scene.input.KeyCombination;
 import com.example.forevernote.config.LoggerConfig;
 import com.example.forevernote.data.SQLiteDB;
 import com.example.forevernote.data.dao.abstractLayers.FactoryDAO;
-import com.example.forevernote.data.dao.interfaces.*;
-import com.example.forevernote.data.models.*;
+import com.example.forevernote.data.dao.interfaces.FolderDAO;
+import com.example.forevernote.data.dao.interfaces.NoteDAO;
+import com.example.forevernote.data.dao.interfaces.TagDAO;
+import com.example.forevernote.data.models.Folder;
+import com.example.forevernote.data.models.Note;
+import com.example.forevernote.data.models.Tag;
 import com.example.forevernote.data.models.interfaces.Component;
 
 import java.util.logging.Logger;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Optional;
 import java.sql.Connection;
 
@@ -52,7 +81,7 @@ public class MainController {
     @FXML private TabPane previewTabPane;
     
     // Navigation components
-    @FXML private TreeView<String> folderTreeView;
+    @FXML private TreeView<Folder> folderTreeView;
     @FXML private ListView<String> tagListView;
     @FXML private ListView<String> recentNotesListView;
     @FXML private ListView<String> favoritesListView;
@@ -75,7 +104,7 @@ public class MainController {
     @FXML private Label wordCountLabel;
     
     // Preview and info
-    @FXML private TextArea previewTextArea;
+    @FXML private javafx.scene.web.WebView previewWebView;
     @FXML private ListView<String> attachmentsListView;
     @FXML private Label infoCreatedLabel;
     @FXML private Label infoModifiedLabel;
@@ -144,38 +173,54 @@ public class MainController {
      * Initialize the folder tree view.
      */
     private void initializeFolderTree() {
-        TreeItem<String> rootItem = new TreeItem<>("All Notes");
+        // Create a dummy root folder for "All Notes"
+        Folder rootFolder = new Folder("All Notes", null, null);
+        TreeItem<Folder> rootItem = new TreeItem<>(rootFolder);
         rootItem.setExpanded(true);
         folderTreeView.setRoot(rootItem);
         
         // Handle folder selection
         folderTreeView.getSelectionModel().selectedItemProperty().addListener(
             (observable, oldValue, newValue) -> {
-                if (newValue != null && !newValue.getValue().equals("All Notes")) {
-                    handleFolderSelection(newValue.getValue());
+                if (newValue != null && newValue.getValue() != null) {
+                    Folder selectedFolder = newValue.getValue();
+                    if (selectedFolder.getTitle().equals("All Notes")) {
+                        currentFolder = null;
+                        loadAllNotes();
+                    } else {
+                        handleFolderSelection(selectedFolder);
+                    }
                 } else {
+                    // Selection cleared - show all notes
+                    currentFolder = null;
                     loadAllNotes();
                 }
             }
         );
         
+        // Allow clicking on "All Notes" to deselect and show all notes
+        // This is handled in the selection listener above
+        
         // Enable context menu
         folderTreeView.setCellFactory(tv -> {
-            TreeCell<String> cell = new TreeCell<>() {
+            TreeCell<Folder> cell = new TreeCell<Folder>() {
                 @Override
-                protected void updateItem(String item, boolean empty) {
-                    super.updateItem(item, empty);
-                    if (empty || item == null) {
+                protected void updateItem(Folder folder, boolean empty) {
+                    super.updateItem(folder, empty);
+                    if (empty || folder == null) {
                         setText(null);
                     } else {
-                        setText(item);
+                        setText(folder.getTitle());
                     }
                 }
             };
             
             cell.setOnContextMenuRequested(event -> {
-                if (!cell.isEmpty()) {
-                    showFolderContextMenu(cell.getItem(), cell);
+                if (!cell.isEmpty() && cell.getItem() != null) {
+                    Folder folder = cell.getItem();
+                    if (!folder.getTitle().equals("All Notes")) {
+                        showFolderContextMenu(folder, cell);
+                    }
                 }
             });
             
@@ -269,17 +314,30 @@ public class MainController {
      */
     private void loadFolders() {
         try {
-            TreeItem<String> root = folderTreeView.getRoot();
+            TreeItem<Folder> root = folderTreeView.getRoot();
             root.getChildren().clear();
             
-            List<Folder> folders = folderDAO.fetchAllFoldersAsList();
-            for (Folder folder : folders) {
-                TreeItem<String> folderItem = new TreeItem<>(folder.getTitle());
+            // Only load root folders (folders with parent_id IS NULL)
+            // We need to check parent_id directly from database since getParent() may not be loaded
+            List<Folder> allFolders = folderDAO.fetchAllFoldersAsList();
+            List<Folder> rootFolders = new ArrayList<>();
+            
+            for (Folder folder : allFolders) {
+                // Check if folder has a parent by querying the database
+                Folder parent = folderDAO.getParentFolder(folder.getId());
+                if (parent == null) {
+                    // This is a root folder
+                    rootFolders.add(folder);
+                }
+            }
+            
+            for (Folder folder : rootFolders) {
+                TreeItem<Folder> folderItem = new TreeItem<>(folder);
                 root.getChildren().add(folderItem);
                 loadSubFolders(folderItem, folder);
             }
             
-            logger.info("Loaded " + folders.size() + " folders");
+            logger.info("Loaded " + rootFolders.size() + " root folders");
         } catch (Exception e) {
             logger.severe("Failed to load folders: " + e.getMessage());
             updateStatus("Error loading folders");
@@ -289,14 +347,15 @@ public class MainController {
     /**
      * Load subfolders recursively.
      */
-    private void loadSubFolders(TreeItem<String> parentItem, Folder parentFolder) {
+    private void loadSubFolders(TreeItem<Folder> parentItem, Folder parentFolder) {
         try {
             folderDAO.loadSubFolders(parentFolder);
             for (Component child : parentFolder.getChildren()) {
                 if (child instanceof Folder) {
-                    TreeItem<String> childItem = new TreeItem<>(child.getTitle());
+                    Folder childFolder = (Folder) child;
+                    TreeItem<Folder> childItem = new TreeItem<>(childFolder);
                     parentItem.getChildren().add(childItem);
-                    loadSubFolders(childItem, (Folder) child);
+                    loadSubFolders(childItem, childFolder);
                 }
             }
         } catch (Exception e) {
@@ -323,16 +382,17 @@ public class MainController {
     /**
      * Load notes for selected folder.
      */
-    private void handleFolderSelection(String folderName) {
+    private void handleFolderSelection(Folder folder) {
         try {
-            // Find folder by name (simplified - in real app would use folder ID)
-            List<Folder> folders = folderDAO.fetchAllFoldersAsList();
-            Optional<Folder> selectedFolder = folders.stream()
-                .filter(f -> f.getTitle().equals(folderName))
-                .findFirst();
+            if (folder == null) {
+                loadAllNotes();
+                return;
+            }
             
-            if (selectedFolder.isPresent()) {
-                currentFolder = selectedFolder.get();
+            // Reload folder from database to ensure we have the latest data
+            Folder loadedFolder = folderDAO.getFolderById(folder.getId());
+            if (loadedFolder != null) {
+                currentFolder = loadedFolder;
                 folderDAO.loadNotes(currentFolder);
                 
                 List<Note> notes = currentFolder.getChildren().stream()
@@ -342,10 +402,10 @@ public class MainController {
                 
                 notesListView.getItems().setAll(notes);
                 noteCountLabel.setText(notes.size() + " notes");
-                updateStatus("Loaded folder: " + folderName);
+                updateStatus("Loaded folder: " + currentFolder.getTitle());
             }
         } catch (Exception e) {
-            logger.severe("Failed to load folder " + folderName + ": " + e.getMessage());
+            logger.severe("Failed to load folder " + (folder != null ? folder.getTitle() : "null") + ": " + e.getMessage());
             updateStatus("Error loading folder");
         }
     }
@@ -357,14 +417,19 @@ public class MainController {
         if (isModified && currentNote != null) {
             // Ask to save changes
             Optional<ButtonType> result = showSaveDialog();
-            if (result.isPresent() && result.get() == ButtonType.CANCEL) {
-                return;
+            if (result.isPresent()) {
+                if (result.get().getButtonData() == ButtonBar.ButtonData.CANCEL_CLOSE) {
+                    return;
+                }
+                if (result.get().getText().equals("Save")) {
+                    handleSave(new ActionEvent());
+                }
             }
         }
         
         currentNote = note;
-        noteTitleField.setText(note.getTitle());
-        noteContentArea.setText(note.getContent());
+        noteTitleField.setText(note.getTitle() != null ? note.getTitle() : "");
+        noteContentArea.setText(note.getContent() != null ? note.getContent() : "");
         
         // Load tags
         loadNoteTags(note);
@@ -387,9 +452,20 @@ public class MainController {
             for (Tag tag : tags) {
                 Label tagLabel = new Label(tag.getTitle());
                 tagLabel.getStyleClass().add("tag-label");
-                tagLabel.setOnMouseClicked(event -> removeTagFromNote(tag));
+                tagLabel.setOnMouseClicked(event -> {
+                    if (event.getClickCount() == 2) {
+                        removeTagFromNote(tag);
+                    }
+                });
+                // Add tooltip
+                tagLabel.setTooltip(new Tooltip("Double-click to remove"));
                 tagsFlowPane.getChildren().add(tagLabel);
             }
+            
+            // Add button to add new tag
+            Button addTagButton = new Button("+ Add Tag");
+            addTagButton.setOnAction(e -> handleAddTagToNote());
+            tagsFlowPane.getChildren().add(addTagButton);
         } catch (Exception e) {
             logger.warning("Failed to load tags for note " + note.getId() + ": " + e.getMessage());
         }
@@ -399,14 +475,15 @@ public class MainController {
      * Update note metadata display.
      */
     private void updateNoteMetadata(Note note) {
-        createdDateLabel.setText("Created: " + note.getCreatedDate());
-        modifiedDateLabel.setText("Modified: " + note.getModifiedDate());
-        infoCreatedLabel.setText(note.getCreatedDate());
-        infoModifiedLabel.setText(note.getModifiedDate());
-        infoWordsLabel.setText(String.valueOf(countWords(note.getContent())));
-        infoCharsLabel.setText(String.valueOf(note.getContent().length()));
-        infoLatitudeLabel.setText(note.getLatitude().toString());
-        infoLongitudeLabel.setText(note.getLongitude().toString());
+        createdDateLabel.setText("Created: " + (note.getCreatedDate() != null ? note.getCreatedDate() : "N/A"));
+        modifiedDateLabel.setText("Modified: " + (note.getModifiedDate() != null ? note.getModifiedDate() : "N/A"));
+        infoCreatedLabel.setText(note.getCreatedDate() != null ? note.getCreatedDate() : "N/A");
+        infoModifiedLabel.setText(note.getModifiedDate() != null ? note.getModifiedDate() : "N/A");
+        String content = note.getContent() != null ? note.getContent() : "";
+        infoWordsLabel.setText(String.valueOf(countWords(content)));
+        infoCharsLabel.setText(String.valueOf(content.length()));
+        infoLatitudeLabel.setText(note.getLatitude() != null ? note.getLatitude().toString() : "0.0");
+        infoLongitudeLabel.setText(note.getLongitude() != null ? note.getLongitude().toString() : "0.0");
         infoAuthorLabel.setText(note.getAuthor() != null ? note.getAuthor() : "N/A");
         infoSourceUrlLabel.setText(note.getSourceUrl() != null ? note.getSourceUrl() : "N/A");
     }
@@ -441,13 +518,51 @@ public class MainController {
     private void loadTags() {
         try {
             List<Tag> tags = tagDAO.fetchAllTags();
-            List<String> tagNames = tags.stream()
-                .map(Tag::getTitle)
-                .toList();
+            tagListView.getItems().clear();
             
-            tagListView.getItems().setAll(tagNames);
+            // Store tags in a map for quick lookup
+            for (Tag tag : tags) {
+                tagListView.getItems().add(tag.getTitle());
+            }
+            
+            // Add listener for tag selection
+            tagListView.getSelectionModel().selectedItemProperty().addListener(
+                (observable, oldValue, newValue) -> {
+                    if (newValue != null) {
+                        handleTagSelection(newValue);
+                    } else {
+                        // Deselected - show all notes
+                        loadAllNotes();
+                    }
+                }
+            );
         } catch (Exception e) {
             logger.warning("Failed to load tags: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Handle tag selection to filter notes.
+     */
+    private void handleTagSelection(String tagName) {
+        try {
+            // Find tag by name
+            List<Tag> allTags = tagDAO.fetchAllTags();
+            Optional<Tag> selectedTag = allTags.stream()
+                .filter(t -> t.getTitle().equals(tagName))
+                .findFirst();
+            
+            if (selectedTag.isPresent()) {
+                Tag tag = selectedTag.get();
+                List<Note> notesWithTag = tagDAO.fetchAllNotesWithTag(tag.getId());
+                notesListView.getItems().setAll(notesWithTag);
+                noteCountLabel.setText(notesWithTag.size() + " notes with tag: " + tagName);
+                currentFolder = null; // Clear folder selection when filtering by tag
+                updateStatus("Filtered by tag: " + tagName);
+            }
+        } catch (Exception e) {
+            logger.severe("Failed to filter notes by tag " + tagName + ": " + e.getMessage());
+            updateStatus("Error filtering by tag");
         }
     }
     
@@ -541,8 +656,47 @@ public class MainController {
      * Update preview.
      */
     private void updatePreview() {
-        if (currentNote != null) {
-            previewTextArea.setText(noteContentArea.getText());
+        if (currentNote != null && previewWebView != null) {
+            String content = noteContentArea.getText();
+            if (content != null && !content.trim().isEmpty()) {
+                // Convert markdown to HTML
+                String html = com.example.forevernote.util.MarkdownProcessor.markdownToHtml(content);
+                
+                // Create a complete HTML document with basic styling
+                String fullHtml = "<!DOCTYPE html>\n" +
+                    "<html>\n" +
+                    "<head>\n" +
+                    "    <meta charset=\"UTF-8\">\n" +
+                    "    <style>\n" +
+                    "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; padding: 20px; line-height: 1.6; color: #333; }\n" +
+                    "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; }\n" +
+                    "        h1 { font-size: 2em; border-bottom: 2px solid #eee; padding-bottom: 0.3em; }\n" +
+                    "        h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }\n" +
+                    "        h3 { font-size: 1.25em; }\n" +
+                    "        code { background-color: #f4f4f4; padding: 2px 4px; border-radius: 3px; font-family: 'Courier New', monospace; }\n" +
+                    "        pre { background-color: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }\n" +
+                    "        pre code { background-color: transparent; padding: 0; }\n" +
+                    "        blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 20px; color: #666; }\n" +
+                    "        ul, ol { margin: 1em 0; padding-left: 2em; }\n" +
+                    "        li { margin: 0.5em 0; }\n" +
+                    "        table { border-collapse: collapse; width: 100%; margin: 1em 0; }\n" +
+                    "        table th, table td { border: 1px solid #ddd; padding: 8px; text-align: left; }\n" +
+                    "        table th { background-color: #f4f4f4; font-weight: 600; }\n" +
+                    "        a { color: #0366d6; text-decoration: none; }\n" +
+                    "        a:hover { text-decoration: underline; }\n" +
+                    "        img { max-width: 100%; height: auto; }\n" +
+                    "        hr { border: none; border-top: 1px solid #eee; margin: 2em 0; }\n" +
+                    "    </style>\n" +
+                    "</head>\n" +
+                    "<body>\n" +
+                    html +
+                    "\n</body>\n" +
+                    "</html>";
+                
+                previewWebView.getEngine().loadContent(fullHtml, "text/html");
+            } else {
+                previewWebView.getEngine().loadContent("", "text/html");
+            }
         }
     }
     
@@ -586,22 +740,123 @@ public class MainController {
     }
     
     /**
+     * Add tag to current note.
+     */
+    @FXML
+    private void handleAddTagToNote() {
+        if (currentNote == null) {
+            updateStatus("No note selected");
+            return;
+        }
+        
+        try {
+            // Get existing tags
+            List<Tag> existingTags = tagDAO.fetchAllTags();
+            List<Tag> noteTags = noteDAO.fetchTags(currentNote.getId());
+            
+            // Filter out tags already assigned to the note
+            List<String> availableTagNames = existingTags.stream()
+                .filter(tag -> !noteTags.stream().anyMatch(nt -> nt.getId().equals(tag.getId())))
+                .map(Tag::getTitle)
+                .sorted()
+                .toList();
+            
+            // Create dialog for adding tag
+            Dialog<String> dialog = new Dialog<>();
+            dialog.setTitle("Add Tag");
+            dialog.setHeaderText(availableTagNames.isEmpty() 
+                ? "No existing tags available. Enter a new tag name:" 
+                : "Select an existing tag or enter a new tag name:");
+            
+            // Set buttons
+            ButtonType addButtonType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
+            dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
+            
+            // Create layout
+            VBox content = new VBox(10);
+            ComboBox<String> tagComboBox = new ComboBox<>();
+            tagComboBox.setEditable(true);
+            tagComboBox.getItems().addAll(availableTagNames);
+            tagComboBox.setPromptText("Select or type a tag name...");
+            tagComboBox.setPrefWidth(300);
+            content.getChildren().add(new Label("Tag:"));
+            content.getChildren().add(tagComboBox);
+            dialog.getDialogPane().setContent(content);
+            
+            // Convert result
+            dialog.setResultConverter(dialogButton -> {
+                if (dialogButton == addButtonType) {
+                    return tagComboBox.getEditor().getText();
+                }
+                return null;
+            });
+            
+            Optional<String> result = dialog.showAndWait();
+            if (result.isPresent() && !result.get().trim().isEmpty()) {
+                String tagName = result.get().trim();
+                
+                // Check if it's an existing tag
+                Optional<Tag> existingTag = existingTags.stream()
+                    .filter(t -> t.getTitle().equals(tagName))
+                    .findFirst();
+                
+                Tag tag;
+                if (existingTag.isPresent()) {
+                    tag = existingTag.get();
+                } else {
+                    // Create new tag
+                    tag = new Tag(tagName);
+                    int tagId = tagDAO.createTag(tag);
+                    tag.setId(tagId);
+                }
+                
+                // Check if tag is already assigned to note (double check)
+                List<Tag> currentNoteTags = noteDAO.fetchTags(currentNote.getId());
+                boolean alreadyHasTag = currentNoteTags.stream()
+                    .anyMatch(t -> t.getId().equals(tag.getId()));
+                
+                if (alreadyHasTag) {
+                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                    alert.setTitle("Tag Already Assigned");
+                    alert.setHeaderText("This note already has the tag: " + tagName);
+                    alert.showAndWait();
+                } else {
+                    noteDAO.addTag(currentNote, tag);
+                    loadNoteTags(currentNote);
+                    // Update tags list in sidebar
+                    loadTags();
+                    updateStatus("Added tag: " + tagName);
+                }
+            }
+        } catch (Exception e) {
+            logger.severe("Failed to add tag: " + e.getMessage());
+            updateStatus("Error adding tag");
+        }
+    }
+    
+    /**
      * Show folder context menu.
      */
-    private void showFolderContextMenu(String folderName, TreeCell<String> cell) {
+    private void showFolderContextMenu(Folder folder, TreeCell<Folder> cell) {
         ContextMenu contextMenu = new ContextMenu();
-        
+
         MenuItem newNoteItem = new MenuItem("New Note");
-        newNoteItem.setOnAction(e -> handleNewNote(new ActionEvent()));
-        
+        newNoteItem.setOnAction(e -> {
+            currentFolder = folder;
+            handleNewNote(e);
+        });
+
         MenuItem newFolderItem = new MenuItem("New Subfolder");
-        newFolderItem.setOnAction(e -> handleNewFolder(new ActionEvent()));
+        newFolderItem.setOnAction(e -> {
+            currentFolder = folder;
+            handleNewSubfolder(e);
+        });
         
         MenuItem renameItem = new MenuItem("Rename");
-        renameItem.setOnAction(e -> handleRenameFolder(folderName));
+        renameItem.setOnAction(e -> handleRenameFolder(folder));
         
         MenuItem deleteItem = new MenuItem("Delete");
-        deleteItem.setOnAction(e -> handleDeleteFolder(folderName));
+        deleteItem.setOnAction(e -> handleDeleteFolder(folder));
         
         contextMenu.getItems().addAll(newNoteItem, newFolderItem, renameItem, deleteItem);
         contextMenu.show(cell, cell.getLayoutX(), cell.getLayoutY());
@@ -657,9 +912,16 @@ public class MainController {
     
     @FXML
     private void handleNewFolder(ActionEvent event) {
+        // Create dialog with option to create in root or as subfolder
         TextInputDialog dialog = new TextInputDialog("New Folder");
         dialog.setTitle("New Folder");
-        dialog.setHeaderText("Create a new folder");
+        
+        // Determine if we should create in root or as subfolder
+        boolean createInRoot = (currentFolder == null || currentFolder.getTitle().equals("All Notes"));
+        String headerText = createInRoot 
+            ? "Create a new folder in root" 
+            : "Create a new folder in: " + currentFolder.getTitle() + "\n(Leave empty to create in root)";
+        dialog.setHeaderText(headerText);
         dialog.setContentText("Folder name:");
         
         Optional<String> result = dialog.showAndWait();
@@ -669,11 +931,52 @@ public class MainController {
                 int folderId = folderDAO.createFolder(newFolder);
                 newFolder.setId(folderId);
                 
+                // Only add as subfolder if currentFolder is set and not "All Notes"
+                if (!createInRoot && currentFolder != null && !currentFolder.getTitle().equals("All Notes")) {
+                    folderDAO.addSubFolder(currentFolder, newFolder);
+                }
+                // Otherwise, it's created in root (parent_id will be NULL)
+                
                 loadFolders();
+                // Clear selection to allow creating more folders in root
+                folderTreeView.getSelectionModel().clearSelection();
+                currentFolder = null;
                 updateStatus("Created folder: " + newFolder.getTitle());
             } catch (Exception e) {
                 logger.severe("Failed to create folder: " + e.getMessage());
-                updateStatus("Error creating folder");
+                updateStatus("Error creating folder: " + e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Handle creating a new subfolder in the currently selected folder.
+     */
+    private void handleNewSubfolder(ActionEvent event) {
+        if (currentFolder == null || currentFolder.getTitle().equals("All Notes")) {
+            handleNewFolder(event);
+            return;
+        }
+        
+        TextInputDialog dialog = new TextInputDialog("New Subfolder");
+        dialog.setTitle("New Subfolder");
+        dialog.setHeaderText("Create a new subfolder in: " + currentFolder.getTitle());
+        dialog.setContentText("Subfolder name:");
+        
+        Optional<String> result = dialog.showAndWait();
+        if (result.isPresent() && !result.get().trim().isEmpty()) {
+            try {
+                Folder newSubfolder = new Folder(result.get().trim());
+                int folderId = folderDAO.createFolder(newSubfolder);
+                newSubfolder.setId(folderId);
+                
+                folderDAO.addSubFolder(currentFolder, newSubfolder);
+                
+                loadFolders();
+                updateStatus("Created subfolder: " + newSubfolder.getTitle());
+            } catch (Exception e) {
+                logger.severe("Failed to create subfolder: " + e.getMessage());
+                updateStatus("Error creating subfolder");
             }
         }
     }
@@ -732,14 +1035,20 @@ public class MainController {
     private void handleExit(ActionEvent event) {
         if (isModified && currentNote != null) {
             Optional<ButtonType> result = showSaveDialog();
-            if (result.isPresent() && result.get() == ButtonType.CANCEL) {
-                return;
+            if (result.isPresent()) {
+                if (result.get().getButtonData() == ButtonBar.ButtonData.CANCEL_CLOSE) {
+                    return;
+                }
+                if (result.get().getText().equals("Save")) {
+                    handleSave(event);
+                }
             }
         }
         
         try {
-            if (connection != null) {
-                connection.close();
+            if (connection != null && !connection.isClosed()) {
+                SQLiteDB db = SQLiteDB.getInstance();
+                db.closeConnection(connection);
             }
         } catch (Exception e) {
             logger.warning("Error closing database connection: " + e.getMessage());
@@ -751,14 +1060,81 @@ public class MainController {
     // Placeholder implementations for other menu items
     @FXML private void handleImport(ActionEvent event) { updateStatus("Import not implemented yet"); }
     @FXML private void handleExport(ActionEvent event) { updateStatus("Export not implemented yet"); }
-    @FXML private void handleUndo(ActionEvent event) { updateStatus("Undo not implemented yet"); }
-    @FXML private void handleRedo(ActionEvent event) { updateStatus("Redo not implemented yet"); }
-    @FXML private void handleCut(ActionEvent event) { updateStatus("Cut not implemented yet"); }
-    @FXML private void handleCopy(ActionEvent event) { updateStatus("Copy not implemented yet"); }
-    @FXML private void handlePaste(ActionEvent event) { updateStatus("Paste not implemented yet"); }
-    @FXML private void handleFind(ActionEvent event) { updateStatus("Find not implemented yet"); }
-    @FXML private void handleReplace(ActionEvent event) { updateStatus("Replace not implemented yet"); }
-    @FXML private void handleToggleSidebar(ActionEvent event) { updateStatus("Toggle sidebar not implemented yet"); }
+    @FXML private void handleUndo(ActionEvent event) { 
+        if (noteContentArea != null) {
+            noteContentArea.undo();
+        }
+    }
+    
+    @FXML private void handleRedo(ActionEvent event) { 
+        // JavaFX TextArea doesn't have redo by default
+        updateStatus("Redo not available in TextArea");
+    }
+    
+    @FXML private void handleCut(ActionEvent event) { 
+        if (noteContentArea != null && noteContentArea.getSelectedText() != null) {
+            noteContentArea.cut();
+        } else if (noteTitleField != null && noteTitleField.getSelectedText() != null) {
+            noteTitleField.cut();
+        }
+    }
+    
+    @FXML private void handleCopy(ActionEvent event) { 
+        if (noteContentArea != null && noteContentArea.getSelectedText() != null) {
+            noteContentArea.copy();
+        } else if (noteTitleField != null && noteTitleField.getSelectedText() != null) {
+            noteTitleField.copy();
+        }
+    }
+    
+    @FXML private void handlePaste(ActionEvent event) { 
+        if (noteContentArea != null && noteContentArea.isFocused()) {
+            noteContentArea.paste();
+        } else if (noteTitleField != null && noteTitleField.isFocused()) {
+            noteTitleField.paste();
+        }
+    }
+    
+    @FXML private void handleFind(ActionEvent event) { 
+        if (noteContentArea != null) {
+            TextInputDialog dialog = new TextInputDialog();
+            dialog.setTitle("Find");
+            dialog.setHeaderText("Find text in note");
+            dialog.setContentText("Search for:");
+            
+            Optional<String> result = dialog.showAndWait();
+            if (result.isPresent() && !result.get().trim().isEmpty()) {
+                String searchText = result.get().trim();
+                String content = noteContentArea.getText();
+                int index = content.indexOf(searchText);
+                if (index >= 0) {
+                    noteContentArea.selectRange(index, index + searchText.length());
+                    noteContentArea.requestFocus();
+                    updateStatus("Found: " + searchText);
+                } else {
+                    updateStatus("Text not found: " + searchText);
+                }
+            }
+        }
+    }
+    
+    @FXML private void handleReplace(ActionEvent event) { 
+        // Simplified replace - would need a proper dialog
+        updateStatus("Replace dialog not fully implemented yet");
+    }
+    
+    @FXML private void handleToggleSidebar(ActionEvent event) { 
+        if (mainSplitPane != null) {
+            double[] positions = mainSplitPane.getDividerPositions();
+            if (positions[0] < 0.1) {
+                mainSplitPane.setDividerPositions(0.25);
+                updateStatus("Sidebar shown");
+            } else {
+                mainSplitPane.setDividerPositions(0.0);
+                updateStatus("Sidebar hidden");
+            }
+        }
+    }
     @FXML private void handleZoomIn(ActionEvent event) { updateStatus("Zoom in not implemented yet"); }
     @FXML private void handleZoomOut(ActionEvent event) { updateStatus("Zoom out not implemented yet"); }
     @FXML private void handleResetZoom(ActionEvent event) { updateStatus("Reset zoom not implemented yet"); }
@@ -783,27 +1159,62 @@ public class MainController {
     @FXML private void handleTodoList(ActionEvent event) { updateStatus("Todo list not implemented yet"); }
     @FXML private void handleNumberedList(ActionEvent event) { updateStatus("Numbered list not implemented yet"); }
     
-    private void handleRenameFolder(String folderName) {
-        TextInputDialog dialog = new TextInputDialog(folderName);
-        dialog.setTitle("Rename Folder");
-        dialog.setHeaderText("Rename folder");
-        dialog.setContentText("New name:");
-        
-        Optional<String> result = dialog.showAndWait();
-        if (result.isPresent() && !result.get().trim().isEmpty() && !result.get().equals(folderName)) {
-            updateStatus("Rename folder not implemented yet");
+    private void handleRenameFolder(Folder folder) {
+        try {
+            if (folder == null) {
+                return;
+            }
+            
+            // Reload folder from database to ensure we have the latest data
+            Folder folderToRename = folderDAO.getFolderById(folder.getId());
+            if (folderToRename != null) {
+                TextInputDialog dialog = new TextInputDialog(folderToRename.getTitle());
+                dialog.setTitle("Rename Folder");
+                dialog.setHeaderText("Rename folder");
+                dialog.setContentText("New name:");
+                
+                Optional<String> result = dialog.showAndWait();
+                if (result.isPresent() && !result.get().trim().isEmpty() && !result.get().equals(folderToRename.getTitle())) {
+                    folderToRename.setTitle(result.get().trim());
+                    folderDAO.updateFolder(folderToRename);
+                    loadFolders();
+                    updateStatus("Renamed folder to: " + result.get());
+                }
+            }
+        } catch (Exception e) {
+            logger.severe("Failed to rename folder: " + e.getMessage());
+            updateStatus("Error renaming folder");
         }
     }
     
-    private void handleDeleteFolder(String folderName) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Delete Folder");
-        alert.setHeaderText("Are you sure you want to delete this folder?");
-        alert.setContentText("All notes in this folder will be moved to the root.");
-        
-        Optional<ButtonType> result = alert.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
-            updateStatus("Delete folder not implemented yet");
+    private void handleDeleteFolder(Folder folder) {
+        try {
+            if (folder == null) {
+                return;
+            }
+            
+            // Reload folder from database to ensure we have the latest data
+            Folder folderToDelete = folderDAO.getFolderById(folder.getId());
+            if (folderToDelete != null) {
+                Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                alert.setTitle("Delete Folder");
+                alert.setHeaderText("Are you sure you want to delete this folder?");
+                alert.setContentText("All notes in this folder will be moved to the root.");
+                
+                Optional<ButtonType> result = alert.showAndWait();
+                if (result.isPresent() && result.get() == ButtonType.OK) {
+                    folderDAO.deleteFolder(folderToDelete.getId());
+                    loadFolders();
+                    if (currentFolder != null && currentFolder.getId().equals(folderToDelete.getId())) {
+                        currentFolder = null;
+                        loadAllNotes();
+                    }
+                    updateStatus("Deleted folder: " + folderToDelete.getTitle());
+                }
+            }
+        } catch (Exception e) {
+            logger.severe("Failed to delete folder: " + e.getMessage());
+            updateStatus("Error deleting folder");
         }
     }
 }

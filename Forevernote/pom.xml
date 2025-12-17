@@ -89,6 +89,31 @@
             <artifactId>controlsfx</artifactId>
             <version>11.1.2</version>
         </dependency>
+
+        <!-- Markdown processing -->
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>0.21.0</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-gfm-tables</artifactId>
+            <version>0.21.0</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-gfm-strikethrough</artifactId>
+            <version>0.21.0</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark-ext-autolink</artifactId>
+            <version>0.21.0</version>
+        </dependency>
     </dependencies>
 
     <build>

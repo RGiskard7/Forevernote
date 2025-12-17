@@ -1,12 +1,9 @@
 package com.example.forevernote.config;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.util.logging.Logger;
-
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.util.logging.LogManager;
+import java.util.logging.Logger;
 
 /**
  * LoggerConfig is responsible for configuring the logging system for the application.
@@ -24,10 +21,7 @@ public class LoggerConfig {
                 throw new IOException("Could not find logging.properties file");
             }
         	// Load the logging configuration from the properties file
-            
-System.out.println(inputStreamToString(configFile));
             LogManager.getLogManager().readConfiguration(configFile);
-            System.out.println("Logging configuration loaded successfully.");
 
         } catch (IOException e) {
         	// Log a severe error if there is an issue loading the configuration file
@@ -43,16 +37,5 @@ System.out.println(inputStreamToString(configFile));
      */
     public static Logger getLogger(Class<?> clazz) {
         return Logger.getLogger(clazz.getName());
-    }
-    
-    private static String inputStreamToString(InputStream inputStream) throws IOException {
-        StringBuilder resultStringBuilder = new StringBuilder();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                resultStringBuilder.append(line).append("\n");
-            }
-        }
-        return resultStringBuilder.toString();
     }
 }

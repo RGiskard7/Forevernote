@@ -8,10 +8,9 @@ import javafx.stage.Stage;
 
 import com.example.forevernote.config.LoggerConfig;
 import com.example.forevernote.data.SQLiteDB;
+import com.example.forevernote.ui.controller.MainController;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.logging.Logger;
 
 /**
@@ -31,30 +30,27 @@ public class Main extends Application {
             // Load main view
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/forevernote/ui/view/MainView.fxml"));
             Scene scene = new Scene(loader.load(), 1200, 800);
-            
-            // Apply CSS styling if available
-            try {
-                var cssUrl = getClass().getResource("/com/example/forevernote/ui/css/modern-theme.css");
-                if (cssUrl != null) {
-                    scene.getStylesheets().add(cssUrl.toExternalForm());
-                }
-            } catch (Exception e) {
-                logger.warning("Could not load CSS stylesheet: " + e.getMessage());
-            }
+
+            // Get controller and configure keyboard shortcuts
+            MainController controller = loader.getController();
+            // Keyboard shortcuts can be configured here if needed
+
+            // Apply CSS styling
+            scene.getStylesheets().add(getClass().getResource("/com/example/forevernote/ui/css/modern-theme.css").toExternalForm());
             
             // Configure primary stage
             primaryStage.setTitle("Forevernote - Free Note Taking");
-            
-            // Try to load icon if it exists
+
+            // Try to load app icon (optional)
             try {
-                var iconUrl = getClass().getResource("/com/example/forevernote/ui/images/app-icon.png");
-                if (iconUrl != null) {
-                    primaryStage.getIcons().add(new Image(iconUrl.toExternalForm()));
+                var iconStream = getClass().getResourceAsStream("/com/example/forevernote/ui/images/app-icon.png");
+                if (iconStream != null) {
+                    primaryStage.getIcons().add(new Image(iconStream));
                 }
             } catch (Exception e) {
-                logger.warning("Could not load application icon: " + e.getMessage());
+                logger.warning("Could not load app icon: " + e.getMessage());
             }
-            
+
             primaryStage.setScene(scene);
             primaryStage.setMinWidth(800);
             primaryStage.setMinHeight(600);
@@ -76,13 +72,21 @@ public class Main extends Application {
     private void initializeDatabase() {
         try {
             // Ensure data directory exists
-            String dbPath = "Forevernote/data/database.db";
-            Files.createDirectories(Paths.get("Forevernote/data"));
+            java.io.File dataDir = new java.io.File("data");
+            if (!dataDir.exists()) {
+                dataDir.mkdirs();
+            }
             
-            SQLiteDB.configure(dbPath);
+            // Ensure logs directory exists
+            java.io.File logsDir = new java.io.File("logs");
+            if (!logsDir.exists()) {
+                logsDir.mkdirs();
+            }
+            
+            SQLiteDB.configure("data/database.db");
             SQLiteDB db = SQLiteDB.getInstance();
             db.initDatabase();
-            logger.info("Database initialized successfully at: " + dbPath);
+            logger.info("Database initialized successfully");
         } catch (Exception e) {
             logger.severe("Failed to initialize database: " + e.getMessage());
             throw new RuntimeException("Database initialization failed", e);

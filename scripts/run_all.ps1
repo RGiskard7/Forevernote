@@ -21,32 +21,41 @@ if (Test-Path $jar) {
     $javafxModules = @()
     
     if (Test-Path $m2Repo) {
-        $javafxDirs = Get-ChildItem -Path "$m2Repo\org\openjfx" -Directory -ErrorAction SilentlyContinue | 
-                      Where-Object { $_.Name -match 'javafx-' } |
-                      Get-ChildItem -Directory | Where-Object { $_.Name -match '^21' }
+        $javafxBase = "$m2Repo\org\openjfx\javafx-base\21*"
+        $javafxControls = "$m2Repo\org\openjfx\javafx-controls\21*"
+        $javafxFxml = "$m2Repo\org\openjfx\javafx-fxml\21*"
+        $javafxGraphics = "$m2Repo\org\openjfx\javafx-graphics\21*"
+        $javafxWeb = "$m2Repo\org\openjfx\javafx-web\21*"
         
-        foreach ($dir in $javafxDirs) {
-            $javafxModules += $dir.FullName
+        $modulesToCheck = @($javafxBase, $javafxControls, $javafxFxml, $javafxGraphics, $javafxWeb)
+        
+        foreach ($modulePath in $modulesToCheck) {
+            $dirs = Get-ChildItem -Path $modulePath -Directory -ErrorAction SilentlyContinue
+            foreach ($dir in $dirs) {
+                if ($dir.FullName -notin $javafxModules) {
+                    $javafxModules += $dir.FullName
+                }
+            }
         }
     }
     
     if ($javafxModules.Count -gt 0) {
         $modulePath = $javafxModules -join ';'
         Write-Host "Using JavaFX module-path: $modulePath" -ForegroundColor Cyan
-        & java --module-path $modulePath --add-modules javafx.controls,javafx.fxml,javafx.graphics,javafx.media -jar $jar
+        & java --module-path $modulePath --add-modules javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.web -jar $jar
     } else {
         Write-Host "JavaFX modules not found. Attempting standard JAR launch..." -ForegroundColor Yellow
         & java -jar $jar
     }
     
-    if ($LASTEXITCODE -eq 1) {
+    if ($LASTEXITCODE -ne 0) {
         Write-Warning "JAR launch failed. Attempting via Maven exec:java..."
-        & mvn -f (Join-Path (Get-Location) 'pom.xml') exec:java -Dexec.mainClass="com.example.forevernote.Main" 2>&1
+        & mvn -f 'pom.xml' exec:java "-Dexec.mainClass=com.example.forevernote.Main" 2>&1
     }
 } else {
     Write-Host "Packaged JAR not found at $jar" -ForegroundColor Red
     Write-Host "Attempting to run via Maven..." -ForegroundColor Yellow
-    & mvn -f (Join-Path (Join-Path $root 'Forevernote') 'pom.xml') exec:java -Dexec.mainClass="com.example.forevernote.Main" 2>&1
+    & mvn -f 'pom.xml' exec:java "-Dexec.mainClass=com.example.forevernote.Main" 2>&1
 }
 
 Pop-Location
