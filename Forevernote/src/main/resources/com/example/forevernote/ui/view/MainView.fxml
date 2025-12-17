@@ -97,7 +97,7 @@
                 <!-- Navigation Tabs -->
                 <TabPane fx:id="navigationTabPane" tabClosingPolicy="UNAVAILABLE" styleClass="navigation-tabs">
                     <Tab text="📁 Folders" closable="false">
-                        <TreeView fx:id="folderTreeView" styleClass="folder-tree" showRoot="false"/>
+                        <TreeView fx:id="folderTreeView" styleClass="folder-tree" showRoot="true"/>
                     </Tab>
                     
                     <Tab text="🏷️ Tags" closable="false">

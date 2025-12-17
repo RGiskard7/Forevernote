@@ -58,10 +58,10 @@ Los scripts de ejecución (`run_all.ps1` / `run_all.sh`):
 
 ## Base de Datos y Logs
 
-- **Base de datos**: Se crea automáticamente en `Forevernote/data/database.db`
-- **Logs**: Se generan en el directorio `logs/`
+- **Base de datos**: Se crea automáticamente en `Forevernote/data/database.db` cuando ejecutas la aplicación
+- **Logs**: Se generan en el directorio `Forevernote/logs/` cuando ejecutas la aplicación
 
-Ambos directorios se crean automáticamente si no existen.
+**Importante**: Los scripts de compilación (`build_all.ps1` / `build_all.sh`) **NO** crean estas carpetas. Solo se crean automáticamente cuando ejecutas la aplicación por primera vez. Los scripts de ejecución (`run_all.ps1` / `run_all.sh`) aseguran que la aplicación se ejecute desde el directorio `Forevernote/`, por lo que las carpetas se crean en la ubicación correcta.
 
 ## Solución de Problemas
 

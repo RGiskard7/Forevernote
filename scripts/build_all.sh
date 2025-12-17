@@ -7,10 +7,6 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 echo "Root: $ROOT_DIR"
 
-# Ensure directories
-mkdir -p "$ROOT_DIR/data"
-mkdir -p "$ROOT_DIR/logs"
-
 # Use mvn from PATH if available, otherwise try common locations
 if command -v mvn >/dev/null 2>&1; then
   MVN_CMD="mvn"

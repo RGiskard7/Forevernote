@@ -19,6 +19,26 @@ import java.util.logging.Logger;
  */
 public class Main extends Application {
     
+    // Static block to ensure directories exist before logger initialization
+    static {
+        // Create data and logs directories before LoggerConfig initializes FileHandler
+        // This must happen before any logger is created
+        try {
+            java.io.File dataDir = new java.io.File("data");
+            if (!dataDir.exists()) {
+                dataDir.mkdirs();
+            }
+            
+            java.io.File logsDir = new java.io.File("logs");
+            if (!logsDir.exists()) {
+                logsDir.mkdirs();
+            }
+        } catch (Exception e) {
+            // If directory creation fails, log to console since logger may not be ready
+            System.err.println("Warning: Could not create data/logs directories: " + e.getMessage());
+        }
+    }
+    
     private static final Logger logger = LoggerConfig.getLogger(Main.class);
     
     @Override
@@ -36,7 +56,12 @@ public class Main extends Application {
             // Keyboard shortcuts can be configured here if needed
 
             // Apply CSS styling
-            scene.getStylesheets().add(getClass().getResource("/com/example/forevernote/ui/css/modern-theme.css").toExternalForm());
+            var cssResource = getClass().getResource("/com/example/forevernote/ui/css/modern-theme.css");
+            if (cssResource != null) {
+                scene.getStylesheets().add(cssResource.toExternalForm());
+            } else {
+                logger.warning("Could not load CSS stylesheet: modern-theme.css not found");
+            }
             
             // Configure primary stage
             primaryStage.setTitle("Forevernote - Free Note Taking");
@@ -68,19 +93,17 @@ public class Main extends Application {
     
     /**
      * Initializes the SQLite database.
+     * Uses data/database.db relative to the working directory.
+     * Scripts ensure execution from Forevernote/ directory.
+     * Note: data/ and logs/ directories are already created in the static block.
      */
     private void initializeDatabase() {
         try {
-            // Ensure data directory exists
+            // Directories are already created in static block, but ensure they exist as a safety check
             java.io.File dataDir = new java.io.File("data");
             if (!dataDir.exists()) {
                 dataDir.mkdirs();
-            }
-            
-            // Ensure logs directory exists
-            java.io.File logsDir = new java.io.File("logs");
-            if (!logsDir.exists()) {
-                logsDir.mkdirs();
+                logger.warning("Data directory was missing and recreated");
             }
             
             SQLiteDB.configure("data/database.db");

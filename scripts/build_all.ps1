@@ -9,9 +9,6 @@ Set-StrictMode -Version Latest
 $root = Split-Path -Parent $PSScriptRoot
 Write-Host "Root: $root"
 
-New-Item -ItemType Directory -Force -Path (Join-Path $root 'data') | Out-Null
-New-Item -ItemType Directory -Force -Path (Join-Path $root 'logs') | Out-Null
-
 function Confirm-YesNo($message) {
     $ans = Read-Host "$message (y/n)"
     return $ans -match '^[Yy]'

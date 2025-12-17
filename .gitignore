@@ -34,6 +34,9 @@ dependency-reduced-pom.xml
 .vscode/extensions.json
 .vscode/tasks.json
 
+# Claude
+.claude/
+
 # OS
 .DS_Store
 Thumbs.db
@@ -96,3 +99,12 @@ db/
 data/
 temp/
 tmp/
+
+# Database
+Forevernote/data/
+Forevernote/data/database.db
+
+# Logs
+logs/
+Forevernote/logs/
+Forevernote/logs/app.log

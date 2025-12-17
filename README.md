@@ -1,12 +1,19 @@
 # Forevernote
 
-A lightweight desktop application for managing notes with hierarchical organization through folders and tags. Built with Java and JavaFX, featuring SQLite for persistent storage.
+A lightweight desktop application for managing notes with hierarchical organization through folders and tags. Built with Java and JavaFX, featuring SQLite for persistent storage, Markdown support with live preview, and a modern, intuitive user interface.
 
 ## Features
 
 - **Note Management**: Create, edit, and delete notes with titles and content
-- **Folder Organization**: Organize notes hierarchically using notebooks/folders
-- **Tags**: Categorize and search notes using tags
+- **Folder Organization**: Organize notes hierarchically using notebooks/folders with visible "All Notes" root
+- **Tags**: Categorize and search notes using tags with full tag management interface
+- **Markdown Support**: Write notes in Markdown with live preview and emoji support
+- **Rich Text Formatting**: Bold, italic, underline, links, images, todo lists, and numbered lists
+- **Search**: Global search across all notes (titles and content)
+- **Auto-refresh**: Notes list automatically updates on save/delete operations
+- **Zoom Controls**: Adjust text size (50%-300%)
+- **Theme Support**: Light, dark, and system theme options (placeholder)
+- **Keyboard Shortcuts**: Comprehensive keyboard shortcuts for all operations
 - **To-Do Support**: Mark notes as to-do items with completion tracking
 - **Logging**: Comprehensive application logging for debugging and monitoring
 
@@ -118,7 +125,8 @@ Forevernote/
 │   │   └── test/                        # Unit tests
 │   ├── pom.xml                          # Maven configuration
 │   ├── target/                          # Build output directory
-│   └── data/                            # Runtime data directory
+│   ├── data/                            # Runtime data directory (created on first run)
+│   └── logs/                            # Runtime logs directory (created on first run)
 │
 ├── scripts/
 │   ├── build_all.ps1                    # Windows build script
@@ -128,7 +136,6 @@ Forevernote/
 │   ├── schema.txt                       # SQLite schema example
 │   └── README.md                        # Scripts documentation
 │
-├── logs/                                # Application logs directory
 ├── .gitignore                           # Git ignore rules
 ├── .vscode/
 │   └── tasks.json                       # VS Code build tasks
@@ -142,11 +149,13 @@ Forevernote/
 
 ### Database
 
-The application automatically creates a SQLite database at `Forevernote/data/database.db` on first run. The database includes tables for notes, folders, tags, and their relationships.
+The application automatically creates a SQLite database at `Forevernote/data/database.db` on first run (when executed from the `Forevernote/` directory). The database includes tables for notes, folders, tags, and their relationships.
+
+**Note**: The `data/` and `logs/` directories are created automatically when the application runs, not during compilation. The build scripts do not create these directories.
 
 ### Logging
 
-Logging configuration is defined in `src/main/resources/logging.properties`. Logs are written to the `logs/` directory by default.
+Logging configuration is defined in `src/main/resources/logging.properties`. Logs are written to the `Forevernote/logs/` directory by default (created automatically on first run).
 
 ### JavaFX Module-Path
 

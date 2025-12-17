@@ -23,6 +23,7 @@
 
     <dependencies>
         <!-- JavaFX Dependencies -->
+        <!-- Note: Warnings about "Failed to build parent project" are harmless and can be ignored -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>

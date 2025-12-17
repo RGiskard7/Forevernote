@@ -1,16 +1,21 @@
 -- Esquema de ejemplo para SQLite
 -- Copia y pega esto en un fichero .sql y ejecútalo con sqlite3:
---    sqlite3 data/database.db < scripts/schema.txt
+--    sqlite3 Forevernote/data/database.db < scripts/schema.txt
+--
+-- NOTA: Este esquema refleja la estructura actual de la base de datos.
+-- La aplicación crea automáticamente estas tablas al ejecutarse por primera vez.
 
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS folders (
   folder_id INTEGER PRIMARY KEY AUTOINCREMENT,
   parent_id INTEGER,
-  title TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
   created_date TEXT NOT NULL,
   modified_date TEXT DEFAULT NULL,
-  FOREIGN KEY (parent_id) REFERENCES folders(folder_id) ON DELETE SET NULL
+  FOREIGN KEY (parent_id) REFERENCES folders(folder_id) 
+    ON UPDATE CASCADE 
+    ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS tags (
@@ -24,20 +29,34 @@ CREATE TABLE IF NOT EXISTS notes (
   note_id INTEGER PRIMARY KEY AUTOINCREMENT,
   parent_id INTEGER,
   title TEXT NOT NULL,
-  content TEXT,
+  content TEXT DEFAULT NULL,
   created_date TEXT NOT NULL,
-  modified_date TEXT,
-  is_todo INTEGER NOT NULL DEFAULT 0,
-  todo_due INTEGER DEFAULT NULL,
-  todo_completed INTEGER NOT NULL DEFAULT 0,
-  FOREIGN KEY (parent_id) REFERENCES folders(folder_id) ON DELETE SET NULL
+  modified_date TEXT DEFAULT NULL,
+  latitude REAL NOT NULL DEFAULT 0 CHECK (latitude BETWEEN -90 AND 90),
+  longitude REAL NOT NULL DEFAULT 0 CHECK (longitude BETWEEN -180 AND 180),
+  author TEXT DEFAULT NULL,
+  source_url TEXT DEFAULT NULL,
+  is_todo INTEGER NOT NULL DEFAULT 0 CHECK (is_todo IN (0, 1)),
+  todo_due TEXT DEFAULT NULL,
+  todo_completed TEXT DEFAULT NULL,
+  source TEXT DEFAULT NULL,
+  source_application TEXT DEFAULT NULL,
+  FOREIGN KEY (parent_id) REFERENCES folders(folder_id) 
+    ON UPDATE CASCADE 
+    ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS tagsNotes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tag_id INTEGER,
   note_id INTEGER,
-  added_date TEXT,
-  FOREIGN KEY (tag_id) REFERENCES tags(tag_id) ON DELETE CASCADE,
-  FOREIGN KEY (note_id) REFERENCES notes(note_id) ON DELETE CASCADE
+  added_date TEXT NOT NULL,
+  FOREIGN KEY (tag_id) REFERENCES tags(tag_id) 
+    MATCH SIMPLE 
+    ON UPDATE CASCADE 
+    ON DELETE CASCADE,
+  FOREIGN KEY (note_id) REFERENCES notes(note_id) 
+    MATCH SIMPLE 
+    ON UPDATE CASCADE 
+    ON DELETE CASCADE
 );
