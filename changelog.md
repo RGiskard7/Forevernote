@@ -1,5 +1,37 @@
 # Changelog - Forevernote
 
+## 📅 2025-12-17 (11) — Actualización de BUILD.md y eliminación de .DS_Store
+
+### Resumen
+Actualización completa del archivo `Forevernote/BUILD.md` con información detallada sobre compilación, ejecución, estructura del proyecto y solución de problemas. Eliminación de archivos `.DS_Store` del repositorio Git.
+
+### Archivos modificados
+
+1. **`Forevernote/BUILD.md`**
+   - ✅ Actualizado con información completa sobre requisitos (Java 17 JDK requerido)
+   - ✅ Agregadas instrucciones detalladas para VS Code
+   - ✅ Documentación de warnings normales de JavaFX
+   - ✅ Información sobre directorios de runtime (data/, logs/)
+   - ✅ Estructura del proyecto actualizada y detallada
+   - ✅ Lista completa de dependencias
+   - ✅ Sección de troubleshooting expandida
+   - ✅ Lista de características implementadas actualizada
+
+2. **`.gitignore`**
+   - ✅ Verificado que `.DS_Store` está correctamente configurado (línea 34)
+
+### Archivos eliminados del repositorio
+
+- ✅ `.DS_Store` - Eliminado del tracking de Git (archivo de sistema macOS)
+
+### Notas
+
+- Los archivos `.DS_Store` están correctamente excluidos del repositorio mediante `.gitignore`
+- El archivo `.DS_Store` encontrado en el repositorio ha sido eliminado del tracking de Git
+- El `.gitignore` ya contenía la regla para excluir `.DS_Store` (línea 34)
+
+---
+
 ## 📅 2025-12-17 (10) — Traducción de .vscode/README.md al inglés
 
 ### Resumen
