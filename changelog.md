@@ -1,30 +1,54 @@
 # Changelog - Forevernote
 
-## 📅 2025-12-18 (18) — Corrección scripts de lanzamiento en macOS
+## 📅 2025-12-18 (18) — Corrección completa de scripts para macOS
 
 ### Resumen
-Corregidos problemas de compatibilidad en scripts de lanzamiento para macOS (BSD grep) y error de module-path que intentaba usar `-sources.jar` como módulos.
+Reescritos scripts de lanzamiento para soportar correctamente macOS, incluyendo detección de plataforma para JARs específicos de JavaFX y compatibilidad con POSIX shell.
 
 ### Cambios
 
-1. **`scripts/run_all.sh`**
-   - ✅ Reemplazado `ls | grep -E` por `find` para compatibilidad con BSD grep (macOS)
-   - ✅ Ahora funciona correctamente en macOS y Linux
+1. **`scripts/run_all.sh`** - Reescrito completamente
+   - ✅ Detección automática de plataforma (mac, mac-aarch64, linux, linux-aarch64)
+   - ✅ Búsqueda de JARs específicos de plataforma (e.g., `javafx-base-21-mac-aarch64.jar`)
+   - ✅ Fallback a JAR genérico si no hay específico de plataforma
+   - ✅ Compatible con bash (no usar con `sh`)
 
-2. **`scripts/launch-forevernote.sh`**
-   - ✅ **Crítico**: Cambiado de usar directorios a usar JARs específicos en module-path
-   - ✅ Añadido `javafx-media` que faltaba (requerido por `javafx.web`)
-   - ✅ Reemplazado `ls | grep` por `find` para compatibilidad con BSD grep (macOS)
-   - ✅ Corregido `cd "$SCRIPT_DIR"` a `cd "$FORVERNOTE_DIR"` para consistencia
+2. **`scripts/launch-forevernote.sh`** - Reescrito completamente
+   - ✅ Detección de plataforma para Apple Silicon (arm64 -> mac-aarch64)
+   - ✅ Mensajes de color compatibles con POSIX (usando `printf` en lugar de `echo -e`)
+   - ✅ Búsqueda de JARs específicos de plataforma antes de genéricos
+   - ✅ Muestra qué JARs se encuentran para debugging
+   - ✅ Compatible con bash (no usar con `sh`)
 
 ### Problemas resueltos
 
-- **Error `grep: invalid option -- (`**: Causado por diferencias entre BSD grep (macOS) y GNU grep (Linux). Solucionado usando `find` en lugar de `grep`.
-- **Error `javafx.base.21.sources: Invalid module name`**: Causado por añadir directorios completos al module-path, haciendo que Java escanee y encuentre `-sources.jar`. Solucionado usando JARs específicos.
+- **Error `-e Java found:`**: `echo -e` no funciona con `sh`. Solucionado usando `printf`.
+- **Error `Module javafx.base not found`**: JavaFX en Maven tiene JARs específicos de plataforma. En macOS necesitas `javafx-base-21-mac.jar` o `javafx-base-21-mac-aarch64.jar`, no el genérico.
+- **Detección de Apple Silicon**: Detecta `arm64` y usa sufijo `mac-aarch64` para M1/M2/M3.
+
+### Cómo ejecutar correctamente
+
+```bash
+# Correcto (usa bash via shebang)
+./scripts/run_all.sh
+./scripts/launch-forevernote.sh
+
+# También correcto (explícito)
+bash ./scripts/run_all.sh
+bash ./scripts/launch-forevernote.sh
+
+# INCORRECTO (no usar sh)
+sh ./scripts/run_all.sh  # NO - ignora el shebang bash
+```
 
 ### Nota técnica
 
-En macOS, `grep` es BSD (no GNU), y la sintaxis de expresiones regulares puede diferir. Usar `find` con `-not` es más portable y evita estos problemas.
+Los JARs de JavaFX en Maven son específicos de plataforma:
+- `javafx-base-21.jar` - JAR genérico (sin código nativo)
+- `javafx-base-21-mac.jar` - macOS Intel
+- `javafx-base-21-mac-aarch64.jar` - macOS Apple Silicon (M1/M2/M3)
+- `javafx-base-21-linux.jar` - Linux x86_64
+- `javafx-base-21-linux-aarch64.jar` - Linux ARM64
 
 ---
 
