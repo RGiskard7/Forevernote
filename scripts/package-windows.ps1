@@ -175,86 +175,108 @@ if ($wixAvailable) {
 Write-Host "Running jpackage (this may take several minutes)..." -ForegroundColor Yellow
 Write-Host ""
 
-# Build base command
-$jpackageArgs = @(
-    "--input", "target",
-    "--name", "Forevernote",
-    "--main-jar", "forevernote-1.0.0-uber.jar",
-    "--main-class", "com.example.forevernote.Main",
-    "--type", $installerType,
-    "--dest", $outputDir,
-    "--app-version", "1.0.0",
-    "--vendor", "Forevernote",
-    "--description", "A free and open-source note-taking application",
-    "--copyright", "Copyright 2025 Forevernote"
-)
+# Create a temporary input directory with only the JAR to avoid recursive copying
+$tempInputDir = Join-Path $env:TEMP "Forevernote-jpackage-input-$(Get-Random)"
+New-Item -ItemType Directory -Force -Path $tempInputDir | Out-Null
+Copy-Item -Path $jarPath -Destination $tempInputDir -Force
 
-# Add Windows-specific options only for MSI installers
-if ($installerType -eq "msi") {
-    $jpackageArgs += @(
-        "--win-dir-chooser",
-        "--win-menu",
-        "--win-menu-group", "Forevernote",
-        "--win-shortcut"
+try {
+    # Build base command
+    # IMPORTANT: We use the Launcher class instead of Main class
+    # This is required because jpackage cannot handle classes that extend JavaFX Application directly
+    # The Launcher class does NOT extend Application, so jpackage can properly create the executable
+    # The Launcher then calls Main.main() which starts the JavaFX application
+    $jpackageArgs = @(
+        "--input", $tempInputDir,
+        "--name", "Forevernote",
+        "--main-jar", "forevernote-1.0.0-uber.jar",
+        "--main-class", "com.example.forevernote.Launcher",
+        "--type", $installerType,
+        "--dest", $outputDir,
+        "--app-version", "1.0.0",
+        "--vendor", "Forevernote",
+        "--description", "A free and open-source note-taking application",
+        "--copyright", "Copyright 2025 Forevernote",
+        "--java-options", "-Dfile.encoding=UTF-8"
     )
-}
-
-# Execute jpackage with progress indication
-Write-Host "Packaging application (downloading Java runtime if needed)..." -ForegroundColor Cyan
-$startTime = Get-Date
-
-# Run jpackage and capture output
-$jpackageOutput = & $jpackagePath $jpackageArgs 2>&1
-
-$endTime = Get-Date
-$duration = $endTime - $startTime
-
-# Display output
-if ($jpackageOutput) {
-    Write-Host $jpackageOutput
-}
-
-if ($LASTEXITCODE -eq 0) {
-    Write-Host ""
-    Write-Host "========================================" -ForegroundColor Green
-    Write-Host "  Package created successfully!" -ForegroundColor Green
-    Write-Host "========================================" -ForegroundColor Green
-    Write-Host ""
     
-    if ($installerType -eq "app-image") {
-        $appImagePath = Join-Path $outputDir $installerName
-        Write-Host "Application image location: $appImagePath" -ForegroundColor Cyan
-        Write-Host ""
-        if ($outputDir -eq $shortOutputDir) {
-            Write-Host "Note: Using temporary directory due to Windows path length limit." -ForegroundColor Yellow
-            Write-Host "You may want to move the folder to a shorter path for distribution." -ForegroundColor Yellow
-            Write-Host ""
-        }
-        Write-Host "This is a portable application folder. You can:" -ForegroundColor Green
-        Write-Host "  1. Distribute the entire folder (users can run Forevernote.exe directly)" -ForegroundColor Yellow
-        Write-Host "  2. Zip the folder and distribute it as a portable application" -ForegroundColor Yellow
-        Write-Host "  3. Create an installer using a tool like Inno Setup or NSIS" -ForegroundColor Yellow
-        Write-Host ""
-        Write-Host "To run: Navigate to the folder and double-click Forevernote.exe" -ForegroundColor Cyan
-    } else {
-        $installerPath = Join-Path $outputDir $installerName
-        Write-Host "Installer location: $installerPath" -ForegroundColor Cyan
-        Write-Host ""
-        Write-Host "You can now distribute this $($installerExtension.ToUpper()) installer." -ForegroundColor Green
-        Write-Host "Users can install it like any other Windows application." -ForegroundColor Green
-    }
-} else {
-    Write-Host ""
-    Write-Host "Error: Package creation failed" -ForegroundColor Red
-    Write-Host ""
+    Write-Host "Using Launcher class for JavaFX compatibility..." -ForegroundColor Green
+
+    # Add Windows-specific options only for MSI installers
     if ($installerType -eq "msi") {
-        Write-Host "MSI creation requires WiX Toolset." -ForegroundColor Yellow
-        Write-Host "You can either:" -ForegroundColor Yellow
-        Write-Host "  1. Install WiX from https://wixtoolset.org and add it to PATH" -ForegroundColor Yellow
-        Write-Host "  2. The script will automatically use app-image format instead" -ForegroundColor Yellow
-    } else {
-        Write-Host "Please check the error messages above for details." -ForegroundColor Yellow
+        $jpackageArgs += @(
+            "--win-dir-chooser",
+            "--win-menu",
+            "--win-menu-group", "Forevernote",
+            "--win-shortcut"
+        )
     }
+
+    # Execute jpackage with progress indication
+    Write-Host "Packaging application (downloading Java runtime if needed)..." -ForegroundColor Cyan
+    $startTime = Get-Date
+
+    # Run jpackage and capture output
+    $jpackageOutput = & $jpackagePath $jpackageArgs 2>&1
+
+    $endTime = Get-Date
+    $duration = $endTime - $startTime
+
+    # Display output
+    if ($jpackageOutput) {
+        Write-Host $jpackageOutput
+    }
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host ""
+        Write-Host "========================================" -ForegroundColor Green
+        Write-Host "  Package created successfully!" -ForegroundColor Green
+        Write-Host "========================================" -ForegroundColor Green
+        Write-Host ""
+        
+        if ($installerType -eq "app-image") {
+            $appImagePath = Join-Path $outputDir $installerName
+            Write-Host "Application image location: $appImagePath" -ForegroundColor Cyan
+            Write-Host ""
+            if ($outputDir -eq $shortOutputDir) {
+                Write-Host "Note: Using temporary directory due to Windows path length limit." -ForegroundColor Yellow
+                Write-Host "You may want to move the folder to a shorter path for distribution." -ForegroundColor Yellow
+                Write-Host ""
+            }
+            Write-Host "This is a portable application folder. You can:" -ForegroundColor Green
+            Write-Host "  1. Distribute the entire folder (users can run Forevernote.exe directly)" -ForegroundColor Yellow
+            Write-Host "  2. Zip the folder and distribute it as a portable application" -ForegroundColor Yellow
+            Write-Host "  3. Create an installer using a tool like Inno Setup or NSIS" -ForegroundColor Yellow
+            Write-Host ""
+            Write-Host "To run: Navigate to the folder and double-click Forevernote.exe" -ForegroundColor Cyan
+        } else {
+            $installerPath = Join-Path $outputDir $installerName
+            Write-Host "Installer location: $installerPath" -ForegroundColor Cyan
+            Write-Host ""
+            Write-Host "You can now distribute this $($installerExtension.ToUpper()) installer." -ForegroundColor Green
+            Write-Host "Users can install it like any other Windows application." -ForegroundColor Green
+        }
+    } else {
+        Write-Host ""
+        Write-Host "Error: Package creation failed" -ForegroundColor Red
+        Write-Host ""
+        if ($installerType -eq "msi") {
+            Write-Host "MSI creation requires WiX Toolset." -ForegroundColor Yellow
+            Write-Host "You can either:" -ForegroundColor Yellow
+            Write-Host "  1. Install WiX from https://wixtoolset.org and add it to PATH" -ForegroundColor Yellow
+            Write-Host "  2. The script will automatically use app-image format instead" -ForegroundColor Yellow
+        } else {
+            Write-Host "Please check the error messages above for details." -ForegroundColor Yellow
+        }
+    }
+} finally {
+    # Clean up temporary input directory
+    if (Test-Path $tempInputDir) {
+        Remove-Item -Path $tempInputDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+
+if ($LASTEXITCODE -ne 0) {
     Pop-Location
     exit 1
 }

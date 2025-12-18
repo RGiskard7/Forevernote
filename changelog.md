@@ -1,5 +1,130 @@
 # Changelog - Forevernote
 
+## 📅 2025-12-18 (13) — Solución definitiva: Launcher class para jpackage + JavaFX
+
+### Resumen
+Implementada la solución estándar para aplicaciones JavaFX con `jpackage`: usar una clase Launcher que NO extienda `Application`. Esto permite que `jpackage` cree ejecutables correctamente sin necesidad de módulos JPMS de JavaFX externos.
+
+### Problema original
+- `jpackage` no puede manejar clases que extienden `javafx.application.Application` directamente
+- Los JARs de JavaFX de Maven no son módulos JPMS válidos para `jlink`
+- Error: "Module javafx.base not found" cuando se usa `--module-path` con JARs de Maven
+
+### Solución implementada
+Crear una clase `Launcher` intermedia que:
+1. NO extiende `Application`
+2. Simplemente llama a `Main.main(args)`
+
+Esto permite que `jpackage` cree el ejecutable correctamente, y JavaFX se carga desde el classpath del uber-jar en tiempo de ejecución.
+
+### Archivos modificados
+
+1. **`Forevernote/src/main/java/com/example/forevernote/Launcher.java`** (NUEVO)
+   - ✅ Clase Launcher que no extiende Application
+   - ✅ Delega a Main.main() para iniciar la aplicación
+
+2. **`scripts/package-windows.ps1`**
+   - ✅ Cambiado `--main-class` de `Main` a `Launcher`
+   - ✅ Eliminado código de copia de JARs de JavaFX (no necesario)
+   - ✅ Eliminado `--module-path` y `--add-modules` (causaban errores)
+
+### Cómo funciona
+
+```
+Forevernote.exe → Java Runtime → Launcher.main() → Main.main() → Application.launch()
+```
+
+### Notas
+
+- Esta es la solución estándar y recomendada para JavaFX + jpackage
+- El uber-jar contiene todas las clases de JavaFX embebidas
+- No se necesitan módulos externos de JavaFX
+
+---
+
+## 📅 2025-12-18 (12) — Intento de corrección con module-path (fallido)
+
+### Resumen
+Intento de usar `--module-path` con JARs de JavaFX de Maven. Falló porque los JARs de Maven no son módulos JPMS válidos.
+
+---
+
+## 📅 2025-12-18 (11) — Corrección de .exe que no ejecutaba (JavaFX modules faltantes)
+
+### Resumen
+Corregido problema donde el .exe generado por `jpackage` no ejecutaba, mostrando el error "JavaFX runtime components are missing". Se agregaron las dependencias faltantes de JavaFX y se configuró correctamente el module-path en `jpackage`.
+
+### Archivos modificados
+
+1. **`Forevernote/pom.xml`**
+   - ✅ Agregadas dependencias faltantes: `javafx-base` y `javafx-media`
+   - ✅ Estas dependencias son requeridas por JavaFX pero no estaban explícitamente declaradas
+
+2. **`scripts/package-windows.ps1`**
+   - ✅ Agregada detección automática de JARs de JavaFX desde el repositorio Maven
+   - ✅ Si encuentra los JARs, usa `--module-path` y `--add-modules` (método correcto)
+   - ✅ Si no los encuentra, usa `--java-options --add-modules` como fallback
+   - ✅ Esto asegura que JavaFX se cargue correctamente como módulos en el app-image
+
+### Problema corregido
+
+- ❌ **Antes**: El .exe generado mostraba "Error: JavaFX runtime components are missing" y no ejecutaba
+- ✅ **Ahora**: El .exe detecta y carga correctamente los módulos de JavaFX
+
+### Notas
+
+- Es necesario recompilar el proyecto (`mvn clean package`) para que incluya las nuevas dependencias
+- Luego ejecutar `.\scripts\package-windows.ps1` nuevamente para generar un .exe funcional
+
+---
+
+## 📅 2025-12-18 (10) — Corrección de estructura recursiva en scripts de empaquetado y script de limpieza
+
+### Resumen
+Corregido bug crítico en todos los scripts de empaquetado (`package-windows.ps1`, `package-macos.sh`, `package-linux.sh`) que causaba una estructura recursiva infinita cuando `jpackage` copiaba el directorio de salida dentro de sí mismo. Creado script de limpieza mejorado para eliminar directorios problemáticos.
+
+### Archivos modificados
+
+1. **`scripts/package-windows.ps1`**
+   - ✅ Corregido para usar un directorio temporal como `--input` en lugar de `target`
+   - ✅ El directorio temporal solo contiene el JAR, evitando que `jpackage` copie el directorio `installers` dentro de sí mismo
+   - ✅ Agregada limpieza automática del directorio temporal después de la ejecución
+   - ✅ Previene el error "Cannot access file with path exceeding 32000 characters"
+
+2. **`scripts/package-macos.sh`**
+   - ✅ Corregido para usar un directorio temporal como `--input` en lugar de `target`
+   - ✅ Usa `mktemp` para crear directorio temporal único
+   - ✅ Agregada limpieza automática con `trap cleanup EXIT`
+
+3. **`scripts/package-linux.sh`**
+   - ✅ Corregido para usar un directorio temporal como `--input` en lugar de `target`
+   - ✅ Usa `mktemp` para crear directorio temporal único
+   - ✅ Agregada limpieza automática con `trap cleanup EXIT`
+
+4. **`scripts/cleanup-installers.ps1`** (nuevo)
+   - ✅ Script dedicado para eliminar directorios `installers` problemáticos
+   - ✅ Usa múltiples métodos: eliminación normal, robocopy para rutas largas
+   - ✅ Proporciona instrucciones claras si la eliminación falla
+
+### Problema corregido
+
+- ❌ **Antes**: `jpackage` usaba `--input "target"`, que incluía el directorio `installers` de salida, creando un bucle recursivo infinito (`Forevernote\app\installers\Forevernote\app\installers\...`)
+- ✅ **Ahora**: `jpackage` usa un directorio temporal que solo contiene el JAR, evitando la recursión
+
+### Explicación técnica
+
+El problema ocurría porque:
+1. `jpackage` copia **todo** el contenido del directorio especificado en `--input` al app-image
+2. Si `--input` es `"target"`, copia todo lo que hay en `target`, incluyendo el directorio `installers` (que es el directorio de salida)
+3. Esto crea una estructura recursiva infinita dentro del app-image
+
+### Notas
+
+- Si ya tienes una carpeta `installers` con estructura recursiva, usa `.\scripts\cleanup-installers.ps1` para eliminarla
+- El script de limpieza puede requerir reiniciar el equipo si la estructura es muy profunda
+
+---
+
 ## 📅 2025-12-18 (9) — Corrección de script launch-forevernote.ps1 para usar archivos JAR específicos
 
 ### Resumen

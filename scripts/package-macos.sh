@@ -50,18 +50,30 @@ echo "Creating macOS DMG installer..."
 echo ""
 echo "Running jpackage (this may take several minutes)..."
 echo ""
-echo "Packaging application (downloading Java runtime if needed)..."
-echo ""
 
 OUTPUT_DIR="target/installers"
 mkdir -p "$OUTPUT_DIR"
 
+# Create a temporary input directory with only the JAR to avoid recursive copying
+TEMP_INPUT_DIR=$(mktemp -d -t Forevernote-jpackage-input-XXXXXX)
+JAR_PATH="target/forevernote-1.0.0-uber.jar"
+cp "$JAR_PATH" "$TEMP_INPUT_DIR/"
+
+# Cleanup function
+cleanup() {
+    rm -rf "$TEMP_INPUT_DIR"
+}
+trap cleanup EXIT
+
+echo "Packaging application (downloading Java runtime if needed)..."
+echo ""
+
 # Use jpackage to create DMG installer
 jpackage \
-    --input target \
+    --input "$TEMP_INPUT_DIR" \
     --name Forevernote \
     --main-jar forevernote-1.0.0-uber.jar \
-    --main-class com.example.forevernote.Main \
+    --main-class com.example.forevernote.Launcher \
     --type dmg \
     --dest "$OUTPUT_DIR" \
     --app-version 1.0.0 \
