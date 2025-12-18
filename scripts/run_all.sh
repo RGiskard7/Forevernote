@@ -24,7 +24,8 @@ if [ -f "$JAR" ]; then
       for module_dir in "$M2_REPO"/org/openjfx/$module/21*; do
         if [ -d "$module_dir" ]; then
           # Find the actual JAR file (not -sources.jar or -javadoc.jar)
-          jar_file=$(ls "$module_dir"/${module}-*.jar 2>/dev/null | grep -v -E '-(sources|javadoc)\.jar$' | head -n 1)
+          # Use find instead of ls+grep for better compatibility (BSD/macOS and GNU/Linux)
+          jar_file=$(find "$module_dir" -name "${module}-*.jar" -not -name "*-sources.jar" -not -name "*-javadoc.jar" 2>/dev/null | head -n 1)
           if [ -n "$jar_file" ] && [ -f "$jar_file" ]; then
             # Use the JAR file path directly (Java module-path accepts individual JAR files)
             # This avoids Java scanning the directory and picking up -sources.jar files

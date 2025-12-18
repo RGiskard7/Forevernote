@@ -1,5 +1,33 @@
 # Changelog - Forevernote
 
+## 📅 2025-12-18 (18) — Corrección scripts de lanzamiento en macOS
+
+### Resumen
+Corregidos problemas de compatibilidad en scripts de lanzamiento para macOS (BSD grep) y error de module-path que intentaba usar `-sources.jar` como módulos.
+
+### Cambios
+
+1. **`scripts/run_all.sh`**
+   - ✅ Reemplazado `ls | grep -E` por `find` para compatibilidad con BSD grep (macOS)
+   - ✅ Ahora funciona correctamente en macOS y Linux
+
+2. **`scripts/launch-forevernote.sh`**
+   - ✅ **Crítico**: Cambiado de usar directorios a usar JARs específicos en module-path
+   - ✅ Añadido `javafx-media` que faltaba (requerido por `javafx.web`)
+   - ✅ Reemplazado `ls | grep` por `find` para compatibilidad con BSD grep (macOS)
+   - ✅ Corregido `cd "$SCRIPT_DIR"` a `cd "$FORVERNOTE_DIR"` para consistencia
+
+### Problemas resueltos
+
+- **Error `grep: invalid option -- (`**: Causado por diferencias entre BSD grep (macOS) y GNU grep (Linux). Solucionado usando `find` en lugar de `grep`.
+- **Error `javafx.base.21.sources: Invalid module name`**: Causado por añadir directorios completos al module-path, haciendo que Java escanee y encuentre `-sources.jar`. Solucionado usando JARs específicos.
+
+### Nota técnica
+
+En macOS, `grep` es BSD (no GNU), y la sintaxis de expresiones regulares puede diferir. Usar `find` con `-not` es más portable y evita estos problemas.
+
+---
+
 ## 📅 2025-12-18 (17) — Simplificación de configuración VSCode (eliminada sobreingeniería)
 
 ### Resumen

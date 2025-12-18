@@ -59,7 +59,7 @@ if [ ! -d "$JAVAFX_BASE" ]; then
     echo ""
     echo "Attempting to launch without module-path (may fail)..."
     echo ""
-    cd "$SCRIPT_DIR"
+    cd "$FORVERNOTE_DIR"
     java -jar "$JAR"
     exit $?
 fi
@@ -72,27 +72,35 @@ if [ -z "$JAVAFX_VERSION" ]; then
     echo ""
     echo "Attempting to launch without module-path..."
     echo ""
-    cd "$SCRIPT_DIR"
+    cd "$FORVERNOTE_DIR"
     java -jar "$JAR"
     exit $?
 fi
 
-# Build module-path
+# Build module-path using specific JAR files (not directories)
+# This prevents Java from scanning directories and picking up -sources.jar files
 MODULE_PATH=""
 MODULES=""
 
-for module in base controls fxml graphics web; do
+# Include all required JavaFX modules (javafx.web requires javafx.media)
+for module in base controls fxml graphics media web; do
     MODULE_DIR="$JAVAFX_BASE/javafx-$module/$JAVAFX_VERSION"
     if [ -d "$MODULE_DIR" ]; then
-        if [ -z "$MODULE_PATH" ]; then
-            MODULE_PATH="$MODULE_DIR"
-        else
-            MODULE_PATH="$MODULE_PATH:$MODULE_DIR"
-        fi
-        if [ -z "$MODULES" ]; then
-            MODULES="javafx.$module"
-        else
-            MODULES="$MODULES,javafx.$module"
+        # Find the actual JAR file (not -sources.jar or -javadoc.jar)
+        # Use find instead of ls+grep for better compatibility (BSD/macOS and GNU/Linux)
+        jar_file=$(find "$MODULE_DIR" -name "javafx-$module-*.jar" -not -name "*-sources.jar" -not -name "*-javadoc.jar" 2>/dev/null | head -n 1)
+        if [ -n "$jar_file" ] && [ -f "$jar_file" ]; then
+            # Use the JAR file path directly (Java module-path accepts individual JAR files)
+            if [ -z "$MODULE_PATH" ]; then
+                MODULE_PATH="$jar_file"
+            else
+                MODULE_PATH="$MODULE_PATH:$jar_file"
+            fi
+            if [ -z "$MODULES" ]; then
+                MODULES="javafx.$module"
+            else
+                MODULES="$MODULES,javafx.$module"
+            fi
         fi
     fi
 done
@@ -102,7 +110,7 @@ if [ -z "$MODULE_PATH" ]; then
     echo ""
     echo "Attempting to launch without module-path..."
     echo ""
-    cd "$SCRIPT_DIR"
+    cd "$FORVERNOTE_DIR"
     java -jar "$JAR"
     exit $?
 fi
