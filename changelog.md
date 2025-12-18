@@ -1,5 +1,70 @@
 # Changelog - Forevernote
 
+## 📅 2025-12-18 — Centralización de metadata: app.properties para rebranding fácil
+
+### Resumen
+Implementado sistema centralizado de configuración para facilitar el cambio de nombre, icono y metadata de la aplicación. Similar a un "manifest" de Android, todo está en un solo archivo. El icono de la ventana también se lee desde `app.properties`.
+
+### Cambios
+
+1. **`Forevernote/src/main/resources/app.properties`** (NUEVO)
+   - ✅ Archivo centralizado con toda la metadata de la aplicación
+   - ✅ Nombre, versión, vendor, descripción, copyright
+   - ✅ Título de ventana
+   - ✅ Rutas de iconos por plataforma (Windows, macOS, Linux)
+   - ✅ Categorías de paquetes por plataforma
+
+2. **`Forevernote/src/main/java/com/example/forevernote/AppConfig.java`** (NUEVO)
+   - ✅ Clase helper para leer `app.properties`
+   - ✅ Métodos estáticos para acceder a toda la metadata
+   - ✅ Valores por defecto si el archivo no existe
+
+3. **`Forevernote/src/main/java/com/example/forevernote/Main.java`**
+   - ✅ Usa `AppConfig.getWindowTitle()` en lugar de string hardcodeado
+   - ✅ Usa `AppConfig.getWindowIconPath()` para el icono de la ventana (barra de tareas)
+
+4. **`Forevernote/src/main/java/com/example/forevernote/AppDataDirectory.java`**
+   - ✅ Usa `AppConfig.getAppName()` en lugar de constante hardcodeada
+
+5. **Scripts de packaging** (3 archivos)
+   - ✅ `scripts/package-windows.ps1`: Lee `app.properties` y usa variables
+   - ✅ `scripts/package-macos.sh`: Lee `app.properties` y usa variables
+   - ✅ `scripts/package-linux.sh`: Lee `app.properties` y usa variables
+   - ✅ Soporte para iconos: añade `--icon` si el archivo existe
+   - ✅ Todos los valores (nombre, versión, vendor, etc.) vienen de `app.properties`
+
+6. **`Forevernote/src/main/resources/icons/`** (NUEVO)
+   - ✅ Carpeta para iconos de la aplicación
+   - ✅ `README.md` con instrucciones de formatos requeridos
+
+### Cómo cambiar nombre e icono
+
+**Para cambiar el nombre de la aplicación:**
+1. Edita `Forevernote/src/main/resources/app.properties`
+2. Cambia `app.name=TuNuevoNombre`
+3. Recompila y empaqueta
+
+**Para cambiar el icono del ejecutable (jpackage):**
+1. Coloca tus iconos en `Forevernote/src/main/resources/icons/`:
+   - Windows: `app-icon.ico`
+   - macOS: `app-icon.icns`
+   - Linux: `app-icon.png`
+2. Los scripts detectarán automáticamente los iconos
+
+**Para cambiar el icono de la ventana (barra de tareas):**
+1. Coloca tu icono PNG en `Forevernote/src/main/resources/com/example/forevernote/ui/images/app-icon.png`
+2. O modifica `app.icon.window` en `app.properties` para usar otra ruta
+3. El icono se cargará automáticamente al iniciar la aplicación
+
+### Ventajas
+
+- ✅ **Un solo archivo para cambiar todo**: `app.properties`
+- ✅ **Estándar y profesional**: Similar a manifest de Android
+- ✅ **Sin hardcodeos**: Todo viene de configuración
+- ✅ **Fácil rebranding**: Cambia un archivo y recompila
+
+---
+
 ## 📅 2025-12-18 — Limpieza y simplificación: AppDataDirectory, LoggerConfig, Main
 
 ### Resumen

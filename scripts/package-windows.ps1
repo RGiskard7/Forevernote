@@ -9,8 +9,30 @@ Set-StrictMode -Version Latest
 $root = Split-Path -Parent $PSScriptRoot
 Push-Location (Join-Path $root 'Forevernote')
 
+# Function to read property from app.properties
+function Read-AppProperty {
+    param([string]$key, [string]$defaultValue)
+    $propsFile = Join-Path (Get-Location) "src\main\resources\app.properties"
+    if (Test-Path $propsFile) {
+        $content = Get-Content $propsFile -Raw
+        if ($content -match "(?m)^\s*$key\s*=\s*(.+)$") {
+            return $matches[1].Trim()
+        }
+    }
+    return $defaultValue
+}
+
+# Read application metadata from app.properties
+$APP_NAME = Read-AppProperty "app.name" "Forevernote"
+$APP_VERSION = Read-AppProperty "app.version" "1.0.0"
+$APP_VENDOR = Read-AppProperty "app.vendor" "Forevernote"
+$APP_DESCRIPTION = Read-AppProperty "app.description" "A free and open-source note-taking application"
+$APP_COPYRIGHT = Read-AppProperty "app.copyright" "Copyright 2025 Forevernote"
+$APP_ICON = Read-AppProperty "app.icon.windows" "src/main/resources/icons/app-icon.ico"
+$APP_CATEGORY = Read-AppProperty "app.package.category.windows" "Productivity"
+
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  Forevernote - Windows Package Builder" -ForegroundColor Cyan
+Write-Host "  $APP_NAME - Windows Package Builder" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -158,13 +180,13 @@ if ($lightPath -and $candlePath) {
 # EXE may not be supported in all JDK versions, so we use app-image as fallback
 $installerType = "app-image"
 $installerExtension = "app"
-$installerName = "Forevernote"
+$installerName = $APP_NAME
 
 if ($wixAvailable) {
     Write-Host "WiX Toolset found. Creating MSI installer..." -ForegroundColor Green
     $installerType = "msi"
     $installerExtension = "msi"
-    $installerName = "Forevernote-1.0.0.msi"
+    $installerName = "$APP_NAME-$APP_VERSION.msi"
 } else {
     Write-Host "WiX Toolset not found. Creating application image (app-image)..." -ForegroundColor Yellow
     Write-Host "This creates a portable application folder that can be distributed directly." -ForegroundColor Cyan
@@ -188,17 +210,26 @@ try {
     # The Launcher then calls Main.main() which starts the JavaFX application
     $jpackageArgs = @(
         "--input", $tempInputDir,
-        "--name", "Forevernote",
+        "--name", $APP_NAME,
         "--main-jar", "forevernote-1.0.0-uber.jar",
         "--main-class", "com.example.forevernote.Launcher",
         "--type", $installerType,
         "--dest", $outputDir,
-        "--app-version", "1.0.0",
-        "--vendor", "Forevernote",
-        "--description", "A free and open-source note-taking application",
-        "--copyright", "Copyright 2025 Forevernote",
+        "--app-version", $APP_VERSION,
+        "--vendor", $APP_VENDOR,
+        "--description", $APP_DESCRIPTION,
+        "--copyright", $APP_COPYRIGHT,
         "--java-options", "-Dfile.encoding=UTF-8"
     )
+    
+    # Add icon if it exists
+    $iconPath = Join-Path (Get-Location) $APP_ICON
+    if (Test-Path $iconPath) {
+        $jpackageArgs += @("--icon", $iconPath)
+        Write-Host "Using icon: $iconPath" -ForegroundColor Green
+    } else {
+        Write-Host "Icon not found at $iconPath, skipping icon..." -ForegroundColor Yellow
+    }
     
     Write-Host "Using Launcher class for JavaFX compatibility..." -ForegroundColor Green
 
@@ -207,7 +238,7 @@ try {
         $jpackageArgs += @(
             "--win-dir-chooser",
             "--win-menu",
-            "--win-menu-group", "Forevernote",
+            "--win-menu-group", $APP_NAME,
             "--win-shortcut"
         )
     }
@@ -244,11 +275,11 @@ try {
                 Write-Host ""
             }
             Write-Host "This is a portable application folder. You can:" -ForegroundColor Green
-            Write-Host "  1. Distribute the entire folder (users can run Forevernote.exe directly)" -ForegroundColor Yellow
+            Write-Host "  1. Distribute the entire folder (users can run $APP_NAME.exe directly)" -ForegroundColor Yellow
             Write-Host "  2. Zip the folder and distribute it as a portable application" -ForegroundColor Yellow
             Write-Host "  3. Create an installer using a tool like Inno Setup or NSIS" -ForegroundColor Yellow
             Write-Host ""
-            Write-Host "To run: Navigate to the folder and double-click Forevernote.exe" -ForegroundColor Cyan
+            Write-Host "To run: Navigate to the folder and double-click $APP_NAME.exe" -ForegroundColor Cyan
         } else {
             $installerPath = Join-Path $outputDir $installerName
             Write-Host "Installer location: $installerPath" -ForegroundColor Cyan

@@ -1,6 +1,14 @@
 # Forevernote
 
-A lightweight desktop application for managing notes with hierarchical organization through folders and tags. Built with Java and JavaFX, featuring SQLite for persistent storage, Markdown support with live preview, and a modern, intuitive user interface.
+<div align="center">
+  <img src="resources/images/banner.png" alt="Forevernote Banner" style="width: 100%; max-width: 100%;">
+</div>
+
+<div align="center">
+  <strong>A lightweight desktop application for managing notes with hierarchical organization through folders and tags.</strong>
+  <br>
+  Built with Java and JavaFX, featuring SQLite for persistent storage, Markdown support with live preview, and a modern, intuitive user interface.
+</div>
 
 ## Table of Contents
 

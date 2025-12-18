@@ -43,11 +43,12 @@ public class Main extends Application {
                 scene.getStylesheets().add(cssResource.toExternalForm());
             }
             
-            primaryStage.setTitle("Forevernote - Free Note Taking");
+            primaryStage.setTitle(AppConfig.getWindowTitle());
 
+            // Load window icon from app.properties
             try {
-                var iconStream = getClass().getResourceAsStream(
-                    "/com/example/forevernote/ui/images/app-icon.png");
+                String iconPath = "/" + AppConfig.getWindowIconPath();
+                var iconStream = getClass().getResourceAsStream(iconPath);
                 if (iconStream != null) {
                     primaryStage.getIcons().add(new Image(iconStream));
                 }

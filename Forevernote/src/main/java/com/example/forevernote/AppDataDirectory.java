@@ -16,7 +16,6 @@ import java.io.File;
  */
 public class AppDataDirectory {
     
-    private static final String APP_NAME = "Forevernote";
     private static String baseDir = null;
     
     /**
@@ -69,24 +68,26 @@ public class AppDataDirectory {
         String home = System.getProperty("user.home");
         File appDataDir;
         
+        String appName = AppConfig.getAppName();
+        
         if (osName.contains("win")) {
-            // Windows: %APPDATA%\Forevernote
+            // Windows: %APPDATA%\AppName
             String appData = System.getenv("APPDATA");
             if (appData != null && !appData.isEmpty()) {
-                appDataDir = new File(appData, APP_NAME);
+                appDataDir = new File(appData, appName);
             } else {
-                appDataDir = new File(home, "AppData\\Roaming\\" + APP_NAME);
+                appDataDir = new File(home, "AppData\\Roaming\\" + appName);
             }
         } else if (osName.contains("mac")) {
-            // macOS: ~/Library/Application Support/Forevernote
-            appDataDir = new File(home, "Library/Application Support/" + APP_NAME);
+            // macOS: ~/Library/Application Support/AppName
+            appDataDir = new File(home, "Library/Application Support/" + appName);
         } else {
-            // Linux: ~/.config/Forevernote (XDG Base Directory)
+            // Linux: ~/.config/AppName (XDG Base Directory)
             String xdgConfig = System.getenv("XDG_CONFIG_HOME");
             if (xdgConfig != null && !xdgConfig.isEmpty()) {
-                appDataDir = new File(xdgConfig, APP_NAME);
+                appDataDir = new File(xdgConfig, appName);
             } else {
-                appDataDir = new File(home, ".config/" + APP_NAME);
+                appDataDir = new File(home, ".config/" + appName);
             }
         }
         

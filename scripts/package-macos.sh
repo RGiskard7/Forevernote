@@ -13,8 +13,32 @@ FORVERNOTE_DIR="$ROOT_DIR/Forevernote"
 
 cd "$FORVERNOTE_DIR"
 
+# Function to read property from app.properties
+read_property() {
+    local key=$1
+    local default=$2
+    local props_file="$FORVERNOTE_DIR/src/main/resources/app.properties"
+    if [ -f "$props_file" ]; then
+        local value=$(grep "^[[:space:]]*${key}[[:space:]]*=" "$props_file" 2>/dev/null | cut -d'=' -f2- | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        if [ -n "$value" ]; then
+            echo "$value"
+            return
+        fi
+    fi
+    echo "$default"
+}
+
+# Read application metadata from app.properties
+APP_NAME=$(read_property "app.name" "Forevernote")
+APP_VERSION=$(read_property "app.version" "1.0.0")
+APP_VENDOR=$(read_property "app.vendor" "Forevernote")
+APP_DESCRIPTION=$(read_property "app.description" "A free and open-source note-taking application")
+APP_COPYRIGHT=$(read_property "app.copyright" "Copyright 2025 Forevernote")
+APP_ICON=$(read_property "app.icon.macos" "src/main/resources/icons/app-icon.icns")
+APP_CATEGORY=$(read_property "app.package.category.macos" "public.app-category.productivity")
+
 echo "========================================"
-echo "  Forevernote - macOS Package Builder"
+echo "  $APP_NAME - macOS Package Builder"
 echo "========================================"
 echo ""
 
@@ -69,23 +93,35 @@ trap cleanup EXIT
 echo "Packaging application (this may take several minutes)..."
 echo ""
 
-# Use jpackage to create DMG installer
-# Note: The uber-jar already includes JavaFX classes, so we don't need --module-path
-jpackage \
-    --input "$TEMP_INPUT_DIR" \
-    --name Forevernote \
+# Build jpackage command
+JPACKAGE_CMD="jpackage \
+    --input \"$TEMP_INPUT_DIR\" \
+    --name \"$APP_NAME\" \
     --main-jar forevernote-1.0.0-uber.jar \
     --main-class com.example.forevernote.Launcher \
     --type dmg \
-    --dest "$OUTPUT_DIR" \
-    --app-version 1.0.0 \
-    --vendor "Forevernote" \
-    --description "A free and open-source note-taking application" \
-    --copyright "Copyright 2025 Forevernote" \
-    --mac-package-name "Forevernote" \
-    --mac-app-category "public.app-category.productivity" \
-    --java-options "-Dfile.encoding=UTF-8" \
-    --java-options "-Dapple.awt.application.appearance=system"
+    --dest \"$OUTPUT_DIR\" \
+    --app-version \"$APP_VERSION\" \
+    --vendor \"$APP_VENDOR\" \
+    --description \"$APP_DESCRIPTION\" \
+    --copyright \"$APP_COPYRIGHT\" \
+    --mac-package-name \"$APP_NAME\" \
+    --mac-app-category \"$APP_CATEGORY\" \
+    --java-options \"-Dfile.encoding=UTF-8\" \
+    --java-options \"-Dapple.awt.application.appearance=system\""
+
+# Add icon if it exists
+ICON_PATH="$FORVERNOTE_DIR/$APP_ICON"
+if [ -f "$ICON_PATH" ]; then
+    JPACKAGE_CMD="$JPACKAGE_CMD --icon \"$ICON_PATH\""
+    echo "Using icon: $ICON_PATH"
+else
+    echo "Icon not found at $ICON_PATH, skipping icon..."
+fi
+
+# Use jpackage to create DMG installer
+# Note: The uber-jar already includes JavaFX classes, so we don't need --module-path
+eval $JPACKAGE_CMD
 
 if [ $? -eq 0 ]; then
     echo ""
@@ -93,9 +129,9 @@ if [ $? -eq 0 ]; then
     echo "  Package created successfully!"
     echo "========================================"
     echo ""
-    echo "Installer location: $OUTPUT_DIR/Forevernote-1.0.0.dmg"
+    echo "Installer location: $OUTPUT_DIR/$APP_NAME-$APP_VERSION.dmg"
     echo ""
-    echo "Data will be stored in: ~/Library/Application Support/Forevernote/"
+    echo "Data will be stored in: ~/Library/Application Support/$APP_NAME/"
     echo ""
     echo "You can now distribute this DMG installer."
 else
