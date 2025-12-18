@@ -183,6 +183,19 @@
                 </configuration>
             </plugin>
 
+            <!-- Maven Resources Plugin - Configure to avoid POSIX permission issues on macOS -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <encoding>UTF-8</encoding>
+                    <propertiesEncoding>UTF-8</propertiesEncoding>
+                    <!-- Disable filtering to avoid POSIX permission copying issues on macOS -->
+                    <filtering>false</filtering>
+                </configuration>
+            </plugin>
+
             <!-- Maven Assembly Plugin for Uber JAR -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

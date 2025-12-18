@@ -1,5 +1,44 @@
 # Changelog - Forevernote
 
+## 📅 2025-12-18 (15) — Solución para error de permisos en macOS (FileSystemException)
+
+### Resumen
+Corregido el error "FileSystemException: Operation not permitted" que ocurría al compilar en macOS cuando Maven intentaba copiar archivos de recursos.
+
+### Problema
+En macOS, Maven fallaba al copiar archivos CSS a `target/classes` porque intentaba preservar permisos POSIX y macOS bloqueaba la operación.
+
+### Solución implementada
+
+1. **`Forevernote/pom.xml`**
+   - ✅ Añadida configuración explícita de `maven-resources-plugin`
+   - ✅ Deshabilitado `filtering` para evitar copia de permisos POSIX
+   - ✅ Configurado encoding UTF-8 explícitamente
+
+2. **`scripts/clean-target-macos.sh`** (NUEVO)
+   - ✅ Script para limpiar el directorio `target` en macOS
+   - ✅ Soluciona problemas de permisos corruptos
+
+3. **`doc/BUILD.md`**
+   - ✅ Añadida sección de troubleshooting para este error específico
+   - ✅ Instrucciones claras de cómo solucionarlo
+
+### Cómo usar
+
+Si encuentras el error en macOS:
+
+```bash
+# Limpiar y recompilar
+./scripts/clean-target-macos.sh
+mvn -f Forevernote/pom.xml clean compile
+```
+
+### Nota técnica
+
+El problema ocurre porque `maven-resources-plugin` intenta usar `Files.setPosixFilePermissions()` para preservar permisos, pero macOS puede bloquear esto. Deshabilitar `filtering` evita que Maven intente copiar permisos.
+
+---
+
 ## 📅 2025-12-18 (14) — Configuración VSCode multiplataforma (Windows/macOS/Linux)
 
 ### Resumen

@@ -296,6 +296,26 @@ Or:
 mvn exec:java -Dexec.mainClass="com.example.forevernote.Main"
 ```
 
+**Error**: "FileSystemException: Operation not permitted" (macOS)
+
+This error occurs when Maven tries to copy resource files (like CSS files) to the `target/classes` directory and macOS blocks the operation due to permission restrictions.
+
+**Solution**: Clean the `target` directory before building:
+
+```bash
+# Option 1: Use the provided script
+./scripts/clean-target-macos.sh
+
+# Option 2: Manual cleanup
+cd Forevernote
+rm -rf target
+mvn clean compile
+```
+
+**Why this happens**: Maven's resource plugin tries to preserve POSIX file permissions when copying files, but macOS security restrictions can block this operation. Cleaning the `target` directory removes any corrupted permission states.
+
+**Prevention**: Always run `mvn clean` before building if you encounter permission errors.
+
 **Error**: "Invalid module name: '21' is not a Java identifier"
 - **Solution**: This error was fixed in the scripts. Make sure you're using the latest version of the scripts
 - **Cause**: Scripts were pointing to directories containing `-sources.jar` files
