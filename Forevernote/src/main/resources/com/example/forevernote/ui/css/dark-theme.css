@@ -1,0 +1,1001 @@
+/* ========================================
+   FOREVERNOTE - DARK THEME (PROFESSIONAL)
+   Modern dark mode with excellent contrast
+   ======================================== */
+
+/* ====================
+   COLOR PALETTE - Refined Dark Theme
+   ==================== */
+.root {
+    /* Primary - Vibrant but not harsh */
+    -fx-primary: #818CF8;
+    -fx-primary-hover: #6366F1;
+    -fx-primary-light: #A5B4FC;
+    -fx-primary-dark: #4F46E5;
+
+    /* Neutrals - Rich dark grayscale (standard dark theme colors) */
+    -fx-bg-primary: #121212;
+    -fx-bg-secondary: #1E1E1E;
+    -fx-bg-tertiary: #2D2D2D;
+    -fx-bg-card: #1E1E1E;
+    -fx-bg-elevated: #2D2D2D;
+
+    /* Text - High contrast for readability (standard dark theme) */
+    -fx-text-primary: #FFFFFF;
+    -fx-text-secondary: #B3B3B3;
+    -fx-text-tertiary: #808080;
+    -fx-text-inverse: #121212;
+    -fx-text-disabled: #666666;
+
+    /* Borders - Subtle but visible (standard dark theme) */
+    -fx-border-subtle: #2D2D2D;
+    -fx-border-light: #404040;
+    -fx-border-medium: #555555;
+    -fx-border-strong: #707070;
+
+    /* Accents - Vibrant but readable */
+    -fx-success: #22C55E;
+    -fx-warning: #F59E0B;
+    -fx-error: #EF4444;
+    -fx-info: #3B82F6;
+}
+
+/* ====================
+   GLOBAL - Dark Foundation
+   ==================== */
+.root {
+    -fx-font-family: "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: -fx-bg-primary;
+    -fx-text-fill: -fx-text-primary;
+}
+
+* {
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+/* ====================
+   SCROLLBARS - Elegant Dark
+   ==================== */
+.scroll-bar {
+    -fx-background-color: transparent;
+    -fx-opacity: 0;
+}
+
+.scroll-bar:hover {
+    -fx-opacity: 0.8;
+}
+
+.scroll-bar:vertical {
+    -fx-pref-width: 8px;
+}
+
+.scroll-bar:horizontal {
+    -fx-pref-height: 8px;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: -fx-border-medium;
+    -fx-background-radius: 4px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: -fx-border-strong;
+}
+
+.scroll-bar .track {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-pref-height: 0;
+    -fx-pref-width: 0;
+}
+
+/* ====================
+   MENU BAR - Professional Dark
+   ==================== */
+.menu-bar {
+    -fx-background-color: -fx-bg-card;
+    -fx-border-color: transparent transparent -fx-border-subtle transparent;
+    -fx-border-width: 0 0 1px 0;
+    -fx-padding: 4px 8px;
+}
+
+.menu-bar .label {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 12px;
+}
+
+.menu-bar .menu {
+    -fx-padding: 4px 10px;
+}
+
+.menu-bar .menu:hover {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-background-radius: 4px;
+}
+
+.menu-bar .menu:showing {
+    -fx-background-color: -fx-bg-tertiary;
+}
+
+.context-menu {
+    -fx-background-color: -fx-bg-elevated;
+    -fx-background-radius: 6px;
+    -fx-padding: 4px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 12, 0, 0, 2);
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-radius: 6px;
+    -fx-border-width: 1px;
+}
+
+.menu-item {
+    -fx-padding: 6px 10px;
+    -fx-background-radius: 3px;
+}
+
+.menu-item:hover {
+    -fx-background-color: -fx-bg-tertiary;
+}
+
+.menu-item .label {
+    -fx-text-fill: -fx-text-primary;
+    -fx-font-size: 12px;
+}
+
+/* ====================
+   TOOLBAR - Clean Dark
+   ==================== */
+.toolbar {
+    -fx-background-color: -fx-bg-card;
+    -fx-border-color: transparent transparent -fx-border-subtle transparent;
+    -fx-border-width: 0 0 1px 0;
+    -fx-padding: 10px 16px;
+    -fx-spacing: 6px;
+}
+
+.toolbar-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 12px;
+    -fx-padding: 6px 10px;
+    -fx-background-radius: 4px;
+    -fx-border-radius: 4px;
+}
+
+.toolbar-button:hover {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.toolbar-button:pressed {
+    -fx-background-color: -fx-bg-elevated;
+}
+
+/* ====================
+   SEARCH FIELD - Prominent Dark
+   ==================== */
+.search-field {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-width: 1px;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-text-fill: -fx-text-primary;
+    -fx-prompt-text-fill: -fx-text-tertiary;
+    -fx-padding: 8px 12px;
+    -fx-font-size: 12px;
+}
+
+.search-field:focused {
+    -fx-border-color: -fx-primary;
+    -fx-background-color: -fx-bg-elevated;
+}
+
+/* ====================
+   SPLIT PANE - Subtle Dividers
+   ==================== */
+.split-pane {
+    -fx-background-color: -fx-bg-primary;
+}
+
+.split-pane-divider {
+    -fx-background-color: -fx-border-subtle;
+    -fx-padding: 0 2px 0 2px;
+}
+
+.split-pane-divider:hover {
+    -fx-background-color: -fx-border-light;
+}
+
+/* ====================
+   SIDEBAR - Organized Dark
+   ==================== */
+.sidebar {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-border-color: transparent -fx-border-subtle transparent transparent;
+    -fx-border-width: 0 1px 0 0;
+}
+
+.navigation-tabs {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-tab-min-height: 36px;
+    -fx-padding: 6px 6px 0 6px;
+}
+
+.navigation-tabs .tab-header-area {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-padding: 0;
+}
+
+.navigation-tabs .tab-header-area .tab-header-background {
+    -fx-background-color: -fx-bg-secondary;
+}
+
+.navigation-tabs .tab {
+    -fx-background-color: transparent;
+    -fx-background-radius: 4px 4px 0 0;
+    -fx-padding: 8px 14px;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+
+.navigation-tabs .tab:hover {
+    -fx-background-color: -fx-bg-tertiary;
+}
+
+.navigation-tabs .tab:selected {
+    -fx-background-color: -fx-bg-card;
+    -fx-border-color: transparent;
+    -fx-background-insets: 0;
+}
+
+.navigation-tabs .tab .tab-label {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 12px;
+    -fx-font-weight: normal;
+}
+
+.navigation-tabs .tab:hover .tab-label {
+    -fx-text-fill: -fx-text-primary;
+}
+
+.navigation-tabs .tab:selected .tab-label {
+    -fx-text-fill: -fx-text-primary;
+    -fx-font-weight: 600;
+}
+
+.folder-tree,
+.tag-list,
+.recent-list,
+.favorites-list {
+    -fx-background-color: transparent;
+    -fx-padding: 6px;
+}
+
+.tree-cell,
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 6px 10px;
+    -fx-background-radius: 4px;
+    -fx-text-fill: -fx-text-primary;
+    -fx-font-size: 12px;
+}
+
+.tree-cell:hover,
+.list-cell:hover {
+    -fx-background-color: rgba(129, 140, 248, 0.08);
+}
+
+.tree-cell:selected,
+.list-cell:selected {
+    -fx-background-color: rgba(129, 140, 248, 0.15);
+    -fx-text-fill: -fx-primary-light;
+}
+
+.quick-actions {
+    -fx-background-color: transparent;
+    -fx-border-color: -fx-border-subtle transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 10px;
+}
+
+.quick-action-button {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-border-color: -fx-border-light;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 6px 10px;
+    -fx-font-size: 11px;
+    -fx-text-fill: -fx-text-secondary;
+}
+
+.quick-action-button:hover {
+    -fx-background-color: -fx-bg-elevated;
+    -fx-border-color: -fx-primary;
+    -fx-text-fill: -fx-primary-light;
+}
+
+/* ====================
+   NOTES LIST - Card Style Dark
+   ==================== */
+.notes-list-container {
+    -fx-background-color: -fx-bg-card;
+    -fx-border-color: transparent -fx-border-subtle transparent transparent;
+    -fx-border-width: 0 1px 0 0;
+}
+
+.notes-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -fx-border-subtle transparent;
+    -fx-border-width: 0 0 1px 0;
+    -fx-padding: 12px 14px;
+}
+
+.section-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.sort-combo {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 5px 8px;
+    -fx-font-size: 11px;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.sort-combo:hover {
+    -fx-background-color: -fx-bg-elevated;
+    -fx-border-color: -fx-border-light;
+}
+
+.refresh-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: 4px;
+    -fx-padding: 5px 8px;
+    -fx-font-size: 13px;
+    -fx-text-fill: -fx-text-tertiary;
+}
+
+.refresh-button:hover {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.notes-list {
+    -fx-background-color: transparent;
+    -fx-padding: 6px;
+}
+
+.notes-list .list-cell {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 10px;
+    -fx-border-width: 1px;
+}
+
+.notes-list .list-cell:hover {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-border-color: -fx-border-light;
+}
+
+.notes-list .list-cell:selected {
+    -fx-background-color: rgba(129, 140, 248, 0.12);
+    -fx-border-color: -fx-primary;
+}
+
+/* ====================
+   EDITOR - Focused Dark
+   ==================== */
+.editor-container {
+    -fx-background-color: -fx-bg-card;
+}
+
+.note-header {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -fx-border-subtle transparent;
+    -fx-border-width: 0 0 1px 0;
+    -fx-padding: 16px 20px 12px 20px;
+}
+
+.note-title-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-font-size: 20px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -fx-text-primary;
+    -fx-prompt-text-fill: -fx-text-tertiary;
+    -fx-padding: 0;
+}
+
+.note-title-field:focused {
+    -fx-background-color: transparent;
+}
+
+.favorite-button,
+.delete-button {
+    -fx-background-color: transparent;
+    -fx-background-radius: 4px;
+    -fx-padding: 6px 10px;
+    -fx-font-size: 15px;
+    -fx-text-fill: -fx-text-tertiary;
+}
+
+.favorite-button:hover,
+.delete-button:hover {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.note-metadata {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-padding: 10px 20px;
+    -fx-border-color: transparent transparent -fx-border-subtle transparent;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.note-metadata .label {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 11px;
+}
+
+.note-content-area {
+    -fx-background-color: -fx-bg-card;
+    -fx-border-color: transparent;
+    -fx-text-fill: -fx-text-primary;
+    -fx-prompt-text-fill: -fx-text-tertiary;
+    -fx-padding: 16px 20px;
+    -fx-font-size: 14px;
+    -fx-line-spacing: 1.5;
+}
+
+.note-content-area .content {
+    -fx-background-color: -fx-bg-card;
+}
+
+.note-content-area:focused {
+    -fx-background-color: -fx-bg-card;
+}
+
+.editor-toolbar {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-border-color: -fx-border-subtle transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 8px 12px;
+}
+
+.format-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: 4px;
+    -fx-padding: 6px 8px;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -fx-text-secondary;
+}
+
+.format-button:hover {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.format-button:pressed {
+    -fx-background-color: -fx-bg-elevated;
+}
+
+/* ====================
+   TEXT FIELD & AREA - Refined Dark
+   ==================== */
+.text-field {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-text-fill: -fx-text-primary;
+    -fx-prompt-text-fill: -fx-text-tertiary;
+    -fx-padding: 8px 12px;
+}
+
+.text-field:focused {
+    -fx-border-color: -fx-primary;
+    -fx-background-color: -fx-bg-elevated;
+}
+
+.text-area {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-text-fill: -fx-text-primary;
+    -fx-prompt-text-fill: -fx-text-tertiary;
+    -fx-padding: 8px;
+}
+
+.text-area .content {
+    -fx-background-color: -fx-bg-tertiary;
+}
+
+.text-area:focused {
+    -fx-border-color: -fx-primary;
+    -fx-background-color: -fx-bg-elevated;
+}
+
+.text-area:focused .content {
+    -fx-background-color: -fx-bg-elevated;
+}
+
+/* ====================
+   BUTTONS - Modern Dark
+   ==================== */
+.button {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-border-color: -fx-border-light;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-text-fill: -fx-text-primary;
+    -fx-padding: 8px 14px;
+    -fx-font-size: 12px;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: -fx-bg-elevated;
+    -fx-border-color: -fx-primary;
+    -fx-text-fill: -fx-primary-light;
+}
+
+.button:pressed {
+    -fx-background-color: rgba(129, 140, 248, 0.2);
+    -fx-border-color: -fx-primary;
+    -fx-text-fill: -fx-primary-light;
+}
+
+.button:disabled {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-border-color: -fx-border-subtle;
+    -fx-text-fill: -fx-text-disabled;
+    -fx-opacity: 0.5;
+}
+
+/* ====================
+   TABS - Clean Dark
+   ==================== */
+.tab-pane {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-border-color: transparent;
+}
+
+.tab {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-secondary;
+    -fx-padding: 8px 16px;
+}
+
+.tab:hover {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.tab:selected {
+    -fx-background-color: -fx-bg-card;
+    -fx-text-fill: -fx-text-primary;
+    -fx-border-color: transparent transparent transparent transparent;
+}
+
+.preview-tabs {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-tab-min-height: 40px;
+}
+
+.preview-tabs .tab-header-area {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-padding: 0;
+}
+
+.preview-tabs .tab-header-area .tab-header-background {
+    -fx-background-color: -fx-bg-secondary;
+}
+
+.preview-tabs .tab {
+    -fx-background-color: transparent;
+    -fx-background-radius: 4px 4px 0 0;
+    -fx-padding: 10px 16px;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+
+.preview-tabs .tab:hover {
+    -fx-background-color: -fx-bg-tertiary;
+}
+
+.preview-tabs .tab:selected {
+    -fx-background-color: -fx-bg-card;
+    -fx-border-color: transparent;
+    -fx-background-insets: 0;
+}
+
+.preview-tabs .tab .tab-label {
+    -fx-text-fill: -fx-text-primary;
+    -fx-font-size: 13px;
+    -fx-font-weight: normal;
+}
+
+.preview-tabs .tab:hover .tab-label {
+    -fx-text-fill: -fx-text-primary;
+}
+
+.preview-tabs .tab:selected .tab-label {
+    -fx-text-fill: -fx-text-primary;
+    -fx-font-weight: 600;
+}
+
+.preview-tabs .tab-content-area {
+    -fx-background-color: -fx-bg-card;
+}
+
+/* ====================
+   COMBO BOX - Dark Style
+   ==================== */
+.combo-box {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.combo-box:hover {
+    -fx-background-color: -fx-bg-elevated;
+    -fx-border-color: -fx-border-light;
+}
+
+.combo-box:focused {
+    -fx-border-color: -fx-primary;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: -fx-bg-elevated;
+    -fx-background-radius: 6px;
+    -fx-padding: 4px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 12, 0, 0, 2);
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-radius: 6px;
+    -fx-border-width: 1px;
+}
+
+.combo-box-popup .list-view .list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: -fx-bg-tertiary;
+}
+
+.combo-box-popup .list-view .list-cell:selected {
+    -fx-background-color: rgba(129, 140, 248, 0.15);
+    -fx-text-fill: -fx-primary-light;
+}
+
+/* ====================
+   LABELS - Consistent Dark
+   ==================== */
+.label {
+    -fx-text-fill: -fx-text-primary;
+}
+
+.label.secondary {
+    -fx-text-fill: -fx-text-secondary;
+}
+
+.label.tertiary {
+    -fx-text-fill: -fx-text-tertiary;
+}
+
+/* ====================
+   STATUS BAR - Subtle Dark
+   ==================== */
+.status-bar {
+    -fx-background-color: -fx-bg-card;
+    -fx-border-color: -fx-border-subtle transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 6px 12px;
+}
+
+.status-bar .label {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 11px;
+}
+
+/* ====================
+   TREE VIEW - Refined Dark
+   ==================== */
+.tree-view {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-primary;
+    -fx-padding: 4px 8px;
+}
+
+.tree-cell:hover {
+    -fx-background-color: rgba(129, 140, 248, 0.08);
+}
+
+.tree-cell:selected {
+    -fx-background-color: rgba(129, 140, 248, 0.15);
+    -fx-text-fill: -fx-primary-light;
+}
+
+/* ====================
+   LIST VIEW - Clean Dark
+   ==================== */
+.list-view {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-primary;
+    -fx-padding: 8px 12px;
+}
+
+.list-cell:hover {
+    -fx-background-color: rgba(129, 140, 248, 0.08);
+}
+
+.list-cell:selected {
+    -fx-background-color: rgba(129, 140, 248, 0.15);
+    -fx-text-fill: -fx-primary-light;
+}
+
+/* ====================
+   FLOW PANE (Tags) - Dark
+   ==================== */
+.flow-pane {
+    -fx-background-color: transparent;
+}
+
+.tag-chip {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-border-color: -fx-border-light;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-padding: 4px 10px;
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 11px;
+}
+
+.tag-chip:hover {
+    -fx-background-color: -fx-bg-elevated;
+    -fx-border-color: -fx-primary;
+    -fx-text-fill: -fx-primary-light;
+}
+
+/* ====================
+   TOGGLE BUTTONS - Dark
+   ==================== */
+.toggle-button {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-border-color: -fx-border-light;
+    -fx-border-width: 1px;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-text-fill: -fx-text-secondary;
+    -fx-padding: 6px 12px;
+    -fx-font-size: 12px;
+}
+
+.toggle-button:hover {
+    -fx-background-color: -fx-bg-elevated;
+    -fx-border-color: -fx-border-medium;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.toggle-button:selected {
+    -fx-background-color: rgba(129, 140, 248, 0.2);
+    -fx-border-color: -fx-primary;
+    -fx-text-fill: -fx-primary-light;
+}
+
+/* ====================
+   WEBVIEW (Preview) - Dark Background
+   ==================== */
+.web-view {
+    -fx-background-color: -fx-bg-card;
+}
+
+/* Ensure WebView content area is dark */
+.preview-scroll {
+    -fx-background-color: -fx-bg-card;
+}
+
+.preview-scroll .viewport {
+    -fx-background-color: -fx-bg-card;
+}
+
+.preview-scroll .content {
+    -fx-background-color: -fx-bg-card;
+}
+
+/* WebView container - ensure dark background */
+#previewWebView {
+    -fx-background-color: -fx-bg-card;
+}
+
+/* ====================
+   TAB PANE HEADERS - Better Visibility
+   ==================== */
+.tab-pane .tab-header-area {
+    -fx-background-color: -fx-bg-secondary;
+}
+
+.tab-pane .tab-header-area .tab-header-background {
+    -fx-background-color: -fx-bg-secondary;
+}
+
+.tab-pane .tab-content-area {
+    -fx-background-color: -fx-bg-card;
+}
+
+/* Ensure all tab panes have dark backgrounds */
+.preview-tabs .tab-header-area {
+    -fx-background-color: -fx-bg-secondary;
+}
+
+.preview-tabs .tab-header-area .tab-header-background {
+    -fx-background-color: -fx-bg-secondary;
+}
+
+.preview-tabs .tab-content-area {
+    -fx-background-color: -fx-bg-card;
+}
+
+/* ====================
+   ADDITIONAL COMPONENTS - Enhanced Contrast
+   ==================== */
+.flow-pane {
+    -fx-background-color: transparent;
+}
+
+/* Word count and metadata labels */
+.word-count-label,
+.metadata-label {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 11px;
+}
+
+/* Info tab content */
+.info-content {
+    -fx-background-color: -fx-bg-card;
+    -fx-padding: 16px;
+}
+
+.info-content .label {
+    -fx-text-fill: -fx-text-primary;
+}
+
+.info-content .label.secondary {
+    -fx-text-fill: -fx-text-secondary;
+}
+
+.info-container {
+    -fx-background-color: -fx-bg-card;
+}
+
+.info-section-title {
+    -fx-text-fill: -fx-text-primary;
+    -fx-font-size: 16px;
+    -fx-font-weight: 600;
+}
+
+.info-label {
+    -fx-text-fill: -fx-text-secondary;
+    -fx-font-size: 12px;
+}
+
+.info-value {
+    -fx-text-fill: -fx-text-primary;
+    -fx-font-size: 12px;
+}
+
+/* Attachments list */
+.attachments-list {
+    -fx-background-color: -fx-bg-card;
+}
+
+.attachments-list .list-cell {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-radius: 4px;
+    -fx-background-radius: 4px;
+    -fx-padding: 8px;
+    -fx-margin: 4px;
+}
+
+.attachments-list .list-cell:hover {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-border-color: -fx-border-light;
+}
+
+/* Empty state messages */
+.empty-state {
+    -fx-text-fill: -fx-text-tertiary;
+    -fx-font-size: 13px;
+    -fx-alignment: center;
+}
+
+/* ====================
+   VBOX AND CONTAINERS - Dark Backgrounds
+   ==================== */
+.vbox, .hbox {
+    -fx-background-color: transparent;
+}
+
+/* Ensure all panes have dark backgrounds */
+.anchor-pane, .border-pane, .stack-pane {
+    -fx-background-color: -fx-bg-primary;
+}
+
+/* Editor container specific */
+.note-editor-container {
+    -fx-background-color: -fx-bg-card;
+}
+
+/* Preview container */
+.preview-container {
+    -fx-background-color: -fx-bg-card;
+}
+
+/* ====================
+   DIALOGS AND ALERTS - Dark Theme
+   ==================== */
+.dialog-pane {
+    -fx-background-color: -fx-bg-card;
+}
+
+.dialog-pane .label {
+    -fx-text-fill: -fx-text-primary;
+}
+
+.dialog-pane .button {
+    -fx-background-color: -fx-bg-tertiary;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.dialog-pane .button:hover {
+    -fx-background-color: -fx-bg-elevated;
+    -fx-text-fill: -fx-primary-light;
+}
+
+/* ====================
+   SCROLL PANE - Dark
+   ==================== */
+.scroll-pane {
+    -fx-background-color: -fx-bg-card;
+}
+
+.scroll-pane .viewport {
+    -fx-background-color: -fx-bg-card;
+}
+
+.scroll-pane .content {
+    -fx-background-color: -fx-bg-card;
+}

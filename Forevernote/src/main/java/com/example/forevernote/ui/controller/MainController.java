@@ -19,7 +19,9 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.RadioMenuItem;
 import javafx.scene.control.ToggleButton;
+import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
@@ -116,6 +118,12 @@ public class MainController {
     @FXML private Label noteCountLabel;
     @FXML private Label syncStatusLabel;
     
+    // Theme menu items
+    @FXML private RadioMenuItem lightThemeMenuItem;
+    @FXML private RadioMenuItem darkThemeMenuItem;
+    @FXML private RadioMenuItem systemThemeMenuItem;
+    private ToggleGroup themeToggleGroup;
+    
     /**
      * Initialize the controller after FXML loading.
      */
@@ -124,6 +132,9 @@ public class MainController {
         try {
             // Initialize database connections
             initializeDatabase();
+            
+            // Initialize theme toggle group
+            initializeThemeMenu();
             
             // Initialize UI components
             initializeFolderTree();
@@ -275,6 +286,30 @@ public class MainController {
         
         // Keyboard shortcuts
         noteContentArea.setOnKeyPressed(this::handleEditorKeyPress);
+        
+        // Setup WebView to ensure dark background
+        if (previewWebView != null) {
+            previewWebView.getEngine().getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
+                if (newState == javafx.concurrent.Worker.State.SUCCEEDED) {
+                    // Ensure background is set after content loads
+                    String actualTheme = currentTheme;
+                    if ("system".equals(currentTheme)) {
+                        actualTheme = detectSystemTheme();
+                    }
+                    if ("dark".equals(actualTheme)) {
+                        previewWebView.getEngine().executeScript(
+                            "document.body.style.backgroundColor = '#1E1E1E'; " +
+                            "if (document.documentElement) document.documentElement.style.backgroundColor = '#1E1E1E';"
+                        );
+                    } else {
+                        previewWebView.getEngine().executeScript(
+                            "document.body.style.backgroundColor = '#FFFFFF'; " +
+                            "if (document.documentElement) document.documentElement.style.backgroundColor = '#FFFFFF';"
+                        );
+                    }
+                }
+            });
+        }
     }
     
     /**
@@ -284,6 +319,45 @@ public class MainController {
         searchField.textProperty().addListener((observable, oldValue, newValue) -> {
             performSearch(newValue);
         });
+    }
+    
+    /**
+     * Initialize theme menu with toggle group.
+     */
+    private void initializeThemeMenu() {
+        themeToggleGroup = new ToggleGroup();
+        if (lightThemeMenuItem != null) {
+            lightThemeMenuItem.setToggleGroup(themeToggleGroup);
+        }
+        if (darkThemeMenuItem != null) {
+            darkThemeMenuItem.setToggleGroup(themeToggleGroup);
+        }
+        if (systemThemeMenuItem != null) {
+            systemThemeMenuItem.setToggleGroup(themeToggleGroup);
+        }
+        // Set initial selection based on current theme
+        updateThemeMenuSelection();
+    }
+    
+    /**
+     * Update theme menu selection based on current theme.
+     */
+    private void updateThemeMenuSelection() {
+        if (themeToggleGroup == null) return;
+        
+        if ("dark".equals(currentTheme)) {
+            if (darkThemeMenuItem != null) {
+                darkThemeMenuItem.setSelected(true);
+            }
+        } else if ("system".equals(currentTheme)) {
+            if (systemThemeMenuItem != null) {
+                systemThemeMenuItem.setSelected(true);
+            }
+        } else {
+            if (lightThemeMenuItem != null) {
+                lightThemeMenuItem.setSelected(true);
+            }
+        }
     }
     
     /**
@@ -434,6 +508,16 @@ public class MainController {
         
         // Update metadata
         updateNoteMetadata(note);
+        
+        // Ensure WebView has correct background color based on theme
+        if ("dark".equals(currentTheme) && previewWebView != null) {
+            previewWebView.setStyle("-fx-background-color: #1E1E1E;");
+        } else if (previewWebView != null) {
+            previewWebView.setStyle("-fx-background-color: #FFFFFF;");
+        }
+        
+        // Update preview
+        updatePreview();
         
         isModified = false;
         updateStatus("Loaded note: " + note.getTitle());
@@ -656,11 +740,18 @@ public class MainController {
     private void updatePreview() {
         if (currentNote != null && previewWebView != null) {
             String content = noteContentArea.getText();
+            // Determine if dark theme is active (handle system mode)
+            String actualTheme = currentTheme;
+            if ("system".equals(currentTheme)) {
+                actualTheme = detectSystemTheme();
+            }
+            boolean isDarkTheme = "dark".equals(actualTheme);
+            
             if (content != null && !content.trim().isEmpty()) {
                 // Convert markdown to HTML
                 String html = com.example.forevernote.util.MarkdownProcessor.markdownToHtml(content);
                 
-                // Create a complete HTML document with basic styling and emoji support
+                // Create a complete HTML document with theme-aware styling
                 String fullHtml = "<!DOCTYPE html>\n" +
                     "<html>\n" +
                     "<head>\n" +
@@ -668,26 +759,58 @@ public class MainController {
                     "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n" +
                     "    <style>\n" +
                     "        @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap');\n" +
-                    "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; padding: 20px; line-height: 1.6; color: #333; }\n" +
-                    "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; }\n" +
-                    "        h1 { font-size: 2em; border-bottom: 2px solid #eee; padding-bottom: 0.3em; }\n" +
-                    "        h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }\n" +
+                    "        html { " +
+                    (isDarkTheme ? "background-color: #1E1E1E;" : "background-color: #FFFFFF;") +
+                    " margin: 0; padding: 0; width: 100%; height: 100%; }\n" +
+                    (isDarkTheme ? 
+                    // Dark theme styles (standard dark theme colors)
+                    "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; padding: 20px; line-height: 1.6; color: #FFFFFF; background-color: #1E1E1E; }\n" +
+                    "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; color: #FFFFFF; }\n" +
+                    "        h1 { font-size: 2em; border-bottom: 2px solid #404040; padding-bottom: 0.3em; }\n" +
+                    "        h2 { font-size: 1.5em; border-bottom: 1px solid #404040; padding-bottom: 0.3em; }\n" +
                     "        h3 { font-size: 1.25em; }\n" +
-                    "        code { background-color: #f4f4f4; padding: 2px 4px; border-radius: 3px; font-family: 'Courier New', monospace; }\n" +
-                    "        pre { background-color: #f4f4f4; padding: 10px; border-radius: 5px; overflow-x: auto; }\n" +
-                    "        pre code { background-color: transparent; padding: 0; }\n" +
-                    "        blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 20px; color: #666; }\n" +
-                    "        ul, ol { margin: 1em 0; padding-left: 2em; }\n" +
+                    "        code { background-color: #2D2D2D; color: #A5B4FC; padding: 2px 4px; border-radius: 3px; font-family: 'Courier New', monospace; }\n" +
+                    "        pre { background-color: #2D2D2D; color: #FFFFFF; padding: 10px; border-radius: 5px; overflow-x: auto; border: 1px solid #404040; }\n" +
+                    "        pre code { background-color: transparent; padding: 0; color: #A5B4FC; }\n" +
+                    "        blockquote { border-left: 4px solid #818CF8; margin: 0; padding-left: 20px; color: #B3B3B3; background-color: #2D2D2D; padding: 10px 20px; border-radius: 4px; }\n" +
+                    "        ul, ol { margin: 1em 0; padding-left: 2em; color: #FFFFFF; }\n" +
                     "        li { margin: 0.5em 0; }\n" +
                     "        table { border-collapse: collapse; width: 100%; margin: 1em 0; }\n" +
-                    "        table th, table td { border: 1px solid #ddd; padding: 8px; text-align: left; }\n" +
-                    "        table th { background-color: #f4f4f4; font-weight: 600; }\n" +
-                    "        a { color: #0366d6; text-decoration: none; }\n" +
-                    "        a:hover { text-decoration: underline; }\n" +
-                    "        img { max-width: 100%; height: auto; }\n" +
-                    "        hr { border: none; border-top: 1px solid #eee; margin: 2em 0; }\n" +
+                    "        table th, table td { border: 1px solid #404040; padding: 8px; text-align: left; }\n" +
+                    "        table th { background-color: #2D2D2D; font-weight: 600; color: #FFFFFF; }\n" +
+                    "        table td { background-color: #1E1E1E; color: #FFFFFF; }\n" +
+                    "        a { color: #818CF8; text-decoration: none; }\n" +
+                    "        a:hover { color: #A5B4FC; text-decoration: underline; }\n" +
+                    "        img { max-width: 100%; height: auto; border-radius: 4px; }\n" +
+                    "        hr { border: none; border-top: 1px solid #404040; margin: 2em 0; }\n" +
+                    "        strong { color: #FFFFFF; font-weight: 600; }\n" +
+                    "        em { color: #FFFFFF; font-style: italic; }\n" +
                     "        /* Emoji support */\n" +
-                    "        * { font-variant-emoji: emoji; }\n" +
+                    "        * { font-variant-emoji: emoji; }\n" :
+                    // Light theme styles
+                    "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; padding: 20px; line-height: 1.6; color: #18181B; background-color: #FFFFFF; }\n" +
+                    "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; color: #18181B; }\n" +
+                    "        h1 { font-size: 2em; border-bottom: 2px solid #E4E4E7; padding-bottom: 0.3em; }\n" +
+                    "        h2 { font-size: 1.5em; border-bottom: 1px solid #E4E4E7; padding-bottom: 0.3em; }\n" +
+                    "        h3 { font-size: 1.25em; }\n" +
+                    "        code { background-color: #F5F5F5; color: #6366F1; padding: 2px 4px; border-radius: 3px; font-family: 'Courier New', monospace; }\n" +
+                    "        pre { background-color: #F5F5F5; color: #18181B; padding: 10px; border-radius: 5px; overflow-x: auto; border: 1px solid #E4E4E7; }\n" +
+                    "        pre code { background-color: transparent; padding: 0; color: #6366F1; }\n" +
+                    "        blockquote { border-left: 4px solid #6366F1; margin: 0; padding-left: 20px; color: #71717A; background-color: #FAFAFA; padding: 10px 20px; border-radius: 4px; }\n" +
+                    "        ul, ol { margin: 1em 0; padding-left: 2em; color: #18181B; }\n" +
+                    "        li { margin: 0.5em 0; }\n" +
+                    "        table { border-collapse: collapse; width: 100%; margin: 1em 0; }\n" +
+                    "        table th, table td { border: 1px solid #E4E4E7; padding: 8px; text-align: left; }\n" +
+                    "        table th { background-color: #F5F5F5; font-weight: 600; color: #18181B; }\n" +
+                    "        table td { background-color: #FFFFFF; color: #18181B; }\n" +
+                    "        a { color: #6366F1; text-decoration: none; }\n" +
+                    "        a:hover { color: #4F46E5; text-decoration: underline; }\n" +
+                    "        img { max-width: 100%; height: auto; border-radius: 4px; }\n" +
+                    "        hr { border: none; border-top: 1px solid #E4E4E7; margin: 2em 0; }\n" +
+                    "        strong { color: #18181B; font-weight: 600; }\n" +
+                    "        em { color: #18181B; font-style: italic; }\n" +
+                    "        /* Emoji support */\n" +
+                    "        * { font-variant-emoji: emoji; }\n") +
                     "    </style>\n" +
                     "</head>\n" +
                     "<body>\n" +
@@ -697,7 +820,22 @@ public class MainController {
                 
                 previewWebView.getEngine().loadContent(fullHtml, "text/html");
             } else {
-                previewWebView.getEngine().loadContent("", "text/html");
+                // Empty preview with theme-aware background
+                String emptyHtml = "<!DOCTYPE html>\n" +
+                    "<html>\n" +
+                    "<head>\n" +
+                    "    <meta charset=\"UTF-8\">\n" +
+                    "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n" +
+                    "    <style>\n" +
+                    "        html, body { " +
+                    (isDarkTheme ? "color: #B3B3B3; background-color: #1E1E1E;" : "color: #71717A; background-color: #FFFFFF;") +
+                    " margin: 0; padding: 0; width: 100%; height: 100%; }\n" +
+                    "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; }\n" +
+                    "    </style>\n" +
+                    "</head>\n" +
+                    "<body></body>\n" +
+                    "</html>";
+                previewWebView.getEngine().loadContent(emptyHtml, "text/html");
             }
         }
     }
@@ -1306,6 +1444,7 @@ public class MainController {
     @FXML 
     private void handleLightTheme(ActionEvent event) {
         currentTheme = "light";
+        updateThemeMenuSelection();
         applyTheme();
         updateStatus("Light theme applied");
     }
@@ -1313,23 +1452,163 @@ public class MainController {
     @FXML 
     private void handleDarkTheme(ActionEvent event) {
         currentTheme = "dark";
+        updateThemeMenuSelection();
         applyTheme();
         updateStatus("Dark theme applied");
     }
     
     @FXML 
     private void handleSystemTheme(ActionEvent event) {
-        // Detect system theme (simplified - always use light for now)
-        currentTheme = "light";
+        currentTheme = "system";
+        // Detect system theme using system properties
+        String osName = System.getProperty("os.name", "").toLowerCase();
+        boolean isSystemDark = false;
+        
+        // Try to detect system theme based on OS
+        if (osName.contains("win")) {
+            // Windows: Check registry or use JavaFX system properties
+            try {
+                // Try to detect Windows theme via system property
+                String theme = System.getProperty("sun.java2d.noddraw");
+                // For Windows 10/11, we can check the system preference
+                // This is a simplified approach - in production, use JNA or similar
+                isSystemDark = detectWindowsTheme();
+            } catch (Exception e) {
+                logger.warning("Could not detect Windows theme: " + e.getMessage());
+            }
+        } else if (osName.contains("mac")) {
+            // macOS: Check system preference
+            try {
+                Process process = Runtime.getRuntime().exec("defaults read -g AppleInterfaceStyle");
+                java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(process.getInputStream()));
+                String line = reader.readLine();
+                isSystemDark = "Dark".equals(line);
+                process.waitFor();
+            } catch (Exception e) {
+                logger.warning("Could not detect macOS theme: " + e.getMessage());
+            }
+        } else {
+            // Linux: Check GTK theme or other methods
+            // For now, default to light
+            isSystemDark = false;
+        }
+        
+        // Apply the detected system theme
+        String actualTheme = isSystemDark ? "dark" : "light";
+        currentTheme = "system"; // Keep track that we're in system mode
+        updateThemeMenuSelection();
+        
+        // Temporarily set to detected theme for applyTheme()
+        String previousTheme = currentTheme;
+        currentTheme = actualTheme;
         applyTheme();
-        updateStatus("System theme applied (light)");
+        currentTheme = previousTheme; // Restore system mode
+        
+        updateStatus("System theme applied (" + actualTheme + ")");
+    }
+    
+    /**
+     * Detect Windows theme (simplified approach).
+     * In production, use JNA or similar library for better detection.
+     */
+    private boolean detectWindowsTheme() {
+        try {
+            // Try to read Windows registry or use system properties
+            // This is a simplified approach
+            String theme = System.getProperty("sun.java2d.noddraw");
+            // For a more robust solution, use JNA to read registry:
+            // HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme
+            // For now, default to light theme
+            return false;
+        } catch (Exception e) {
+            return false;
+        }
     }
     
     private void applyTheme() {
-        // Theme switching would require CSS files
-        // For now, just log the change
-        // TODO: Implement CSS theme switching
-        logger.info("Theme changed to: " + currentTheme);
+        if (mainSplitPane == null) {
+            logger.warning("Cannot apply theme: mainSplitPane is null");
+            return;
+        }
+        
+        javafx.scene.Scene scene = mainSplitPane.getScene();
+        if (scene == null) {
+            logger.warning("Cannot apply theme: scene is null");
+            return;
+        }
+        
+        // Remove existing theme stylesheets
+        scene.getStylesheets().removeIf(stylesheet -> 
+            stylesheet.contains("modern-theme.css") || 
+            stylesheet.contains("dark-theme.css")
+        );
+        
+        // Add the appropriate theme stylesheet
+        java.net.URL themeResource;
+        if ("dark".equals(currentTheme)) {
+            themeResource = getClass().getResource("/com/example/forevernote/ui/css/dark-theme.css");
+        } else {
+            themeResource = getClass().getResource("/com/example/forevernote/ui/css/modern-theme.css");
+        }
+        
+        if (themeResource != null) {
+            scene.getStylesheets().add(themeResource.toExternalForm());
+            logger.info("Theme changed to: " + currentTheme);
+            
+            // Determine actual theme (system mode uses detected theme)
+            String actualTheme = currentTheme;
+            if ("system".equals(currentTheme)) {
+                // Re-detect system theme
+                actualTheme = detectSystemTheme();
+            }
+            
+            // Ensure WebView has correct background color
+            if ("dark".equals(actualTheme) && previewWebView != null) {
+                previewWebView.setStyle("-fx-background-color: #1E1E1E;");
+                // Also set background via JavaScript to ensure it's applied
+                previewWebView.getEngine().executeScript(
+                    "document.body.style.backgroundColor = '#1E1E1E';"
+                );
+            } else if (previewWebView != null) {
+                previewWebView.setStyle("-fx-background-color: #FFFFFF;");
+                previewWebView.getEngine().executeScript(
+                    "document.body.style.backgroundColor = '#FFFFFF';"
+                );
+            }
+            
+            // Update preview to reflect theme change
+            if (currentNote != null) {
+                updatePreview();
+            }
+        } else {
+            logger.warning("Could not load theme stylesheet for: " + currentTheme);
+        }
+    }
+    
+    /**
+     * Detect system theme.
+     */
+    private String detectSystemTheme() {
+        String osName = System.getProperty("os.name", "").toLowerCase();
+        boolean isSystemDark = false;
+        
+        if (osName.contains("win")) {
+            isSystemDark = detectWindowsTheme();
+        } else if (osName.contains("mac")) {
+            try {
+                Process process = Runtime.getRuntime().exec("defaults read -g AppleInterfaceStyle");
+                java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(process.getInputStream()));
+                String line = reader.readLine();
+                isSystemDark = "Dark".equals(line);
+                process.waitFor();
+            } catch (Exception e) {
+                logger.warning("Could not detect macOS theme: " + e.getMessage());
+            }
+        }
+        
+        return isSystemDark ? "dark" : "light";
     }
     @FXML 
     private void handleSearch(ActionEvent event) {

@@ -44,9 +44,9 @@
                     <MenuItem text="Reset Zoom" onAction="#handleResetZoom" accelerator="Shortcut+0"/>
                     <SeparatorMenuItem/>
                     <Menu text="Theme">
-                        <RadioMenuItem text="Light" selected="true" onAction="#handleLightTheme"/>
-                        <RadioMenuItem text="Dark" onAction="#handleDarkTheme"/>
-                        <RadioMenuItem text="System" onAction="#handleSystemTheme"/>
+                        <RadioMenuItem fx:id="lightThemeMenuItem" text="Light" selected="true" onAction="#handleLightTheme"/>
+                        <RadioMenuItem fx:id="darkThemeMenuItem" text="Dark" onAction="#handleDarkTheme"/>
+                        <RadioMenuItem fx:id="systemThemeMenuItem" text="System" onAction="#handleSystemTheme"/>
                     </Menu>
                 </Menu>
                 
