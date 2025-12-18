@@ -22,20 +22,28 @@ if (Test-Path $jar) {
     
     if (Test-Path $m2Repo) {
         # javafx.web requires javafx.media, so we need to include it
-        $modulesToCheck = @(
-            "$m2Repo\org\openjfx\javafx-base\21*",
-            "$m2Repo\org\openjfx\javafx-controls\21*",
-            "$m2Repo\org\openjfx\javafx-fxml\21*",
-            "$m2Repo\org\openjfx\javafx-graphics\21*",
-            "$m2Repo\org\openjfx\javafx-media\21*",
-            "$m2Repo\org\openjfx\javafx-web\21*"
-        )
+        $modulesToFind = @('javafx-base', 'javafx-controls', 'javafx-fxml', 'javafx-graphics', 'javafx-media', 'javafx-web')
         
-        foreach ($modulePath in $modulesToCheck) {
-            $dirs = Get-ChildItem -Path $modulePath -Directory -ErrorAction SilentlyContinue
-            foreach ($dir in $dirs) {
-                if ($dir.FullName -notin $javafxModules) {
-                    $javafxModules += $dir.FullName
+        foreach ($moduleName in $modulesToFind) {
+            # Find version directories (e.g., 21, 21.0.0, etc.)
+            $versionDirs = Get-ChildItem -Path "$m2Repo\org\openjfx\$moduleName" -Directory -ErrorAction SilentlyContinue | 
+                Where-Object { $_.Name -match '^21' } | 
+                Sort-Object Name -Descending
+            
+            if ($versionDirs) {
+                # Take the first matching version directory
+                $versionDir = $versionDirs[0].FullName
+                # Find the actual JAR file (not -sources.jar or -javadoc.jar)
+                $jarFile = Get-ChildItem -Path $versionDir -Filter "$moduleName-*.jar" -ErrorAction SilentlyContinue | 
+                    Where-Object { $_.Name -notmatch '-(sources|javadoc)\.jar$' } | 
+                    Select-Object -First 1
+                
+                if ($jarFile) {
+                    # Use the JAR file path directly (Java module-path accepts individual JAR files)
+                    # This avoids Java scanning the directory and picking up -sources.jar files
+                    if ($jarFile.FullName -notin $javafxModules) {
+                        $javafxModules += $jarFile.FullName
+                    }
                 }
             }
         }

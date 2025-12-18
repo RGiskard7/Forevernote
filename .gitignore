@@ -17,7 +17,6 @@ dependency-reduced-pom.xml
 *.iml
 *.iws
 *.ipr
-.vscode/
 *.sublime-project
 *.sublime-workspace
 
@@ -27,12 +26,6 @@ dependency-reduced-pom.xml
 .project
 .factorypath
 .c9/
-
-# IDE - VS Code
-.vscode/settings.json
-.vscode/launch.json
-.vscode/extensions.json
-.vscode/tasks.json
 
 # Claude
 .claude/

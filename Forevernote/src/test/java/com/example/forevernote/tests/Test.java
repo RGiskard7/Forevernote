@@ -2,14 +2,11 @@ package com.example.forevernote.tests;
 
 import java.sql.Connection;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.List;
 import java.util.logging.Logger;
 
 import com.example.forevernote.config.LoggerConfig;
 import com.example.forevernote.data.SQLiteDB;
-import com.example.forevernote.data.dao.FolderDAOSQLite;
 import com.example.forevernote.data.dao.abstractLayers.FactoryDAO;
 import com.example.forevernote.data.dao.interfaces.NoteDAO;
 import com.example.forevernote.data.dao.interfaces.FolderDAO;

@@ -8,7 +8,6 @@ import javafx.stage.Stage;
 
 import com.example.forevernote.config.LoggerConfig;
 import com.example.forevernote.data.SQLiteDB;
-import com.example.forevernote.ui.controller.MainController;
 
 import java.io.IOException;
 import java.util.logging.Logger;
@@ -50,10 +49,6 @@ public class Main extends Application {
             // Load main view
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/example/forevernote/ui/view/MainView.fxml"));
             Scene scene = new Scene(loader.load(), 1200, 800);
-
-            // Get controller and configure keyboard shortcuts
-            MainController controller = loader.getController();
-            // Keyboard shortcuts can be configured here if needed
 
             // Apply CSS styling
             var cssResource = getClass().getResource("/com/example/forevernote/ui/css/modern-theme.css");

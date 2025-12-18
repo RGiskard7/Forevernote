@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Launch Forevernote (Maven JavaFX)",
+            "request": "launch",
+            "mainClass": "com.example.forevernote.Main",
+            "projectName": "forevernote",
+            "preLaunchTask": "maven-exec-java",
+            "noDebug": true
+        },
+        {
+            "type": "java",
+            "name": "Launch Forevernote (Debug)",
+            "request": "launch",
+            "mainClass": "com.example.forevernote.Main",
+            "projectName": "forevernote",
+            "vmArgs": "-Dfile.encoding=UTF-8 --module-path \"${env:USERPROFILE}\\.m2\\repository\\org\\openjfx\\javafx-base\\21\\javafx-base-21.jar;${env:USERPROFILE}\\.m2\\repository\\org\\openjfx\\javafx-controls\\21\\javafx-controls-21.jar;${env:USERPROFILE}\\.m2\\repository\\org\\openjfx\\javafx-fxml\\21\\javafx-fxml-21.jar;${env:USERPROFILE}\\.m2\\repository\\org\\openjfx\\javafx-graphics\\21\\javafx-graphics-21.jar;${env:USERPROFILE}\\.m2\\repository\\org\\openjfx\\javafx-media\\21\\javafx-media-21.jar;${env:USERPROFILE}\\.m2\\repository\\org\\openjfx\\javafx-web\\21\\javafx-web-21.jar\" --add-modules javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.media,javafx.web",
+            "preLaunchTask": "maven-compile",
+            "env": {
+                "JAVA_HOME": "C:\\Program Files\\Java\\jdk-17"
+            }
+        }
+    ]
+}
+
+
+

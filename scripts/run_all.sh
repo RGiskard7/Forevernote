@@ -23,12 +23,18 @@ if [ -f "$JAR" ]; then
     for module in javafx-base javafx-controls javafx-fxml javafx-graphics javafx-media javafx-web; do
       for module_dir in "$M2_REPO"/org/openjfx/$module/21*; do
         if [ -d "$module_dir" ]; then
-          if [ -z "$JAVAFX_MODULES" ]; then
-            JAVAFX_MODULES="$module_dir"
-          else
-            JAVAFX_MODULES="$JAVAFX_MODULES:$module_dir"
+          # Find the actual JAR file (not -sources.jar or -javadoc.jar)
+          jar_file=$(ls "$module_dir"/${module}-*.jar 2>/dev/null | grep -v -E '-(sources|javadoc)\.jar$' | head -n 1)
+          if [ -n "$jar_file" ] && [ -f "$jar_file" ]; then
+            # Use the JAR file path directly (Java module-path accepts individual JAR files)
+            # This avoids Java scanning the directory and picking up -sources.jar files
+            if [ -z "$JAVAFX_MODULES" ]; then
+              JAVAFX_MODULES="$jar_file"
+            else
+              JAVAFX_MODULES="$JAVAFX_MODULES:$jar_file"
+            fi
+            break  # Only take the first matching version
           fi
-          break  # Only take the first matching version
         fi
       done
     done
