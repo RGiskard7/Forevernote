@@ -1,6 +1,9 @@
 #!/bin/bash
 # Package script for Forevernote - macOS (DMG installer)
 # Usage: ./scripts/package-macos.sh
+#
+# Creates a native macOS DMG installer using jpackage.
+# The resulting .app bundle includes a bundled JRE.
 
 set -e
 
@@ -48,8 +51,6 @@ fi
 echo ""
 echo "Creating macOS DMG installer..."
 echo ""
-echo "Running jpackage (this may take several minutes)..."
-echo ""
 
 OUTPUT_DIR="target/installers"
 mkdir -p "$OUTPUT_DIR"
@@ -65,10 +66,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Packaging application (downloading Java runtime if needed)..."
+echo "Packaging application (this may take several minutes)..."
 echo ""
 
 # Use jpackage to create DMG installer
+# Note: The uber-jar already includes JavaFX classes, so we don't need --module-path
 jpackage \
     --input "$TEMP_INPUT_DIR" \
     --name Forevernote \
@@ -81,7 +83,9 @@ jpackage \
     --description "A free and open-source note-taking application" \
     --copyright "Copyright 2025 Forevernote" \
     --mac-package-name "Forevernote" \
-    --mac-app-category "public.app-category.productivity"
+    --mac-app-category "public.app-category.productivity" \
+    --java-options "-Dfile.encoding=UTF-8" \
+    --java-options "-Dapple.awt.application.appearance=system"
 
 if [ $? -eq 0 ]; then
     echo ""
@@ -91,11 +95,11 @@ if [ $? -eq 0 ]; then
     echo ""
     echo "Installer location: $OUTPUT_DIR/Forevernote-1.0.0.dmg"
     echo ""
+    echo "Data will be stored in: ~/Library/Application Support/Forevernote/"
+    echo ""
     echo "You can now distribute this DMG installer."
-    echo "Users can install it like any other macOS application."
 else
     echo ""
     echo "Error: Package creation failed"
     exit 1
 fi
-

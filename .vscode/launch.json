@@ -8,6 +8,7 @@
             "mainClass": "com.example.forevernote.Main",
             "projectName": "forevernote",
             "preLaunchTask": "maven-exec-java",
+            "cwd": "${workspaceFolder}/Forevernote",
             "noDebug": true
         },
         {
@@ -17,6 +18,7 @@
             "mainClass": "com.example.forevernote.Main",
             "projectName": "forevernote",
             "preLaunchTask": "maven-compile",
+            "cwd": "${workspaceFolder}/Forevernote",
             "vmArgs": "-Dfile.encoding=UTF-8"
         }
     ]

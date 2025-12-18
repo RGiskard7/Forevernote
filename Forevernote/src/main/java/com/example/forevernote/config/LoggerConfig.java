@@ -1,39 +1,81 @@
 package com.example.forevernote.config;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
 import java.util.logging.LogManager;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
+
+import com.example.forevernote.AppDataDirectory;
 
 /**
- * LoggerConfig is responsible for configuring the logging system for the application.
- * It reads the logging configuration from a properties file and sets up the logging system accordingly.
+ * Configures the logging system for the application.
+ * 
+ * Reads base configuration from logging.properties, then configures
+ * the FileHandler to use the correct logs directory from AppDataDirectory.
+ * 
+ * Note: AppDataDirectory.ensureDirectoriesExist() must be called before
+ * this class is loaded (done in Main's static block).
  */
 public class LoggerConfig {
 
-	// Static block to configure the logger
     static {
-    	// Crear una carpeta resource e incluirla en el classpath para que getResourceAsStream lo encuentre
-    	// Attempt to load the logging configuration from the 'logging.properties' file
-        try (InputStream configFile = LoggerConfig.class.getClassLoader().getResourceAsStream("logging.properties")) {
+        try (InputStream configFile = LoggerConfig.class.getClassLoader()
+                .getResourceAsStream("logging.properties")) {
+            
             if (configFile == null) {
-            	// Throw an exception if the configuration file is not found
                 throw new IOException("Could not find logging.properties file");
             }
-        	// Load the logging configuration from the properties file
+            
+            // Load base configuration
             LogManager.getLogManager().readConfiguration(configFile);
-
+            
+            // Configure FileHandler with absolute path from AppDataDirectory
+            configureFileHandler();
+            
         } catch (IOException e) {
-        	// Log a severe error if there is an issue loading the configuration file
-            Logger.getLogger(LoggerConfig.class.getName()).severe("Could not load logging configuration: " + e.getMessage());
+            Logger.getLogger(LoggerConfig.class.getName())
+                .severe("Could not load logging configuration: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Configures the FileHandler with the correct absolute path.
+     */
+    private static void configureFileHandler() {
+        try {
+            String logsDir = AppDataDirectory.getLogsDirectory();
+            String logFile = new File(logsDir, "app.log").getAbsolutePath();
+            
+            // Reset and reconfigure with absolute path
+            LogManager.getLogManager().reset();
+            
+            // Console handler
+            ConsoleHandler consoleHandler = new ConsoleHandler();
+            consoleHandler.setLevel(Level.INFO);
+            consoleHandler.setFormatter(new SimpleFormatter());
+            Logger.getLogger("").addHandler(consoleHandler);
+            
+            // File handler with absolute path
+            FileHandler fileHandler = new FileHandler(logFile, true);
+            fileHandler.setLevel(Level.ALL);
+            fileHandler.setFormatter(new SimpleFormatter());
+            Logger.getLogger("").addHandler(fileHandler);
+            
+            // Root logger level
+            Logger.getLogger("").setLevel(Level.ALL);
+            
+        } catch (Exception e) {
+            System.err.println("Warning: Could not configure file logging: " + e.getMessage());
         }
     }
 
     /**
      * Returns the logger for the given class.
-     * 
-     * @param clazz the class for which to get the logger
-     * @return the logger instance
      */
     public static Logger getLogger(Class<?> clazz) {
         return Logger.getLogger(clazz.getName());
