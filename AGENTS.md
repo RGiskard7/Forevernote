@@ -33,13 +33,13 @@ NOTA: usa los scripts provistos (`scripts/`) — gestionan JavaFX module-path y 
 - Ejecutar el JAR empaquetado (si fallase, usa los scripts):
 
 ```powershell
-.\launch.bat           # Windows (usa module-path si hace falta)
-.\scripts\run_all.ps1 # Windows PowerShell (recomendado)
+.\scripts\launch-forevernote.bat  # Windows (recomendado)
+.\scripts\run_all.ps1              # Windows PowerShell (alternativa)
 ```
 
 ```bash
-./launch.sh            # Unix
-./scripts/run_all.sh   # Unix (recomendado)
+./scripts/launch-forevernote.sh    # Unix (recomendado)
+./scripts/run_all.sh               # Unix (alternativa)
 ```
 
 **Nota rápida de entorno:** si `java` o `mvn` no están en `PATH`, en PowerShell puedes exportarlos temporalmente:
@@ -76,7 +76,7 @@ mvn -f Forevernote/pom.xml clean package -DskipTests
 mvn -f Forevernote/pom.xml clean compile
 ```
 
-Si se va a añadir un linter, usar Checkstyle o SpotBugs y documentar en `BUILD.md`.
+Si se va a añadir un linter, usar Checkstyle o SpotBugs y documentar en `doc/BUILD.md`.
 
 ---
 
@@ -97,7 +97,7 @@ Ruta raíz relevante: `Forevernote/` (módulo principal dentro del repo)
 
 - `Forevernote/pom.xml` — configuraciones Maven, JavaFX plugin y Assembly para uber-jar.
 - `scripts/` — utilidades: `build_all.ps1`, `run_all.ps1`, `build_all.sh`, `run_all.sh`, `schema.txt`.
-- `launch.bat`, `launch.sh` — wrappers locales que configuran module-path para JavaFX.
+- `scripts/launch-forevernote.bat`, `scripts/launch-forevernote.sh` — lanzadores standalone que configuran module-path para JavaFX automáticamente.
 - `target/` — salida de build (JARs).
 - `data/` (runtime) — `database.db` creado en `Forevernote/data/database.db` en ejecución (se crea automáticamente al ejecutar la app, no durante la compilación).
 - `logs/` (runtime) — archivos de log en `Forevernote/logs/` (se crea automáticamente al ejecutar la app, no durante la compilación).
@@ -191,7 +191,7 @@ Zonas a revisar con cuidado:
 
 ---
 
-Mantén esta guía como la fuente autoritativa para agentes. Si añades herramientas (linters, CI, migrator), documenta la integración aquí y en `BUILD.md`.
+Mantén esta guía como la fuente autoritativa para agentes. Si añades herramientas (linters, CI, migrator), documenta la integración aquí y en `doc/BUILD.md`.
 ---
 
 ## Session Log: 2025-12-17 - Complete Project Fix & Feature Implementation

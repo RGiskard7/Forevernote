@@ -29,6 +29,7 @@ import javafx.scene.control.TreeView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.KeyCode;
@@ -69,6 +70,8 @@ public class MainController {
     private Folder currentFolder;
     private Note currentNote;
     private boolean isModified = false;
+    private String currentFilterType = "all"; // "all", "folder", "tag", "favorites", "search"
+    private Tag currentTag = null;
     
     // FXML UI Components
     @FXML private MenuBar menuBar;
@@ -147,6 +150,7 @@ public class MainController {
             loadFolders();
             loadRecentNotes();
             loadTags();
+            loadFavorites();
             
             updateStatus("Ready");
             logger.info("MainController initialized successfully");
@@ -444,6 +448,8 @@ public class MainController {
             notesListView.getItems().setAll(notes);
             noteCountLabel.setText(notes.size() + " notes");
             currentFolder = null;
+            currentTag = null;
+            currentFilterType = "all";
             updateStatus("Loaded all notes");
         } catch (Exception e) {
             logger.severe("Failed to load all notes: " + e.getMessage());
@@ -474,6 +480,8 @@ public class MainController {
                 
                 notesListView.getItems().setAll(notes);
                 noteCountLabel.setText(notes.size() + " notes");
+                currentFilterType = "folder";
+                currentTag = null;
                 updateStatus("Loaded folder: " + currentFolder.getTitle());
             }
         } catch (Exception e) {
@@ -518,6 +526,9 @@ public class MainController {
         
         // Update preview
         updatePreview();
+        
+        // Refresh favorites list to show current favorite status
+        loadFavorites();
         
         isModified = false;
         updateStatus("Loaded note: " + note.getTitle());
@@ -589,8 +600,89 @@ public class MainController {
                 .toList();
             
             recentNotesListView.getItems().setAll(recentTitles);
+            
+            // Add listener for recent note selection
+            recentNotesListView.getSelectionModel().selectedItemProperty().addListener(
+                (observable, oldValue, newValue) -> {
+                    if (newValue != null) {
+                        // Find and load the recent note
+                        Optional<Note> recentNote = allNotes.stream()
+                            .filter(n -> n.getTitle().equals(newValue))
+                            .findFirst();
+                        if (recentNote.isPresent()) {
+                            // Load note directly in editor
+                            loadNoteInEditor(recentNote.get());
+                        }
+                    }
+                }
+            );
         } catch (Exception e) {
             logger.warning("Failed to load recent notes: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Load favorites.
+     */
+    private void loadFavorites() {
+        try {
+            List<Note> allNotes = noteDAO.fetchAllNotes();
+            List<Note> favoriteNotes = allNotes.stream()
+                .filter(Note::isFavorite)
+                .toList();
+            
+            List<String> favoriteTitles = favoriteNotes.stream()
+                .map(Note::getTitle)
+                .limit(10)
+                .toList();
+            
+            favoritesListView.getItems().setAll(favoriteTitles);
+            
+            // Add listener for favorite selection
+            favoritesListView.getSelectionModel().selectedItemProperty().addListener(
+                (observable, oldValue, newValue) -> {
+                    if (newValue != null) {
+                        // Find and load the favorite note
+                        Optional<Note> favoriteNote = favoriteNotes.stream()
+                            .filter(n -> n.getTitle().equals(newValue))
+                            .findFirst();
+                        if (favoriteNote.isPresent()) {
+                            // Update context to show favorites
+                            currentFilterType = "favorites";
+                            currentFolder = null;
+                            currentTag = null;
+                            
+                            // Clear selection and items to avoid IndexOutOfBoundsException
+                            notesListView.getSelectionModel().clearSelection();
+                            notesListView.getItems().clear();
+                            
+                            // Show all favorites in notes list using addAll instead of setAll
+                            // This is safer and avoids selection issues
+                            notesListView.getItems().addAll(favoriteNotes);
+                            noteCountLabel.setText(favoriteNotes.size() + " favorite notes");
+                            
+                            // Use Platform.runLater to ensure list update completes before loading note
+                            Platform.runLater(() -> {
+                                try {
+                                    // Try to select the note in the list if it's present
+                                    int index = notesListView.getItems().indexOf(favoriteNote.get());
+                                    if (index >= 0) {
+                                        notesListView.getSelectionModel().select(index);
+                                    }
+                                    // Load note in editor
+                                    loadNoteInEditor(favoriteNote.get());
+                                } catch (Exception e) {
+                                    // If selection fails, just load the note
+                                    logger.warning("Could not select favorite note in list: " + e.getMessage());
+                                    loadNoteInEditor(favoriteNote.get());
+                                }
+                            });
+                        }
+                    }
+                }
+            );
+        } catch (Exception e) {
+            logger.warning("Failed to load favorites: " + e.getMessage());
         }
     }
     
@@ -636,10 +728,12 @@ public class MainController {
             
             if (selectedTag.isPresent()) {
                 Tag tag = selectedTag.get();
+                currentTag = tag;
+                currentFolder = null; // Clear folder selection when filtering by tag
+                currentFilterType = "tag";
                 List<Note> notesWithTag = tagDAO.fetchAllNotesWithTag(tag.getId());
                 notesListView.getItems().setAll(notesWithTag);
                 noteCountLabel.setText(notesWithTag.size() + " notes with tag: " + tagName);
-                currentFolder = null; // Clear folder selection when filtering by tag
                 updateStatus("Filtered by tag: " + tagName);
             }
         } catch (Exception e) {
@@ -653,7 +747,14 @@ public class MainController {
      */
     private void performSearch(String searchText) {
         if (searchText == null || searchText.trim().isEmpty()) {
-            loadAllNotes();
+            // Restore previous context if search is cleared
+            if (currentFolder != null) {
+                handleFolderSelection(currentFolder);
+            } else if (currentTag != null) {
+                handleTagSelection(currentTag.getTitle());
+            } else {
+                loadAllNotes();
+            }
             return;
         }
         
@@ -668,6 +769,7 @@ public class MainController {
             
             notesListView.getItems().setAll(filteredNotes);
             noteCountLabel.setText(filteredNotes.size() + " notes found");
+            currentFilterType = "search";
             updateStatus("Search: " + searchText);
         } catch (Exception e) {
             logger.severe("Failed to perform search: " + e.getMessage());
@@ -1139,6 +1241,9 @@ public class MainController {
                 
                 // Refresh the notes list to show updated title
                 refreshNotesList();
+                
+                // Refresh favorites list in case favorite status changed
+                loadFavorites();
                 
                 updateStatus("Saved: " + currentNote.getTitle());
             } catch (Exception e) {
@@ -1810,17 +1915,81 @@ public class MainController {
         alert.showAndWait();
     }
     @FXML private void handleAbout(ActionEvent event) { updateStatus("About not implemented yet"); }
-    @FXML private void handleRefresh(ActionEvent event) { loadAllNotes(); }
+    
+    @FXML 
+    private void handleRefresh(ActionEvent event) {
+        // Refresh based on current context
+        try {
+            switch (currentFilterType) {
+                case "folder":
+                    if (currentFolder != null) {
+                        handleFolderSelection(currentFolder);
+                    } else {
+                        loadAllNotes();
+                    }
+                    break;
+                case "tag":
+                    if (currentTag != null) {
+                        handleTagSelection(currentTag.getTitle());
+                    } else {
+                        loadAllNotes();
+                    }
+                    break;
+                case "favorites":
+                    // Load favorites
+                    List<Note> allNotes = noteDAO.fetchAllNotes();
+                    List<Note> favoriteNotes = allNotes.stream()
+                        .filter(Note::isFavorite)
+                        .toList();
+                    notesListView.getItems().setAll(favoriteNotes);
+                    noteCountLabel.setText(favoriteNotes.size() + " favorite notes");
+                    currentFilterType = "favorites";
+                    currentFolder = null;
+                    currentTag = null;
+                    updateStatus("Refreshed favorites");
+                    break;
+                case "search":
+                    // Re-execute current search
+                    String searchText = searchField.getText();
+                    if (searchText != null && !searchText.trim().isEmpty()) {
+                        performSearch(searchText);
+                    } else {
+                        loadAllNotes();
+                    }
+                    break;
+                default:
+                    loadAllNotes();
+                    break;
+            }
+        } catch (Exception e) {
+            logger.severe("Failed to refresh: " + e.getMessage());
+            updateStatus("Error refreshing");
+        }
+    }
     @FXML 
     private void handleToggleFavorite(ActionEvent event) {
         if (currentNote == null) {
             updateStatus("No note selected");
             return;
         }
-        // Note: Favorites feature requires a database field that doesn't exist yet
-        // For now, we'll use a simple in-memory tracking
-        // TODO: Add is_favorite field to notes table
-        updateStatus("Favorite feature requires database schema update");
+        
+        try {
+            // Toggle favorite status
+            boolean newFavoriteStatus = !currentNote.isFavorite();
+            currentNote.setFavorite(newFavoriteStatus);
+            
+            // Save to database
+            noteDAO.updateNote(currentNote);
+            isModified = false; // Already saved
+            
+            // Refresh favorites list if visible
+            loadFavorites();
+            
+            updateStatus(newFavoriteStatus ? "Note marked as favorite" : "Note unmarked as favorite");
+        } catch (Exception e) {
+            logger.severe("Failed to toggle favorite: " + e.getMessage());
+            updateStatus("Error toggling favorite");
+        }
     }
     @FXML 
     private void handleNewTag(ActionEvent event) {

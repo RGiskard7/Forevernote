@@ -1,5 +1,325 @@
 # Changelog - Forevernote
 
+## 📅 2025-12-18 (9) — Corrección de script launch-forevernote.ps1 para usar archivos JAR específicos
+
+### Resumen
+Corregido error en `scripts/launch-forevernote.ps1` que intentaba usar directorios en lugar de archivos JAR específicos, causando que Java intentara cargar archivos `-sources.jar` inválidos.
+
+### Archivos modificados
+
+1. **`scripts/launch-forevernote.ps1`**
+   - ✅ Corregido para usar archivos JAR específicos en lugar de directorios
+   - ✅ Filtrado de archivos `-sources.jar` y `-javadoc.jar`
+   - ✅ Ahora funciona igual que `run_all.ps1` que ya funcionaba correctamente
+
+### Problema corregido
+
+- ❌ **Antes**: Usaba directorios en module-path, Java intentaba cargar `javafx-base-21-sources.jar` (inválido)
+- ✅ **Ahora**: Usa archivos JAR específicos, excluyendo `-sources.jar` y `-javadoc.jar`
+
+---
+
+## 📅 2025-12-18 (8) — Corrección de script launch-forevernote.bat para Windows
+
+### Resumen
+Corregido error de sintaxis en `scripts/launch-forevernote.bat` que causaba "No se esperaba ... en este momento". Eliminados códigos ANSI que no funcionan en CMD de Windows.
+
+### Archivos modificados
+
+1. **`scripts/launch-forevernote.bat`**
+   - ✅ Eliminados códigos ANSI de colores (no funcionan en CMD de Windows)
+   - ✅ Corregida sintaxis del script
+   - ✅ Traducido completamente al inglés
+   - ✅ Mensajes simplificados y claros
+   - ✅ Script ahora funciona correctamente en CMD y PowerShell
+
+### Problema corregido
+
+- ❌ **Antes**: Códigos ANSI `[92m`, `[91m`, etc. causaban errores de sintaxis
+- ✅ **Ahora**: Script usa mensajes simples sin códigos de color, funciona en todos los entornos Windows
+
+---
+
+## 📅 2025-12-18 (7) — Eliminación de scripts de lanzamiento obsoletos
+
+### Resumen
+Eliminados `launch.bat` y `launch.sh` de la raíz del proyecto ya que están obsoletos. Los scripts modernos y actualizados están en `scripts/launch-forevernote.bat` y `scripts/launch-forevernote.sh`.
+
+### Archivos eliminados
+
+- ✅ `launch.bat` - Script obsoleto de la raíz
+- ✅ `launch.sh` - Script obsoleto de la raíz
+
+### Archivos modificados
+
+1. **`AGENTS.md`**
+   - ✅ Referencias actualizadas a `scripts/launch-forevernote.bat` y `scripts/launch-forevernote.sh`
+   - ✅ Eliminadas referencias a scripts obsoletos
+
+2. **`doc/BUILD.md`**
+   - ✅ Referencias actualizadas a scripts en `scripts/`
+
+### Nota
+
+Los scripts en `scripts/` son más modernos, tienen mejor detección de Java/JavaFX, mensajes de error más claros, y están mejor organizados. Los scripts antiguos en la raíz eran versiones anteriores y ya no son necesarios.
+
+---
+
+## 📅 2025-12-18 (6) — Actualización profesional del README y enlaces a documentación
+
+### Resumen
+Actualizado README.md para hacerlo más profesional, estándar y sin emoticonos excesivos. Agregada sección de documentación con enlaces claros a todos los archivos en `doc/`.
+
+### Archivos modificados
+
+1. **`README.md`**
+   - ✅ Eliminados emoticonos excesivos
+   - ✅ Agregada tabla de contenidos profesional
+   - ✅ Agregada sección "Documentation" con enlaces a todos los archivos en `doc/`
+   - ✅ Estructura más clara y profesional
+   - ✅ Enlaces directos a BUILD.md, LAUNCH_APP.md y PACKAGING.md
+   - ✅ Referencias actualizadas a scripts de lanzamiento
+   - ✅ Tono más serio y estándar para proyecto profesional
+
+### Mejoras
+
+- ✅ README más profesional y estándar
+- ✅ Fácil acceso a toda la documentación desde README
+- ✅ Estructura clara con tabla de contenidos
+- ✅ Enlaces directos a guías específicas
+- ✅ Consistencia en formato y estilo
+
+---
+
+## 📅 2025-12-18 (5) — Reorganización de estructura de archivos y documentación
+
+## 📅 2025-12-18 (4) — Scripts multiplataforma y instaladores nativos (Windows/macOS/Linux)
+
+### Resumen
+Agregados scripts de lanzamiento para todas las plataformas y scripts para generar instaladores nativos usando jpackage. Traducida documentación al inglés.
+
+### Archivos creados
+
+1. **`Forevernote/launch-forevernote.sh`**
+   - ✅ Script de lanzamiento para macOS/Linux
+   - ✅ Detección automática de Java y JavaFX
+   - ✅ Configuración automática del module-path
+   - ✅ Mensajes de error claros
+
+2. **`scripts/package-windows.ps1`**
+   - ✅ Genera instalador MSI para Windows
+   - ✅ Incluye Java en el instalador
+   - ✅ Crea acceso directo en el menú de inicio
+
+3. **`scripts/package-macos.sh`**
+   - ✅ Genera instalador DMG para macOS
+   - ✅ Crea aplicación .app nativa
+   - ✅ Listo para distribución
+
+4. **`scripts/package-linux.sh`**
+   - ✅ Genera instalador DEB para Debian/Ubuntu
+   - ✅ Genera instalador RPM para RedHat/Fedora
+   - ✅ Detecta automáticamente la distribución
+
+### Archivos modificados
+
+1. **`Forevernote/LAUNCH_APP.md`**
+   - ✅ Traducido completamente al inglés
+   - ✅ Agregadas instrucciones para instaladores nativos
+   - ✅ Documentación para todas las plataformas
+
+2. **`Forevernote/pom.xml`**
+   - ✅ Agregado plugin jpackage-maven-plugin
+   - ✅ Configuración para generar instaladores nativos
+
+### Uso
+
+**Generar instalador Windows (MSI):**
+```powershell
+.\scripts\package-windows.ps1
+```
+
+**Generar instalador macOS (DMG):**
+```bash
+./scripts/package-macos.sh
+```
+
+**Generar instalador Linux (DEB/RPM):**
+```bash
+./scripts/package-linux.sh
+```
+
+Los instaladores se generan en: `Forevernote/target/installers/`
+
+### Características de los instaladores
+
+- ✅ Incluyen Java (no requieren Java instalado)
+- ✅ Instalación nativa del sistema operativo
+- ✅ Accesos directos automáticos
+- ✅ Integración con el sistema
+- ✅ Desinstalación fácil
+
+---
+
+## 📅 2025-12-18 (3) — Scripts y documentación para ejecutar Forevernote como aplicación independiente
+
+### Resumen
+Agregados scripts mejorados y documentación completa para ejecutar Forevernote como aplicación normal sin necesidad de VS Code o Maven.
+
+### Archivos creados
+
+1. **`Forevernote/launch-forevernote.bat`**
+   - ✅ Script de lanzamiento mejorado para Windows
+   - ✅ Detección automática de Java y JavaFX
+   - ✅ Configuración automática del module-path
+   - ✅ Mensajes de error claros y útiles
+   - ✅ Manejo robusto de errores
+
+2. **`Forevernote/LAUNCH_APP.md`**
+   - ✅ Documentación completa sobre cómo generar y ejecutar el JAR
+   - ✅ Instrucciones paso a paso
+   - ✅ Solución de problemas comunes
+   - ✅ Guía para distribuir la aplicación
+
+### Mejoras
+
+- ✅ Script de lanzamiento más robusto que detecta automáticamente JavaFX
+- ✅ Documentación clara para usuarios finales
+- ✅ Instrucciones para crear accesos directos
+- ✅ Guía para distribuir la aplicación
+
+### Uso
+
+Para generar el JAR ejecutable:
+```powershell
+.\scripts\build_all.ps1
+```
+
+Para ejecutar la aplicación:
+```powershell
+.\Forevernote\launch-forevernote.bat
+```
+
+El JAR se encuentra en: `Forevernote/target/forevernote-1.0.0-uber.jar`
+
+---
+
+## 📅 2025-12-18 (2) — Corrección definitiva del error IndexOutOfBoundsException en favoritos
+
+### Resumen
+Corrección final del error IndexOutOfBoundsException que ocurría al hacer clic en favoritos. El problema era que JavaFX intentaba mantener la selección mientras se actualizaba la lista.
+
+### Archivos modificados
+
+1. **`Forevernote/src/main/java/com/example/forevernote/ui/controller/MainController.java`**
+   - ✅ Agregado import de `javafx.application.Platform`
+   - ✅ Modificado `loadFavorites()` para limpiar selección antes de actualizar lista
+   - ✅ Cambiado de `setAll()` a `clear()` + `addAll()` para evitar problemas de selección
+   - ✅ Usado `Platform.runLater()` para asegurar que la actualización se complete antes de cargar nota
+   - ✅ Agregado try-catch para manejar errores de selección de forma segura
+
+### Solución técnica
+
+**Problema**: JavaFX intentaba mantener la selección anterior mientras se actualizaba la lista con `setAll()`, causando IndexOutOfBoundsException.
+
+**Solución**:
+1. Limpiar selección explícitamente antes de actualizar
+2. Usar `clear()` + `addAll()` en lugar de `setAll()` (más seguro)
+3. Usar `Platform.runLater()` para diferir la carga de la nota hasta que la actualización de la lista se complete
+4. Manejar errores de selección con try-catch
+
+---
+
+## 📅 2025-12-18 — Corrección de bugs en favoritos, notas recientes y botón recargar
+
+### Resumen
+Corrección de tres problemas críticos: error IndexOutOfBoundsException al hacer clic en favoritos, notas recientes no se visualizaban, y botón recargar no respetaba el contexto actual.
+
+### Archivos modificados
+
+1. **`Forevernote/src/main/java/com/example/forevernote/ui/controller/MainController.java`**
+   - ✅ Agregadas variables de estado para rastrear contexto: `currentFilterType`, `currentTag`
+   - ✅ Corregido error IndexOutOfBoundsException en favoritos: ahora carga nota directamente sin intentar seleccionar en lista
+   - ✅ Agregado listener para `recentNotesListView` para que las notas recientes se visualicen al hacer clic
+   - ✅ Implementado `handleRefresh()` que respeta el contexto actual (carpeta/tag/favoritos/búsqueda)
+   - ✅ Actualizado `loadFavorites()` para mostrar todas las notas favoritas en la lista principal al hacer clic
+   - ✅ Actualizado `performSearch()` para restaurar contexto anterior cuando búsqueda está vacía
+   - ✅ Actualizados métodos para establecer correctamente el tipo de filtro actual
+
+### Problemas corregidos
+
+1. **Error IndexOutOfBoundsException en favoritos**
+   - ❌ **Antes**: Intentaba seleccionar nota en `notesListView` aunque no estuviera en la lista actual
+   - ✅ **Ahora**: Carga la nota directamente en el editor sin intentar seleccionarla en la lista
+
+2. **Notas recientes no se visualizaban**
+   - ❌ **Antes**: No había listener para cuando se hacía clic en una nota reciente
+   - ✅ **Ahora**: Agregado listener que carga la nota en el editor al hacer clic
+
+3. **Botón recargar siempre mostraba todas las notas**
+   - ❌ **Antes**: `handleRefresh()` siempre llamaba a `loadAllNotes()`
+   - ✅ **Ahora**: Respeta el contexto actual:
+     - Si estás en una carpeta → recarga notas de esa carpeta
+     - Si estás filtrando por tag → recarga notas con ese tag
+     - Si estás en favoritos → recarga favoritos
+     - Si estás buscando → re-ejecuta la búsqueda
+     - Si no hay contexto → muestra todas las notas
+
+### Mejoras adicionales
+
+- ✅ Sistema de rastreo de contexto para mantener el estado de navegación
+- ✅ Mejor experiencia de usuario al navegar entre diferentes vistas
+- ✅ Consistencia en el comportamiento de recarga en diferentes contextos
+
+---
+
+## 📅 2025-12-17 (12) — Implementación de funcionalidad de favoritos (is_favorite)
+
+### Resumen
+Implementación completa del campo `is_favorite` en las notas, permitiendo marcar y desmarcar notas como favoritas. Se agregó el campo al modelo, esquema de base de datos, DAO y controlador.
+
+### Archivos modificados
+
+1. **`Forevernote/src/main/java/com/example/forevernote/data/models/Note.java`**
+   - ✅ Agregado campo `isFavorite` (boolean) con getter y setter
+   - ✅ Valor por defecto: `false`
+
+2. **`Forevernote/src/main/java/com/example/forevernote/data/SQLiteDB.java`**
+   - ✅ Agregada columna `is_favorite` al esquema de la tabla `notes`
+   - ✅ Implementada migración automática para bases de datos existentes
+   - ✅ Columna definida como INTEGER con CHECK constraint (0 o 1)
+
+3. **`Forevernote/src/main/java/com/example/forevernote/data/dao/NoteDAOSQLite.java`**
+   - ✅ Actualizado `INSERT_NOTE_SQL` para incluir `is_favorite`
+   - ✅ Actualizado `UPDATE_NOTE_SQL` para incluir `is_favorite`
+   - ✅ Actualizado método `createNote()` para guardar estado de favorito
+   - ✅ Actualizado método `updateNote()` para actualizar estado de favorito
+   - ✅ Actualizado método `mapResultSetToNote()` para leer `is_favorite` con manejo de errores para bases de datos antiguas
+
+4. **`Forevernote/src/main/java/com/example/forevernote/ui/controller/MainController.java`**
+   - ✅ Implementado método `loadFavorites()` para cargar notas favoritas en la lista lateral
+   - ✅ Actualizado método `handleToggleFavorite()` para alternar estado de favorito y guardar en BD
+   - ✅ Agregada inicialización de favoritos en `initialize()`
+   - ✅ Actualizado `loadNoteInEditor()` para refrescar lista de favoritos
+   - ✅ Actualizado `handleSave()` para refrescar lista de favoritos después de guardar
+   - ✅ Eliminado TODO comentario sobre campo `is_favorite`
+
+### Funcionalidades implementadas
+
+- ✅ Marcar/desmarcar notas como favoritas desde el menú
+- ✅ Persistencia del estado de favorito en la base de datos
+- ✅ Lista de favoritos en la barra lateral que se actualiza automáticamente
+- ✅ Clic en favorito carga la nota en el editor
+- ✅ Migración automática de bases de datos existentes
+
+### Notas técnicas
+
+- El campo `is_favorite` se almacena como INTEGER (0 o 1) en SQLite para compatibilidad
+- La migración se ejecuta automáticamente al inicializar la base de datos
+- El código maneja bases de datos antiguas que no tienen la columna `is_favorite`
+
+---
+
 ## 📅 2025-12-17 (11) — Actualización de BUILD.md y eliminación de .DS_Store
 
 ### Resumen

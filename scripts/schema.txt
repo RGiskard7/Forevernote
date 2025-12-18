@@ -1,9 +1,12 @@
--- Esquema de ejemplo para SQLite
--- Copia y pega esto en un fichero .sql y ejecútalo con sqlite3:
+-- SQLite Database Schema for Forevernote
+-- 
+-- This schema reflects the exact database structure used by the application.
+-- The application automatically creates these tables on first run.
+--
+-- To manually create/restore the database:
 --    sqlite3 Forevernote/data/database.db < scripts/schema.txt
 --
--- NOTA: Este esquema refleja la estructura actual de la base de datos.
--- La aplicación crea automáticamente estas tablas al ejecutarse por primera vez.
+-- Note: This schema matches exactly the CREATE TABLE statements in SQLiteDB.java
 
 PRAGMA foreign_keys = ON;
 
@@ -18,7 +21,7 @@ CREATE TABLE IF NOT EXISTS folders (
     ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS tags (
+CREATE TABLE IF NOT EXISTS tags(
   tag_id INTEGER PRIMARY KEY AUTOINCREMENT,
   title TEXT NOT NULL UNIQUE,
   created_date TEXT NOT NULL,
@@ -41,12 +44,13 @@ CREATE TABLE IF NOT EXISTS notes (
   todo_completed TEXT DEFAULT NULL,
   source TEXT DEFAULT NULL,
   source_application TEXT DEFAULT NULL,
+  is_favorite INTEGER NOT NULL DEFAULT 0 CHECK (is_favorite IN (0, 1)),
   FOREIGN KEY (parent_id) REFERENCES folders(folder_id) 
     ON UPDATE CASCADE 
     ON DELETE SET NULL
 );
 
-CREATE TABLE IF NOT EXISTS tagsNotes (
+CREATE TABLE IF NOT EXISTS tagsNotes(
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   tag_id INTEGER,
   note_id INTEGER,
