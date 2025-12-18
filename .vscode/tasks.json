@@ -69,17 +69,12 @@
                 "reveal": "always",
                 "panel": "shared"
             },
-            "problemMatcher": [],
-            "options": {
-                "env": {
-                    "JAVA_HOME": "C:\\Program Files\\Java\\jdk-17"
-                }
-            }
+            "problemMatcher": []
         },
         {
             "label": "run-forevernote-script",
             "type": "shell",
-            "command": "${workspaceFolder}/scripts/run_all.ps1",
+            "command": "${workspaceFolder}/scripts/run_all.sh",
             "windows": {
                 "command": "${workspaceFolder}\\scripts\\run_all.ps1"
             },
@@ -98,6 +93,3 @@
         }
     ]
 }
-
-
-

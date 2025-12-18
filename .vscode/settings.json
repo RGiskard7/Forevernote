@@ -4,14 +4,6 @@
     "maven.executable.path": "",
     "maven.terminal.useJavaHome": true,
     "maven.pomfile.autoUpdateProjectConfig": true,
-    "java.jdt.ls.java.home": "C:\\Program Files\\Java\\jdk-17",
-    "java.configuration.runtimes": [
-        {
-            "name": "JavaSE-17",
-            "path": "C:\\Program Files\\Java\\jdk-17",
-            "default": true
-        }
-    ],
     "files.exclude": {
         "**/.classpath": true,
         "**/.project": true,
@@ -36,6 +28,3 @@
         "!**/*-javadoc.jar"
     ]
 }
-
-
-

@@ -1,5 +1,38 @@
 # Changelog - Forevernote
 
+## 📅 2025-12-18 (14) — Configuración VSCode multiplataforma (Windows/macOS/Linux)
+
+### Resumen
+Corregidos los archivos de configuración de VS Code para que funcionen en todas las plataformas sin conflictos.
+
+### Problema
+Los archivos `.vscode/*.json` tenían rutas hardcodeadas de Windows que no funcionaban en macOS/Linux.
+
+### Solución
+1. **`launch.json`**: Usadas secciones `windows`, `osx`, `linux` para vmArgs específicos de cada plataforma
+2. **`settings.json`**: Eliminadas configuraciones hardcodeadas de Java que impedían la auto-detección
+3. **`tasks.json`**: Mantenidas las secciones específicas de plataforma para scripts
+
+### Archivos modificados
+
+1. **`.vscode/launch.json`**
+   - ✅ Sección `windows`: usa `${env:USERPROFILE}` y separador `;`
+   - ✅ Sección `osx`: usa `${env:HOME}` y separador `:`
+   - ✅ Sección `linux`: usa `${env:HOME}` y separador `:`
+
+2. **`.vscode/settings.json`**
+   - ✅ Eliminadas rutas hardcodeadas de `java.jdt.ls.java.home`
+   - ✅ VS Code auto-detectará el JDK de cada plataforma
+
+3. **`.vscode/tasks.json`**
+   - ✅ Eliminado `JAVA_HOME` hardcodeado en `maven-exec-java`
+   - ✅ Mantenidas secciones específicas de plataforma para scripts
+
+### Nota para usuarios de macOS/Linux
+Si hay errores de compilación sobre "cannot find symbol", asegurarse de tener el código actualizado (`git pull`).
+
+---
+
 ## 📅 2025-12-18 (13) — Solución definitiva: Launcher class para jpackage + JavaFX
 
 ### Resumen
