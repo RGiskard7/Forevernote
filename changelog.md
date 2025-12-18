@@ -1,5 +1,66 @@
 # Changelog - Forevernote
 
+## 📅 2025-12-18 (17) — Simplificación de configuración VSCode (eliminada sobreingeniería)
+
+### Resumen
+Simplificada configuración de `launch.json` eliminando `vmArgs` manuales multiplataforma que eran redundantes, ya que Maven maneja JavaFX automáticamente.
+
+### Cambios
+
+1. **`.vscode/launch.json`**
+   - ✅ Eliminadas secciones `windows`, `osx`, `linux` con `vmArgs` manuales de JavaFX
+   - ✅ Simplificada configuración de Debug: solo `-Dfile.encoding=UTF-8`
+   - ✅ Maven ya maneja JavaFX correctamente, no necesitamos configuración manual
+
+### Análisis de configuraciones
+
+- **`settings.json`**: ✅ Correcto (eliminar hardcodeos de Windows)
+- **`tasks.json`**: ✅ Correcto (eliminar `JAVA_HOME` hardcodeado)
+- **`launch.json`**: ✅ Ahora simplificado (Maven maneja JavaFX automáticamente)
+
+### Nota
+
+El problema real era que faltaban archivos de código fuente (por `.gitignore`), no la configuración de VSCode. Las configuraciones multiplataforma son útiles, pero los `vmArgs` manuales de JavaFX eran redundantes.
+
+---
+
+## 📅 2025-12-18 (16) — Corrección crítica: .gitignore estaba ignorando código fuente
+
+### Resumen
+Corregido problema crítico donde `.gitignore` tenía `data/` que ignoraba TODAS las carpetas `data/`, incluyendo el código fuente en `Forevernote/src/main/java/com/example/forevernote/data/`.
+
+### Problema
+- ❌ La línea 92 del `.gitignore` tenía `data/` (muy genérico)
+- ❌ Esto ignoraba el código fuente completo de la capa de datos
+- ❌ Los archivos no se subían a GitHub, dejando el repositorio corrupto
+
+### Solución
+1. **`.gitignore`**
+   - ✅ Eliminado `data/` genérico de la línea 92
+   - ✅ Mantenido solo `Forevernote/data/` (carpeta de runtime con base de datos)
+   - ✅ Ahora solo ignora la carpeta de runtime, NO el código fuente
+
+2. **Archivos añadidos a Git**
+   - ✅ Todos los archivos de `Forevernote/src/main/java/com/example/forevernote/data/` ahora están en staging
+   - ✅ 17 archivos Java de la capa de datos listos para commit
+
+### Acción requerida
+
+**Hacer commit y push inmediatamente:**
+
+```bash
+git commit -m "fix: añadir código fuente de capa de datos que estaba siendo ignorado"
+git push
+```
+
+### Archivos que ahora se subirán
+- `SQLiteDB.java`
+- Todos los DAOs (`FolderDAOSQLite`, `NoteDAOSQLite`, `TagDAOSQLite`, etc.)
+- Todos los modelos (`Folder`, `Note`, `Tag`, `ToDoNote`, etc.)
+- Interfaces y capas abstractas
+
+---
+
 ## 📅 2025-12-18 (15) — Solución para error de permisos en macOS (FileSystemException)
 
 ### Resumen

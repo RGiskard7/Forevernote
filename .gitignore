@@ -89,11 +89,10 @@ __pycache__/
 
 # User-related folders
 db/
-data/
 temp/
 tmp/
 
-# Database
+# Database (runtime data directory, NOT source code)
 Forevernote/data/
 Forevernote/data/database.db
 
