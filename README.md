@@ -303,3 +303,9 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 For detailed development guidelines and contribution standards, see [AGENTS.md](AGENTS.md).
+
+---
+
+<p align="center">
+  <small>Desarrollado por <b>Edu Díaz</b> (<b>RGiskard7</b>) ❤️</small>
+</p>
