@@ -1,5 +1,26 @@
 # Changelog - Forevernote
 
+## 📅 2025-12-18 — Badges y mejoras visuales en README
+
+### Resumen
+Añadidos badges estándar de tecnologías y licencia al README. Banner actualizado para ocupar todo el ancho.
+
+### Cambios
+
+1. **`README.md`**
+   - ✅ Banner actualizado para ocupar 100% del ancho con `style="width: 100%; max-width: 100%;"`
+   - ✅ Añadidos badges estándar:
+     - Licencia MIT
+     - Java 17+
+     - JavaFX 21
+     - SQLite 3
+     - Maven 3.6+
+     - Plataformas (Windows, macOS, Linux)
+   - ✅ Badges colocados en posición estándar (después del banner, antes de la descripción)
+   - ✅ Todos los badges son clicables y enlazan a páginas oficiales
+
+---
+
 ## 📅 2025-12-18 — Centralización de metadata: app.properties para rebranding fácil
 
 ### Resumen
