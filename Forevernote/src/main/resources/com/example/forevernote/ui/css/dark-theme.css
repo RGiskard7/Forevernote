@@ -146,7 +146,7 @@
 
 .menu-bar .menu {
     -fx-padding: 6px 12px;
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
 }
 
 .menu-bar .menu:hover,
@@ -161,17 +161,17 @@
 /* Context Menu & Dropdowns */
 .context-menu {
     -fx-background-color: -fx-bg-elevated;
-    -fx-background-radius: -fx-radius-lg;
+    -fx-background-radius: 8px;
     -fx-padding: 4px;
     -fx-effect: -fx-shadow-lg;
     -fx-border-color: -fx-border-subtle;
-    -fx-border-radius: -fx-radius-lg;
+    -fx-border-radius: 8px;
     -fx-border-width: 1px;
 }
 
 .menu-item {
     -fx-padding: 8px 12px;
-    -fx-background-radius: -fx-radius-sm;
+    -fx-background-radius: 4px;
 }
 
 .menu-item:hover,
@@ -211,7 +211,7 @@
     -fx-font-size: 12px;
     -fx-font-weight: 500;
     -fx-padding: 8px 14px;
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
     -fx-border-color: transparent;
     -fx-cursor: hand;
 }
@@ -230,8 +230,8 @@
     -fx-background-color: -fx-bg-tertiary;
     -fx-border-color: -fx-border-subtle;
     -fx-border-width: 1px;
-    -fx-border-radius: -fx-radius-lg;
-    -fx-background-radius: -fx-radius-lg;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
     -fx-padding: 8px 14px;
     -fx-font-size: 13px;
     -fx-text-fill: -fx-text-primary;
@@ -250,7 +250,7 @@
 .search-button {
     -fx-background-color: transparent;
     -fx-text-fill: -fx-text-tertiary;
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
     -fx-padding: 8px 10px;
     -fx-font-size: 14px;
     -fx-cursor: hand;
@@ -265,7 +265,7 @@
 .view-toggle {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
     -fx-padding: 6px 10px;
     -fx-font-size: 15px;
     -fx-text-fill: -fx-text-tertiary;
@@ -311,7 +311,7 @@
 
 .navigation-tabs .tab {
     -fx-background-color: transparent;
-    -fx-background-radius: -fx-radius-md -fx-radius-md 0 0;
+    -fx-background-radius: 6px 6px 0 0;
     -fx-padding: 8px 14px;
     -fx-focus-color: transparent;
 }
@@ -360,7 +360,7 @@
 .list-cell {
     -fx-background-color: transparent;
     -fx-padding: 8px 12px;
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
     -fx-text-fill: -fx-text-primary;
     -fx-font-size: 13px;
 }
@@ -408,8 +408,8 @@
 .quick-action-button {
     -fx-background-color: -fx-bg-tertiary;
     -fx-border-color: -fx-border-default;
-    -fx-border-radius: -fx-radius-md;
-    -fx-background-radius: -fx-radius-md;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
     -fx-padding: 6px 10px;
     -fx-font-size: 11px;
     -fx-font-weight: 500;
@@ -449,8 +449,8 @@
 .sort-combo {
     -fx-background-color: -fx-bg-tertiary;
     -fx-border-color: -fx-border-subtle;
-    -fx-border-radius: -fx-radius-md;
-    -fx-background-radius: -fx-radius-md;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
     -fx-padding: 6px 10px;
     -fx-font-size: 11px;
     -fx-text-fill: -fx-text-primary;
@@ -465,7 +465,7 @@
 .refresh-button {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
     -fx-padding: 6px 8px;
     -fx-font-size: 14px;
     -fx-text-fill: -fx-text-tertiary;
@@ -485,8 +485,8 @@
 .notes-list .list-cell {
     -fx-background-color: -fx-bg-secondary;
     -fx-border-color: -fx-border-subtle;
-    -fx-border-radius: -fx-radius-lg;
-    -fx-background-radius: -fx-radius-lg;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
     -fx-padding: 12px 14px;
     -fx-border-width: 1px;
 }
@@ -535,14 +535,14 @@
 
 .note-title-field:focused {
     -fx-background-color: -fx-bg-tertiary;
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
 }
 
 /* View Mode Toggle Buttons */
 .view-mode-button {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
     -fx-padding: 6px 10px;
     -fx-font-size: 14px;
     -fx-text-fill: -fx-text-tertiary;
@@ -563,7 +563,7 @@
 .icon-button {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
     -fx-padding: 6px 10px;
     -fx-font-size: 14px;
     -fx-text-fill: -fx-text-tertiary;
@@ -578,7 +578,7 @@
 .icon-button-danger {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
     -fx-padding: 6px 10px;
     -fx-font-size: 14px;
     -fx-text-fill: -fx-text-tertiary;
@@ -735,7 +735,7 @@
 .format-btn {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-background-radius: -fx-radius-sm;
+    -fx-background-radius: 4px;
     -fx-padding: 4px 8px;
     -fx-font-size: 12px;
     -fx-font-weight: 600;
@@ -858,7 +858,7 @@
 
 .attachments-list-compact {
     -fx-background-color: -fx-bg-tertiary;
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
     -fx-padding: 4px;
 }
 
@@ -866,7 +866,7 @@
 .favorite-button,
 .delete-button {
     -fx-background-color: transparent;
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
     -fx-padding: 8px 10px;
     -fx-font-size: 16px;
     -fx-text-fill: -fx-text-tertiary;
@@ -907,7 +907,7 @@
 .format-button {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-background-radius: -fx-radius-sm;
+    -fx-background-radius: 4px;
     -fx-padding: 6px 10px;
     -fx-font-size: 13px;
     -fx-font-weight: 600;
@@ -1050,7 +1050,7 @@
    ==================== */
 .dialog-pane {
     -fx-background-color: -fx-bg-card;
-    -fx-background-radius: -fx-radius-xl;
+    -fx-background-radius: 12px;
     -fx-padding: 24px;
     -fx-effect: -fx-shadow-lg;
 }
@@ -1076,7 +1076,7 @@
 }
 
 .dialog-pane .button {
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
     -fx-padding: 10px 20px;
     -fx-font-size: 13px;
     -fx-font-weight: 500;
@@ -1088,13 +1088,13 @@
 .button {
     -fx-background-color: -fx-bg-tertiary;
     -fx-text-fill: -fx-text-primary;
-    -fx-background-radius: -fx-radius-md;
+    -fx-background-radius: 6px;
     -fx-padding: 10px 18px;
     -fx-font-size: 13px;
     -fx-font-weight: 500;
     -fx-border-color: -fx-border-default;
     -fx-border-width: 1px;
-    -fx-border-radius: -fx-radius-md;
+    -fx-border-radius: 6px;
     -fx-cursor: hand;
 }
 
@@ -1131,8 +1131,8 @@
 .text-area {
     -fx-background-color: -fx-bg-tertiary;
     -fx-border-color: -fx-border-subtle;
-    -fx-border-radius: -fx-radius-md;
-    -fx-background-radius: -fx-radius-md;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
     -fx-padding: 10px 14px;
     -fx-font-size: 13px;
     -fx-text-fill: -fx-text-primary;
@@ -1161,8 +1161,8 @@
 .combo-box {
     -fx-background-color: -fx-bg-tertiary;
     -fx-border-color: -fx-border-subtle;
-    -fx-border-radius: -fx-radius-md;
-    -fx-background-radius: -fx-radius-md;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
     -fx-cursor: hand;
 }
 
@@ -1180,17 +1180,17 @@
 
 .combo-box-popup .list-view {
     -fx-background-color: -fx-bg-elevated;
-    -fx-background-radius: -fx-radius-lg;
+    -fx-background-radius: 8px;
     -fx-padding: 4px;
     -fx-effect: -fx-shadow-lg;
     -fx-border-color: -fx-border-subtle;
-    -fx-border-radius: -fx-radius-lg;
+    -fx-border-radius: 8px;
     -fx-border-width: 1px;
 }
 
 .combo-box-popup .list-cell {
     -fx-padding: 8px 12px;
-    -fx-background-radius: -fx-radius-sm;
+    -fx-background-radius: 4px;
     -fx-text-fill: -fx-text-primary;
 }
 
@@ -1209,13 +1209,13 @@
 .tooltip {
     -fx-background-color: -fx-bg-elevated;
     -fx-text-fill: -fx-text-primary;
-    -fx-background-radius: -fx-radius-sm;
+    -fx-background-radius: 4px;
     -fx-padding: 6px 10px;
     -fx-font-size: 11px;
     -fx-effect: -fx-shadow-md;
     -fx-border-color: -fx-border-subtle;
     -fx-border-width: 1px;
-    -fx-border-radius: -fx-radius-sm;
+    -fx-border-radius: 4px;
 }
 
 /* ====================
@@ -1296,8 +1296,8 @@
     -fx-background-color: -fx-bg-tertiary;
     -fx-border-color: -fx-border-default;
     -fx-border-width: 1px;
-    -fx-border-radius: -fx-radius-md;
-    -fx-background-radius: -fx-radius-md;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
     -fx-text-fill: -fx-text-secondary;
     -fx-padding: 6px 12px;
     -fx-font-size: 12px;

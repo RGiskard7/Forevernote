@@ -236,73 +236,68 @@
                     </SplitPane>
                 </VBox>
             </SplitPane>
-            
-            <!-- Note Info Panel (hidden by default, toggled) -->
-            <VBox fx:id="infoPanel" styleClass="info-panel" visible="false" managed="false" minWidth="250" maxWidth="300">
-                <HBox styleClass="info-panel-header" alignment="CENTER_LEFT">
-                    <padding>
-                        <Insets top="10" right="10" bottom="10" left="10"/>
-                    </padding>
-                    <Label text="Note Info" styleClass="info-panel-title"/>
-                    <Region HBox.hgrow="ALWAYS"/>
-                    <Button text="✕" onAction="#handleCloseInfoPanel" styleClass="close-button"/>
-                </HBox>
-                
-                <VBox styleClass="info-content" spacing="12" VBox.vgrow="ALWAYS">
-                    <padding>
-                        <Insets top="10" right="15" bottom="15" left="15"/>
-                    </padding>
-                    
-                    <VBox spacing="4">
-                        <Label text="CREATED" styleClass="info-section-label"/>
-                        <Label fx:id="infoCreatedLabel" text="-" styleClass="info-value"/>
-                    </VBox>
-                    
-                    <VBox spacing="4">
-                        <Label text="MODIFIED" styleClass="info-section-label"/>
-                        <Label fx:id="infoModifiedLabel" text="-" styleClass="info-value"/>
-                    </VBox>
-                    
-                    <Separator/>
-                    
-                    <VBox spacing="4">
-                        <Label text="STATISTICS" styleClass="info-section-label"/>
-                        <HBox spacing="20">
-                            <VBox spacing="2">
-                                <Label fx:id="infoWordsLabel" text="0" styleClass="info-stat-value"/>
-                                <Label text="words" styleClass="info-stat-label"/>
-                            </VBox>
-                            <VBox spacing="2">
-                                <Label fx:id="infoCharsLabel" text="0" styleClass="info-stat-value"/>
-                                <Label text="characters" styleClass="info-stat-label"/>
-                            </VBox>
-                        </HBox>
-                    </VBox>
-                    
-                    <Separator/>
-                    
-                    <VBox spacing="4">
-                        <Label text="LOCATION" styleClass="info-section-label"/>
-                        <Label fx:id="infoLatitudeLabel" text="Lat: -" styleClass="info-value-small"/>
-                        <Label fx:id="infoLongitudeLabel" text="Lon: -" styleClass="info-value-small"/>
-                    </VBox>
-                    
-                    <VBox spacing="4">
-                        <Label text="SOURCE" styleClass="info-section-label"/>
-                        <Label fx:id="infoAuthorLabel" text="Author: -" styleClass="info-value-small"/>
-                        <Label fx:id="infoSourceUrlLabel" text="URL: -" styleClass="info-value-small" wrapText="true"/>
-                    </VBox>
-                    
-                    <Separator/>
-                    
-                    <VBox spacing="4">
-                        <Label text="ATTACHMENTS" styleClass="info-section-label"/>
-                        <ListView fx:id="attachmentsListView" styleClass="attachments-list-compact" prefHeight="100"/>
-                    </VBox>
-                </VBox>
-            </VBox>
         </SplitPane>
     </center>
+    
+    <!-- Note Info Panel (right side, hidden by default - Obsidian style) -->
+    <right>
+        <VBox fx:id="infoPanel" styleClass="info-panel" visible="false" managed="false" minWidth="260" maxWidth="280">
+            <HBox styleClass="info-panel-header" alignment="CENTER_LEFT">
+                <padding>
+                    <Insets top="12" right="12" bottom="12" left="12"/>
+                </padding>
+                <Label text="Properties" styleClass="info-panel-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="✕" onAction="#handleCloseInfoPanel" styleClass="close-button"/>
+            </HBox>
+            
+            <VBox styleClass="info-content" spacing="16" VBox.vgrow="ALWAYS">
+                <padding>
+                    <Insets top="8" right="16" bottom="16" left="16"/>
+                </padding>
+                
+                <VBox spacing="4">
+                    <Label text="CREATED" styleClass="info-section-label"/>
+                    <Label fx:id="infoCreatedLabel" text="-" styleClass="info-value"/>
+                </VBox>
+                
+                <VBox spacing="4">
+                    <Label text="MODIFIED" styleClass="info-section-label"/>
+                    <Label fx:id="infoModifiedLabel" text="-" styleClass="info-value"/>
+                </VBox>
+                
+                <Separator/>
+                
+                <VBox spacing="4">
+                    <Label text="STATISTICS" styleClass="info-section-label"/>
+                    <HBox spacing="24">
+                        <VBox spacing="2">
+                            <Label fx:id="infoWordsLabel" text="0" styleClass="info-stat-value"/>
+                            <Label text="words" styleClass="info-stat-label"/>
+                        </VBox>
+                        <VBox spacing="2">
+                            <Label fx:id="infoCharsLabel" text="0" styleClass="info-stat-value"/>
+                            <Label text="characters" styleClass="info-stat-label"/>
+                        </VBox>
+                    </HBox>
+                </VBox>
+                
+                <Separator/>
+                
+                <VBox spacing="4">
+                    <Label text="LOCATION" styleClass="info-section-label"/>
+                    <Label fx:id="infoLatitudeLabel" text="Lat: -" styleClass="info-value-small"/>
+                    <Label fx:id="infoLongitudeLabel" text="Lon: -" styleClass="info-value-small"/>
+                </VBox>
+                
+                <VBox spacing="4">
+                    <Label text="SOURCE" styleClass="info-section-label"/>
+                    <Label fx:id="infoAuthorLabel" text="Author: -" styleClass="info-value-small"/>
+                    <Label fx:id="infoSourceUrlLabel" text="URL: -" styleClass="info-value-small" wrapText="true"/>
+                </VBox>
+            </VBox>
+        </VBox>
+    </right>
     
     <!-- Status Bar -->
     <bottom>

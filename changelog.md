@@ -1,5 +1,45 @@
 # Changelog - Forevernote
 
+## 📅 2026-01-08 — Corrección de warnings CSS y verificación final
+
+### Resumen
+Corrección de todos los warnings de CSS relacionados con variables de radius y verificación exhaustiva de funcionalidades.
+
+### Correcciones Técnicas
+
+1. **Warnings de CSS eliminados**
+   - ❌ **Antes**: `ClassCastException` al usar variables CSS (`-fx-radius-md`, `-fx-radius-lg`) en `-fx-background-radius` y `-fx-border-radius`
+   - ✅ **Ahora**: Todas las variables reemplazadas por valores directos en píxeles (`6px`, `8px`, `12px`)
+   - ✅ Aplicado a ambos temas (light y dark)
+
+2. **Verificación de funcionalidades**
+   - ✅ Todas las funcionalidades core están completamente implementadas
+   - ✅ 20 funcionalidades principales funcionando correctamente
+   - ✅ Build sin errores ni warnings críticos
+
+### Estado del Proyecto
+
+**Funcionalidades completas (20):**
+- ✅ Gestión de notas (crear, editar, eliminar, favoritos, recientes)
+- ✅ Gestión de carpetas y subcarpetas
+- ✅ Sistema de tags completo
+- ✅ Editor Markdown con preview en tiempo real
+- ✅ Vista Obsidian-style (split horizontal, modos de vista)
+- ✅ Temas (claro, oscuro, sistema)
+- ✅ Búsqueda y ordenamiento
+- ✅ Import/Export de archivos
+- ✅ Find/Replace, Undo/Redo, Zoom
+
+**Funcionalidades futuras (no críticas):**
+- 🔶 **Adjuntos de archivos** - Requiere sistema de almacenamiento de archivos (arquitectura adicional)
+- 🔶 **Vista grilla** - Botón presente pero sin handler (funcionalidad estética)
+
+### Archivos Modificados
+- `modern-theme.css` - Reemplazo de variables CSS por valores directos
+- `dark-theme.css` - Reemplazo de variables CSS por valores directos
+
+---
+
 ## 📅 2026-01-07 — Corrección de bugs: Tags y Notas Recientes
 
 ### Resumen

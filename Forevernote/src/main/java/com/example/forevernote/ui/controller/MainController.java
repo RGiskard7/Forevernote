@@ -127,7 +127,6 @@ public class MainController {
     
     // Preview and info
     @FXML private javafx.scene.web.WebView previewWebView;
-    @FXML private ListView<String> attachmentsListView;
     @FXML private Label infoCreatedLabel;
     @FXML private Label infoModifiedLabel;
     @FXML private Label infoWordsLabel;
