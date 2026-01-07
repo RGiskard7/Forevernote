@@ -49,7 +49,13 @@ import java.util.logging.Logger;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Optional;
+import java.util.prefs.Preferences;
 import java.sql.Connection;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import javafx.stage.FileChooser;
 
 /**
  * Main controller for the Forevernote application.
@@ -72,6 +78,12 @@ public class MainController {
     private boolean isModified = false;
     private String currentFilterType = "all"; // "all", "folder", "tag", "favorites", "search"
     private Tag currentTag = null;
+    
+    // Cached data to avoid recreating listeners
+    private List<Note> cachedAllNotes = new ArrayList<>();
+    private List<Note> cachedFavoriteNotes = new ArrayList<>();
+    private boolean recentListenerAdded = false;
+    private boolean favoritesListenerAdded = false;
     
     // FXML UI Components
     @FXML private MenuBar menuBar;
@@ -586,36 +598,38 @@ public class MainController {
      */
     private void loadRecentNotes() {
         try {
-            List<Note> allNotes = noteDAO.fetchAllNotes();
+            cachedAllNotes = noteDAO.fetchAllNotes();
             // Sort by modified date (simplified)
-            allNotes.sort((a, b) -> {
-                String dateA = a.getModifiedDate() != null ? a.getModifiedDate() : a.getCreatedDate();
-                String dateB = b.getModifiedDate() != null ? b.getModifiedDate() : b.getCreatedDate();
+            cachedAllNotes.sort((a, b) -> {
+                String dateA = a.getModifiedDate() != null ? a.getModifiedDate() : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
+                String dateB = b.getModifiedDate() != null ? b.getModifiedDate() : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
                 return dateB.compareTo(dateA);
             });
             
-            List<String> recentTitles = allNotes.stream()
+            List<String> recentTitles = cachedAllNotes.stream()
                 .limit(10)
                 .map(Note::getTitle)
                 .toList();
             
             recentNotesListView.getItems().setAll(recentTitles);
             
-            // Add listener for recent note selection
-            recentNotesListView.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, newValue) -> {
-                    if (newValue != null) {
-                        // Find and load the recent note
-                        Optional<Note> recentNote = allNotes.stream()
-                            .filter(n -> n.getTitle().equals(newValue))
-                            .findFirst();
-                        if (recentNote.isPresent()) {
-                            // Load note directly in editor
-                            loadNoteInEditor(recentNote.get());
+            // Add listener only once
+            if (!recentListenerAdded) {
+                recentListenerAdded = true;
+                recentNotesListView.getSelectionModel().selectedItemProperty().addListener(
+                    (observable, oldValue, newValue) -> {
+                        if (newValue != null) {
+                            // Find and load the recent note from cached list
+                            Optional<Note> recentNote = cachedAllNotes.stream()
+                                .filter(n -> n.getTitle() != null && n.getTitle().equals(newValue))
+                                .findFirst();
+                            if (recentNote.isPresent()) {
+                                loadNoteInEditor(recentNote.get());
+                            }
                         }
                     }
-                }
-            );
+                );
+            }
         } catch (Exception e) {
             logger.warning("Failed to load recent notes: " + e.getMessage());
         }
@@ -627,60 +641,61 @@ public class MainController {
     private void loadFavorites() {
         try {
             List<Note> allNotes = noteDAO.fetchAllNotes();
-            List<Note> favoriteNotes = allNotes.stream()
+            cachedFavoriteNotes = allNotes.stream()
                 .filter(Note::isFavorite)
                 .toList();
             
-            List<String> favoriteTitles = favoriteNotes.stream()
+            List<String> favoriteTitles = cachedFavoriteNotes.stream()
                 .map(Note::getTitle)
                 .limit(10)
                 .toList();
             
             favoritesListView.getItems().setAll(favoriteTitles);
             
-            // Add listener for favorite selection
-            favoritesListView.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, newValue) -> {
-                    if (newValue != null) {
-                        // Find and load the favorite note
-                        Optional<Note> favoriteNote = favoriteNotes.stream()
-                            .filter(n -> n.getTitle().equals(newValue))
-                            .findFirst();
-                        if (favoriteNote.isPresent()) {
-                            // Update context to show favorites
-                            currentFilterType = "favorites";
-                            currentFolder = null;
-                            currentTag = null;
-                            
-                            // Clear selection and items to avoid IndexOutOfBoundsException
-                            notesListView.getSelectionModel().clearSelection();
-                            notesListView.getItems().clear();
-                            
-                            // Show all favorites in notes list using addAll instead of setAll
-                            // This is safer and avoids selection issues
-                            notesListView.getItems().addAll(favoriteNotes);
-                            noteCountLabel.setText(favoriteNotes.size() + " favorite notes");
-                            
-                            // Use Platform.runLater to ensure list update completes before loading note
-                            Platform.runLater(() -> {
-                                try {
-                                    // Try to select the note in the list if it's present
-                                    int index = notesListView.getItems().indexOf(favoriteNote.get());
-                                    if (index >= 0) {
-                                        notesListView.getSelectionModel().select(index);
+            // Add listener only once
+            if (!favoritesListenerAdded) {
+                favoritesListenerAdded = true;
+                favoritesListView.getSelectionModel().selectedItemProperty().addListener(
+                    (observable, oldValue, newValue) -> {
+                        if (newValue != null) {
+                            // Find and load the favorite note from cached list
+                            Optional<Note> favoriteNote = cachedFavoriteNotes.stream()
+                                .filter(n -> n.getTitle() != null && n.getTitle().equals(newValue))
+                                .findFirst();
+                            if (favoriteNote.isPresent()) {
+                                // Update context to show favorites
+                                currentFilterType = "favorites";
+                                currentFolder = null;
+                                currentTag = null;
+                                
+                                // Clear selection and items to avoid IndexOutOfBoundsException
+                                notesListView.getSelectionModel().clearSelection();
+                                notesListView.getItems().clear();
+                                
+                                // Refresh favorites list and show in notes list
+                                List<Note> currentFavorites = new ArrayList<>(cachedFavoriteNotes);
+                                notesListView.getItems().addAll(currentFavorites);
+                                noteCountLabel.setText(currentFavorites.size() + " favorite notes");
+                                
+                                // Use Platform.runLater to ensure list update completes before loading note
+                                final Note noteToLoad = favoriteNote.get();
+                                Platform.runLater(() -> {
+                                    try {
+                                        int index = notesListView.getItems().indexOf(noteToLoad);
+                                        if (index >= 0) {
+                                            notesListView.getSelectionModel().select(index);
+                                        }
+                                        loadNoteInEditor(noteToLoad);
+                                    } catch (Exception e) {
+                                        logger.warning("Could not select favorite note in list: " + e.getMessage());
+                                        loadNoteInEditor(noteToLoad);
                                     }
-                                    // Load note in editor
-                                    loadNoteInEditor(favoriteNote.get());
-                                } catch (Exception e) {
-                                    // If selection fails, just load the note
-                                    logger.warning("Could not select favorite note in list: " + e.getMessage());
-                                    loadNoteInEditor(favoriteNote.get());
-                                }
-                            });
+                                });
+                            }
                         }
                     }
-                }
-            );
+                );
+            }
         } catch (Exception e) {
             logger.warning("Failed to load favorites: " + e.getMessage());
         }
@@ -778,35 +793,53 @@ public class MainController {
     }
     
     /**
-     * Sort notes.
+     * Sort notes with null-safe comparisons.
      */
     private void sortNotes(String sortOption) {
+        if (sortOption == null) return;
+        
         List<Note> notes = new ArrayList<>(notesListView.getItems());
         
         switch (sortOption) {
             case "Title (A-Z)":
-                notes.sort((a, b) -> a.getTitle().compareToIgnoreCase(b.getTitle()));
+                notes.sort((a, b) -> {
+                    String titleA = a.getTitle() != null ? a.getTitle() : "";
+                    String titleB = b.getTitle() != null ? b.getTitle() : "";
+                    return titleA.compareToIgnoreCase(titleB);
+                });
                 break;
             case "Title (Z-A)":
-                notes.sort((a, b) -> b.getTitle().compareToIgnoreCase(a.getTitle()));
+                notes.sort((a, b) -> {
+                    String titleA = a.getTitle() != null ? a.getTitle() : "";
+                    String titleB = b.getTitle() != null ? b.getTitle() : "";
+                    return titleB.compareToIgnoreCase(titleA);
+                });
                 break;
             case "Created (Newest)":
-                notes.sort((a, b) -> b.getCreatedDate().compareTo(a.getCreatedDate()));
+                notes.sort((a, b) -> {
+                    String dateA = a.getCreatedDate() != null ? a.getCreatedDate() : "";
+                    String dateB = b.getCreatedDate() != null ? b.getCreatedDate() : "";
+                    return dateB.compareTo(dateA);
+                });
                 break;
             case "Created (Oldest)":
-                notes.sort((a, b) -> a.getCreatedDate().compareTo(b.getCreatedDate()));
+                notes.sort((a, b) -> {
+                    String dateA = a.getCreatedDate() != null ? a.getCreatedDate() : "";
+                    String dateB = b.getCreatedDate() != null ? b.getCreatedDate() : "";
+                    return dateA.compareTo(dateB);
+                });
                 break;
             case "Modified (Newest)":
                 notes.sort((a, b) -> {
-                    String dateA = a.getModifiedDate() != null ? a.getModifiedDate() : a.getCreatedDate();
-                    String dateB = b.getModifiedDate() != null ? b.getModifiedDate() : b.getCreatedDate();
+                    String dateA = a.getModifiedDate() != null ? a.getModifiedDate() : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
+                    String dateB = b.getModifiedDate() != null ? b.getModifiedDate() : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
                     return dateB.compareTo(dateA);
                 });
                 break;
             case "Modified (Oldest)":
                 notes.sort((a, b) -> {
-                    String dateA = a.getModifiedDate() != null ? a.getModifiedDate() : a.getCreatedDate();
-                    String dateB = b.getModifiedDate() != null ? b.getModifiedDate() : b.getCreatedDate();
+                    String dateA = a.getModifiedDate() != null ? a.getModifiedDate() : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
+                    String dateB = b.getModifiedDate() != null ? b.getModifiedDate() : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
                     return dateA.compareTo(dateB);
                 });
                 break;
@@ -940,20 +973,6 @@ public class MainController {
                 previewWebView.getEngine().loadContent(emptyHtml, "text/html");
             }
         }
-    }
-    
-    /**
-     * Convert plain text to simple HTML.
-     */
-    private String convertToHtml(String text) {
-        if (text == null) return "";
-        
-        return "<html><body><pre style='font-family: Arial, sans-serif; white-space: pre-wrap;'>" 
-               + text.replace("&", "&amp;")
-                     .replace("<", "&lt;")
-                     .replace(">", "&gt;")
-                     .replace("\n", "<br>")
-               + "</pre></body></html>";
     }
     
     /**
@@ -1337,36 +1356,117 @@ public class MainController {
         System.exit(0);
     }
     
-    // Placeholder implementations for other menu items
     @FXML 
     private void handleImport(ActionEvent event) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Import Notes");
-        alert.setHeaderText("Import Feature");
-        alert.setContentText("Import functionality will allow you to import notes from:\n" +
-            "• Markdown files (.md)\n" +
-            "• Text files (.txt)\n" +
-            "• Evernote export files\n\n" +
-            "This feature is coming soon.");
-        alert.showAndWait();
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Import Notes");
+        fileChooser.getExtensionFilters().addAll(
+            new FileChooser.ExtensionFilter("Supported Files", "*.md", "*.txt", "*.markdown"),
+            new FileChooser.ExtensionFilter("Markdown Files", "*.md", "*.markdown"),
+            new FileChooser.ExtensionFilter("Text Files", "*.txt"),
+            new FileChooser.ExtensionFilter("All Files", "*.*")
+        );
+        
+        List<File> files = fileChooser.showOpenMultipleDialog(mainSplitPane.getScene().getWindow());
+        if (files != null && !files.isEmpty()) {
+            int imported = 0;
+            int failed = 0;
+            
+            for (File file : files) {
+                try {
+                    String content = Files.readString(file.toPath());
+                    String title = file.getName();
+                    // Remove extension from title
+                    int dotIndex = title.lastIndexOf('.');
+                    if (dotIndex > 0) {
+                        title = title.substring(0, dotIndex);
+                    }
+                    
+                    // Create new note
+                    Note newNote = new Note(title, content);
+                    int noteId = noteDAO.createNote(newNote);
+                    newNote.setId(noteId);
+                    
+                    // Add to current folder if selected
+                    if (currentFolder != null && currentFolder.getId() != null) {
+                        folderDAO.addNote(currentFolder, newNote);
+                    }
+                    
+                    imported++;
+                } catch (Exception e) {
+                    logger.warning("Failed to import file " + file.getName() + ": " + e.getMessage());
+                    failed++;
+                }
+            }
+            
+            // Refresh lists
+            refreshNotesList();
+            loadRecentNotes();
+            
+            // Show result
+            String message = "Imported " + imported + " note(s)";
+            if (failed > 0) {
+                message += "\nFailed: " + failed + " file(s)";
+            }
+            updateStatus(message);
+            showAlert(Alert.AlertType.INFORMATION, "Import Complete", 
+                "Import finished", message);
+        }
     }
     
     @FXML 
     private void handleExport(ActionEvent event) {
         if (currentNote == null) {
-            updateStatus("No note selected to export");
+            showAlert(Alert.AlertType.WARNING, "Export", "No note selected", "Please select a note to export.");
             return;
         }
         
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Export Note");
-        alert.setHeaderText("Export Feature");
-        alert.setContentText("Export functionality will allow you to export notes to:\n" +
-            "• Markdown files (.md)\n" +
-            "• Text files (.txt)\n" +
-            "• PDF files\n\n" +
-            "This feature is coming soon.\n\n" +
-            "For now, you can copy the note content manually.");
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Export Note");
+        fileChooser.setInitialFileName(sanitizeFileName(currentNote.getTitle()));
+        fileChooser.getExtensionFilters().addAll(
+            new FileChooser.ExtensionFilter("Markdown Files", "*.md"),
+            new FileChooser.ExtensionFilter("Text Files", "*.txt"),
+            new FileChooser.ExtensionFilter("All Files", "*.*")
+        );
+        
+        File file = fileChooser.showSaveDialog(mainSplitPane.getScene().getWindow());
+        if (file != null) {
+            try (FileWriter writer = new FileWriter(file)) {
+                // Add title as header for Markdown
+                if (file.getName().endsWith(".md")) {
+                    writer.write("# " + currentNote.getTitle() + "\n\n");
+                }
+                writer.write(currentNote.getContent() != null ? currentNote.getContent() : "");
+                updateStatus("Exported: " + file.getName());
+                showAlert(Alert.AlertType.INFORMATION, "Export Successful", 
+                    "Note exported successfully", "Saved to: " + file.getAbsolutePath());
+            } catch (IOException e) {
+                logger.severe("Failed to export note: " + e.getMessage());
+                showAlert(Alert.AlertType.ERROR, "Export Failed", 
+                    "Could not export note", e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Sanitize filename for safe file system use.
+     */
+    private String sanitizeFileName(String name) {
+        if (name == null || name.isEmpty()) {
+            return "untitled";
+        }
+        return name.replaceAll("[^a-zA-Z0-9\\-_ ]", "_").substring(0, Math.min(name.length(), 50));
+    }
+    
+    /**
+     * Show a simple alert dialog.
+     */
+    private void showAlert(Alert.AlertType type, String title, String header, String content) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(header);
+        alert.setContentText(content);
         alert.showAndWait();
     }
     @FXML private void handleUndo(ActionEvent event) { 
@@ -1506,10 +1606,14 @@ public class MainController {
             }
         }
     }
+    // Zoom settings
     private double currentZoom = 1.0;
     private static final double ZOOM_STEP = 0.1;
     private static final double MIN_ZOOM = 0.5;
     private static final double MAX_ZOOM = 3.0;
+    
+    // Preferences for persistence
+    private static final Preferences prefs = Preferences.userNodeForPackage(MainController.class);
     
     @FXML 
     private void handleZoomIn(ActionEvent event) {
@@ -1544,11 +1648,12 @@ public class MainController {
             noteTitleField.setStyle("-fx-font-size: " + (16 * currentZoom) + "px;");
         }
     }
-    private String currentTheme = "light";
+    private String currentTheme = prefs.get("theme", "light"); // Load from preferences
     
     @FXML 
     private void handleLightTheme(ActionEvent event) {
         currentTheme = "light";
+        prefs.put("theme", currentTheme); // Save preference
         updateThemeMenuSelection();
         applyTheme();
         updateStatus("Light theme applied");
@@ -1557,6 +1662,7 @@ public class MainController {
     @FXML 
     private void handleDarkTheme(ActionEvent event) {
         currentTheme = "dark";
+        prefs.put("theme", currentTheme); // Save preference
         updateThemeMenuSelection();
         applyTheme();
         updateStatus("Dark theme applied");
@@ -1565,22 +1671,16 @@ public class MainController {
     @FXML 
     private void handleSystemTheme(ActionEvent event) {
         currentTheme = "system";
+        prefs.put("theme", currentTheme); // Save preference
         // Detect system theme using system properties
         String osName = System.getProperty("os.name", "").toLowerCase();
         boolean isSystemDark = false;
         
         // Try to detect system theme based on OS
         if (osName.contains("win")) {
-            // Windows: Check registry or use JavaFX system properties
-            try {
-                // Try to detect Windows theme via system property
-                String theme = System.getProperty("sun.java2d.noddraw");
-                // For Windows 10/11, we can check the system preference
-                // This is a simplified approach - in production, use JNA or similar
-                isSystemDark = detectWindowsTheme();
-            } catch (Exception e) {
-                logger.warning("Could not detect Windows theme: " + e.getMessage());
-            }
+            // Windows: Detection requires JNA to read registry
+            // HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme
+            isSystemDark = detectWindowsTheme();
         } else if (osName.contains("mac")) {
             // macOS: Check system preference
             try {
@@ -1618,17 +1718,11 @@ public class MainController {
      * In production, use JNA or similar library for better detection.
      */
     private boolean detectWindowsTheme() {
-        try {
-            // Try to read Windows registry or use system properties
-            // This is a simplified approach
-            String theme = System.getProperty("sun.java2d.noddraw");
-            // For a more robust solution, use JNA to read registry:
-            // HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme
-            // For now, default to light theme
-            return false;
-        } catch (Exception e) {
-            return false;
-        }
+        // Windows theme detection is complex without JNA.
+        // For a robust solution, read registry:
+        // HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize\AppsUseLightTheme
+        // For now, default to light theme
+        return false;
     }
     
     private void applyTheme() {
@@ -1720,41 +1814,10 @@ public class MainController {
         if (searchField != null) {
             searchField.requestFocus();
             searchField.selectAll();
-            updateStatus("Search field focused");
+            updateStatus("Search field focused - Type to search");
         }
     }
     
-    /**
-     * Perform search across all notes.
-     */
-    private void performGlobalSearch(String searchText) {
-        try {
-            List<Note> allNotes = noteDAO.fetchAllNotes();
-            List<Note> matchingNotes = new ArrayList<>();
-            
-            String lowerSearch = searchText.toLowerCase();
-            for (Note note : allNotes) {
-                boolean matches = false;
-                if (note.getTitle() != null && note.getTitle().toLowerCase().contains(lowerSearch)) {
-                    matches = true;
-                }
-                if (note.getContent() != null && note.getContent().toLowerCase().contains(lowerSearch)) {
-                    matches = true;
-                }
-                if (matches) {
-                    matchingNotes.add(note);
-                }
-            }
-            
-            notesListView.getItems().setAll(matchingNotes);
-            noteCountLabel.setText(matchingNotes.size() + " notes found");
-            currentFolder = null;
-            updateStatus("Found " + matchingNotes.size() + " notes matching: " + searchText);
-        } catch (Exception e) {
-            logger.severe("Failed to search notes: " + e.getMessage());
-            updateStatus("Error searching notes");
-        }
-    }
     @FXML 
     private void handleTagsManager(ActionEvent event) {
         try {
@@ -1914,7 +1977,58 @@ public class MainController {
         alert.getDialogPane().setPrefSize(450, 500);
         alert.showAndWait();
     }
-    @FXML private void handleAbout(ActionEvent event) { updateStatus("About not implemented yet"); }
+    @FXML 
+    private void handleAbout(ActionEvent event) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("About Forevernote");
+        
+        ButtonType closeButton = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().add(closeButton);
+        
+        VBox content = new VBox(16);
+        content.setPadding(new javafx.geometry.Insets(20));
+        content.setAlignment(javafx.geometry.Pos.CENTER);
+        
+        // App icon and name
+        Label titleLabel = new Label("Forevernote");
+        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
+        
+        Label versionLabel = new Label("Version " + com.example.forevernote.AppConfig.getAppVersion());
+        versionLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: gray;");
+        
+        Label descLabel = new Label(com.example.forevernote.AppConfig.getAppDescription());
+        descLabel.setStyle("-fx-font-size: 13px;");
+        descLabel.setWrapText(true);
+        descLabel.setMaxWidth(350);
+        descLabel.setAlignment(javafx.geometry.Pos.CENTER);
+        
+        // Separator
+        Separator separator = new Separator();
+        separator.setPrefWidth(300);
+        
+        // Tech stack
+        Label techLabel = new Label("Built with Java 17, JavaFX 21, SQLite & CommonMark");
+        techLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: gray;");
+        
+        // Copyright
+        Label copyrightLabel = new Label(com.example.forevernote.AppConfig.getAppCopyright());
+        copyrightLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: gray;");
+        
+        // Developer credit
+        Label developerLabel = new Label("Developed by Edu Díaz (RGiskard7)");
+        developerLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold;");
+        
+        content.getChildren().addAll(
+            titleLabel, versionLabel, descLabel, 
+            separator, 
+            techLabel, copyrightLabel, developerLabel
+        );
+        
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().setPrefSize(400, 320);
+        
+        dialog.showAndWait();
+    }
     
     @FXML 
     private void handleRefresh(ActionEvent event) {
@@ -2021,14 +2135,12 @@ public class MainController {
         }
     }
     /**
-     * Insert Markdown formatting at cursor position.
+     * Insert Markdown formatting at cursor position or around selected text.
      */
     private void insertMarkdownFormat(String prefix, String suffix) {
         if (noteContentArea == null) return;
         
         String selectedText = noteContentArea.getSelectedText();
-        int start = noteContentArea.getSelection().getStart();
-        int end = noteContentArea.getSelection().getEnd();
         
         if (selectedText != null && !selectedText.isEmpty()) {
             // Replace selected text with formatted version
@@ -2037,7 +2149,7 @@ public class MainController {
         } else {
             // Insert at cursor position
             int caretPos = noteContentArea.getCaretPosition();
-            String text = noteContentArea.getText();
+            String text = noteContentArea.getText() != null ? noteContentArea.getText() : "";
             String newText = text.substring(0, caretPos) + prefix + suffix + text.substring(caretPos);
             noteContentArea.setText(newText);
             noteContentArea.positionCaret(caretPos + prefix.length());

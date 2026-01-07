@@ -1,98 +1,142 @@
 /* ========================================
-   FOREVERNOTE - MINIMALIST PROFESSIONAL THEME
-   Ultra-clean, subtle, elegant design
+   FOREVERNOTE - MODERN PROFESSIONAL THEME
+   Clean, responsive, professional design
    ======================================== */
 
 /* ====================
-   COLOR PALETTE - Subtle & Refined
+   CSS VARIABLES - Color System
    ==================== */
 .root {
-    /* Primary - Subtle Blue-Gray */
+    /* Primary Brand Colors */
     -fx-primary: #6366F1;
     -fx-primary-hover: #4F46E5;
     -fx-primary-light: #A5B4FC;
+    -fx-primary-dark: #4338CA;
+    -fx-primary-subtle: rgba(99, 102, 241, 0.08);
 
-    /* Neutrals - High Contrast Grayscale */
+    /* Semantic Colors */
+    -fx-success: #10B981;
+    -fx-success-light: #D1FAE5;
+    -fx-warning: #F59E0B;
+    -fx-warning-light: #FEF3C7;
+    -fx-error: #EF4444;
+    -fx-error-light: #FEE2E2;
+    -fx-info: #3B82F6;
+
+    /* Neutral Palette */
     -fx-bg-primary: #FAFAFA;
-    -fx-bg-secondary: #F5F5F5;
-    -fx-bg-tertiary: #EEEEEE;
+    -fx-bg-secondary: #F4F4F5;
+    -fx-bg-tertiary: #E4E4E7;
     -fx-bg-card: #FFFFFF;
+    -fx-bg-hover: rgba(0, 0, 0, 0.04);
 
-    /* Text - Clean Hierarchy */
+    /* Text Hierarchy */
     -fx-text-primary: #18181B;
-    -fx-text-secondary: #71717A;
+    -fx-text-secondary: #52525B;
     -fx-text-tertiary: #A1A1AA;
+    -fx-text-disabled: #D4D4D8;
     -fx-text-inverse: #FFFFFF;
 
-    /* Borders - Almost Invisible */
+    /* Borders */
     -fx-border-subtle: #E4E4E7;
-    -fx-border-light: #D4D4D8;
-    -fx-border-medium: #A1A1AA;
+    -fx-border-default: #D4D4D8;
+    -fx-border-strong: #A1A1AA;
 
-    /* Accents */
-    -fx-success: #22C55E;
-    -fx-warning: #F59E0B;
-    -fx-error: #EF4444;
+    /* Shadows */
+    -fx-shadow-sm: dropshadow(gaussian, rgba(0,0,0,0.05), 4, 0, 0, 1);
+    -fx-shadow-md: dropshadow(gaussian, rgba(0,0,0,0.08), 8, 0, 0, 2);
+    -fx-shadow-lg: dropshadow(gaussian, rgba(0,0,0,0.12), 16, 0, 0, 4);
+
+    /* Spacing & Sizing */
+    -fx-radius-sm: 4px;
+    -fx-radius-md: 6px;
+    -fx-radius-lg: 8px;
+    -fx-radius-xl: 12px;
 }
 
 /* ====================
-   GLOBAL - Clean Foundation
+   GLOBAL STYLES
    ==================== */
 .root {
-    -fx-font-family: "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", sans-serif;
+    -fx-font-family: "Segoe UI", "-apple-system", "BlinkMacSystemFont", "Roboto", "Helvetica Neue", sans-serif;
     -fx-font-size: 13px;
     -fx-background-color: -fx-bg-primary;
     -fx-text-fill: -fx-text-primary;
 }
 
 * {
-    -fx-focus-color: transparent;
-    -fx-faint-focus-color: transparent;
+    -fx-focus-color: -fx-primary;
+    -fx-faint-focus-color: -fx-primary-subtle;
+}
+
+/* Remove focus outline for cleaner look */
+.focus-indicator {
+    -fx-border-color: transparent;
 }
 
 /* ====================
-   SCROLLBARS - Invisible Until Hover
+   TYPOGRAPHY
+   ==================== */
+.h1 { -fx-font-size: 24px; -fx-font-weight: 700; }
+.h2 { -fx-font-size: 20px; -fx-font-weight: 600; }
+.h3 { -fx-font-size: 16px; -fx-font-weight: 600; }
+.h4 { -fx-font-size: 14px; -fx-font-weight: 600; }
+.body { -fx-font-size: 13px; -fx-font-weight: 400; }
+.caption { -fx-font-size: 11px; -fx-font-weight: 400; }
+
+/* ====================
+   SCROLLBARS - Minimal & Elegant
    ==================== */
 .scroll-bar {
     -fx-background-color: transparent;
-    -fx-opacity: 0;
-}
-
-.scroll-bar:hover {
-    -fx-opacity: 0.6;
 }
 
 .scroll-bar:vertical {
-    -fx-pref-width: 6px;
+    -fx-pref-width: 8px;
+    -fx-padding: 2px;
 }
 
 .scroll-bar:horizontal {
-    -fx-pref-height: 6px;
+    -fx-pref-height: 8px;
+    -fx-padding: 2px;
 }
 
 .scroll-bar .thumb {
-    -fx-background-color: -fx-border-medium;
-    -fx-background-radius: 3px;
+    -fx-background-color: -fx-border-default;
+    -fx-background-radius: 4px;
+    -fx-background-insets: 0;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: -fx-border-strong;
 }
 
 .scroll-bar .track {
     -fx-background-color: transparent;
+    -fx-background-radius: 0;
 }
 
 .scroll-bar .increment-button,
 .scroll-bar .decrement-button {
     -fx-pref-height: 0;
     -fx-pref-width: 0;
+    -fx-opacity: 0;
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-shape: "";
+    -fx-padding: 0;
 }
 
 /* ====================
-   MENU BAR - Ultra Minimal
+   MENU BAR - Clean Header
    ==================== */
 .menu-bar {
     -fx-background-color: -fx-bg-card;
     -fx-border-color: transparent transparent -fx-border-subtle transparent;
     -fx-border-width: 0 0 1px 0;
-    -fx-padding: 4px 8px;
+    -fx-padding: 2px 8px;
 }
 
 .menu-bar .label {
@@ -101,209 +145,293 @@
 }
 
 .menu-bar .menu {
-    -fx-padding: 4px 10px;
+    -fx-padding: 6px 12px;
+    -fx-background-radius: -fx-radius-md;
 }
 
-.menu-bar .menu:hover {
-    -fx-background-color: -fx-bg-secondary;
-    -fx-background-radius: 4px;
+.menu-bar .menu:hover,
+.menu-bar .menu:showing {
+    -fx-background-color: -fx-bg-hover;
 }
 
+.menu-bar .menu .label {
+    -fx-text-fill: -fx-text-primary;
+}
+
+/* Context Menu & Dropdowns */
 .context-menu {
     -fx-background-color: -fx-bg-card;
-    -fx-background-radius: 6px;
+    -fx-background-radius: -fx-radius-lg;
     -fx-padding: 4px;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12, 0, 0, 2);
+    -fx-effect: -fx-shadow-lg;
     -fx-border-color: -fx-border-subtle;
-    -fx-border-radius: 6px;
+    -fx-border-radius: -fx-radius-lg;
     -fx-border-width: 1px;
 }
 
 .menu-item {
-    -fx-padding: 6px 10px;
-    -fx-background-radius: 3px;
+    -fx-padding: 8px 12px;
+    -fx-background-radius: -fx-radius-sm;
 }
 
-.menu-item:hover {
-    -fx-background-color: -fx-bg-secondary;
+.menu-item:hover,
+.menu-item:focused {
+    -fx-background-color: -fx-primary-subtle;
 }
 
 .menu-item .label {
     -fx-text-fill: -fx-text-primary;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
+}
+
+.menu-item:hover .label,
+.menu-item:focused .label {
+    -fx-text-fill: -fx-primary;
+}
+
+.separator:horizontal .line {
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-width: 1px 0 0 0;
 }
 
 /* ====================
-   TOOLBAR - Clean & Spacious
+   TOOLBAR - Action Bar
    ==================== */
 .toolbar {
     -fx-background-color: -fx-bg-card;
     -fx-border-color: transparent transparent -fx-border-subtle transparent;
     -fx-border-width: 0 0 1px 0;
-    -fx-padding: 10px 16px;
-    -fx-spacing: 6px;
+    -fx-padding: 8px 16px;
+    -fx-spacing: 8px;
 }
 
 .toolbar-button {
     -fx-background-color: transparent;
     -fx-text-fill: -fx-text-secondary;
     -fx-font-size: 12px;
-    -fx-padding: 6px 12px;
-    -fx-background-radius: 4px;
+    -fx-font-weight: 500;
+    -fx-padding: 8px 14px;
+    -fx-background-radius: -fx-radius-md;
     -fx-border-color: transparent;
+    -fx-cursor: hand;
 }
 
 .toolbar-button:hover {
-    -fx-background-color: -fx-bg-secondary;
+    -fx-background-color: -fx-bg-hover;
     -fx-text-fill: -fx-text-primary;
 }
 
+.toolbar-button:pressed {
+    -fx-background-color: -fx-bg-tertiary;
+}
+
+/* Search Field */
 .search-field {
     -fx-background-color: -fx-bg-secondary;
     -fx-border-color: transparent;
-    -fx-border-radius: 6px;
-    -fx-background-radius: 6px;
-    -fx-padding: 6px 10px;
-    -fx-font-size: 12px;
+    -fx-border-radius: -fx-radius-lg;
+    -fx-background-radius: -fx-radius-lg;
+    -fx-padding: 8px 14px;
+    -fx-font-size: 13px;
     -fx-text-fill: -fx-text-primary;
     -fx-prompt-text-fill: -fx-text-tertiary;
+    -fx-min-width: 200px;
+    -fx-pref-width: 280px;
 }
 
 .search-field:focused {
     -fx-background-color: -fx-bg-card;
-    -fx-border-color: -fx-border-light;
-    -fx-border-width: 1px;
+    -fx-border-color: -fx-primary;
+    -fx-border-width: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.2), 8, 0, 0, 0);
 }
 
 .search-button {
     -fx-background-color: transparent;
-    -fx-text-fill: -fx-text-secondary;
-    -fx-background-radius: 4px;
-    -fx-padding: 6px 10px;
-    -fx-font-size: 13px;
+    -fx-text-fill: -fx-text-tertiary;
+    -fx-background-radius: -fx-radius-md;
+    -fx-padding: 8px 10px;
+    -fx-font-size: 14px;
+    -fx-cursor: hand;
 }
 
 .search-button:hover {
-    -fx-background-color: -fx-bg-secondary;
+    -fx-background-color: -fx-bg-hover;
+    -fx-text-fill: -fx-primary;
 }
 
+/* View Toggle Buttons */
 .view-toggle {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-background-radius: 4px;
-    -fx-padding: 5px 8px;
-    -fx-font-size: 14px;
+    -fx-background-radius: -fx-radius-md;
+    -fx-padding: 6px 10px;
+    -fx-font-size: 15px;
     -fx-text-fill: -fx-text-tertiary;
+    -fx-cursor: hand;
 }
 
-.view-toggle:selected {
-    -fx-background-color: -fx-bg-secondary;
+.view-toggle:hover {
+    -fx-background-color: -fx-bg-hover;
     -fx-text-fill: -fx-text-primary;
 }
 
+.view-toggle:selected {
+    -fx-background-color: -fx-primary-subtle;
+    -fx-text-fill: -fx-primary;
+}
+
 /* ====================
-   SIDEBAR - Clean Lists
+   SIDEBAR - Navigation
    ==================== */
 .sidebar {
     -fx-background-color: -fx-bg-secondary;
     -fx-border-color: transparent -fx-border-subtle transparent transparent;
     -fx-border-width: 0 1px 0 0;
+    -fx-min-width: 200px;
+    -fx-pref-width: 260px;
 }
 
+/* Navigation Tabs */
 .navigation-tabs {
     -fx-background-color: transparent;
-    -fx-tab-min-height: 36px;
-    -fx-padding: 6px 6px 0 6px;
+    -fx-tab-min-height: 40px;
+    -fx-tab-max-height: 40px;
+}
+
+.navigation-tabs .tab-header-area {
+    -fx-padding: 8px 8px 0 8px;
+}
+
+.navigation-tabs .tab-header-background {
+    -fx-background-color: transparent;
 }
 
 .navigation-tabs .tab {
     -fx-background-color: transparent;
-    -fx-background-radius: 4px 4px 0 0;
-    -fx-padding: 6px 12px;
+    -fx-background-radius: -fx-radius-md -fx-radius-md 0 0;
+    -fx-padding: 8px 14px;
+    -fx-focus-color: transparent;
+}
+
+.navigation-tabs .tab:hover {
+    -fx-background-color: -fx-bg-hover;
 }
 
 .navigation-tabs .tab:selected {
-    -fx-background-color: -fx-bg-primary;
+    -fx-background-color: -fx-bg-card;
 }
 
 .navigation-tabs .tab .tab-label {
     -fx-text-fill: -fx-text-secondary;
     -fx-font-size: 12px;
+    -fx-font-weight: 500;
 }
 
 .navigation-tabs .tab:selected .tab-label {
-    -fx-text-fill: -fx-text-primary;
+    -fx-text-fill: -fx-primary;
+    -fx-font-weight: 600;
 }
 
+.navigation-tabs .tab-content-area {
+    -fx-background-color: -fx-bg-card;
+}
+
+/* Tree & List Views */
 .folder-tree,
 .tag-list,
 .recent-list,
 .favorites-list {
     -fx-background-color: transparent;
-    -fx-padding: 6px;
+    -fx-padding: 4px;
 }
 
 .tree-cell,
 .list-cell {
     -fx-background-color: transparent;
-    -fx-padding: 6px 10px;
-    -fx-background-radius: 4px;
+    -fx-padding: 8px 12px;
+    -fx-background-radius: -fx-radius-md;
     -fx-text-fill: -fx-text-primary;
-    -fx-font-size: 12px;
+    -fx-font-size: 13px;
 }
 
 .tree-cell:hover,
 .list-cell:hover {
-    -fx-background-color: rgba(0, 0, 0, 0.03);
+    -fx-background-color: -fx-bg-hover;
 }
 
 .tree-cell:selected,
 .list-cell:selected {
-    -fx-background-color: rgba(99, 102, 241, 0.08);
+    -fx-background-color: -fx-primary-subtle;
     -fx-text-fill: -fx-primary;
 }
 
+.tree-cell:selected:focused,
+.list-cell:selected:focused {
+    -fx-background-color: rgba(99, 102, 241, 0.12);
+}
+
+/* Tree View Arrow */
+.tree-cell .tree-disclosure-node {
+    -fx-padding: 0 4px 0 0;
+}
+
+.tree-cell .arrow {
+    -fx-background-color: -fx-text-tertiary;
+    -fx-shape: "M0,0 L6,4 L0,8 Z";
+    -fx-scale-x: 0.8;
+    -fx-scale-y: 0.8;
+}
+
+.tree-cell:selected .arrow {
+    -fx-background-color: -fx-primary;
+}
+
+/* Quick Actions */
 .quick-actions {
     -fx-background-color: transparent;
     -fx-border-color: -fx-border-subtle transparent transparent transparent;
     -fx-border-width: 1px 0 0 0;
-    -fx-padding: 10px;
+    -fx-padding: 12px;
 }
 
 .quick-action-button {
-    -fx-background-color: transparent;
-    -fx-border-color: -fx-border-light;
-    -fx-border-radius: 4px;
-    -fx-background-radius: 4px;
+    -fx-background-color: -fx-bg-card;
+    -fx-border-color: -fx-border-default;
+    -fx-border-radius: -fx-radius-md;
+    -fx-background-radius: -fx-radius-md;
     -fx-padding: 6px 10px;
     -fx-font-size: 11px;
+    -fx-font-weight: 500;
     -fx-text-fill: -fx-text-secondary;
+    -fx-cursor: hand;
 }
 
 .quick-action-button:hover {
-    -fx-background-color: rgba(99, 102, 241, 0.05);
+    -fx-background-color: -fx-primary-subtle;
     -fx-border-color: -fx-primary;
     -fx-text-fill: -fx-primary;
 }
 
 /* ====================
-   NOTES LIST - Minimal Cards
+   NOTES LIST - Card Style
    ==================== */
 .notes-list-container {
     -fx-background-color: -fx-bg-card;
     -fx-border-color: transparent -fx-border-subtle transparent transparent;
     -fx-border-width: 0 1px 0 0;
+    -fx-min-width: 280px;
 }
 
 .notes-header {
     -fx-background-color: transparent;
     -fx-border-color: transparent transparent -fx-border-subtle transparent;
     -fx-border-width: 0 0 1px 0;
-    -fx-padding: 12px 14px;
+    -fx-padding: 14px 16px;
 }
 
 .section-title {
-    -fx-font-size: 14px;
+    -fx-font-size: 15px;
     -fx-font-weight: 600;
     -fx-text-fill: -fx-text-primary;
 }
@@ -311,52 +439,68 @@
 .sort-combo {
     -fx-background-color: -fx-bg-secondary;
     -fx-border-color: transparent;
-    -fx-border-radius: 4px;
-    -fx-background-radius: 4px;
-    -fx-padding: 5px 8px;
+    -fx-border-radius: -fx-radius-md;
+    -fx-background-radius: -fx-radius-md;
+    -fx-padding: 6px 10px;
     -fx-font-size: 11px;
+    -fx-cursor: hand;
+}
+
+.sort-combo:hover {
+    -fx-background-color: -fx-bg-tertiary;
 }
 
 .refresh-button {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-background-radius: 4px;
-    -fx-padding: 5px 8px;
-    -fx-font-size: 13px;
+    -fx-background-radius: -fx-radius-md;
+    -fx-padding: 6px 8px;
+    -fx-font-size: 14px;
     -fx-text-fill: -fx-text-tertiary;
+    -fx-cursor: hand;
 }
 
 .refresh-button:hover {
-    -fx-background-color: -fx-bg-secondary;
-    -fx-text-fill: -fx-text-primary;
+    -fx-background-color: -fx-bg-hover;
+    -fx-text-fill: -fx-primary;
 }
 
 .notes-list {
     -fx-background-color: transparent;
-    -fx-padding: 6px;
+    -fx-padding: 8px;
 }
 
 .notes-list .list-cell {
-    -fx-background-color: transparent;
+    -fx-background-color: -fx-bg-card;
     -fx-border-color: -fx-border-subtle;
-    -fx-border-radius: 6px;
-    -fx-background-radius: 6px;
-    -fx-padding: 10px;
+    -fx-border-radius: -fx-radius-lg;
+    -fx-background-radius: -fx-radius-lg;
+    -fx-padding: 12px 14px;
     -fx-border-width: 1px;
+    -fx-effect: -fx-shadow-sm;
 }
 
 .notes-list .list-cell:hover {
     -fx-background-color: -fx-bg-primary;
-    -fx-border-color: -fx-border-light;
+    -fx-border-color: -fx-border-default;
+    -fx-effect: -fx-shadow-md;
 }
 
 .notes-list .list-cell:selected {
-    -fx-background-color: rgba(99, 102, 241, 0.04);
+    -fx-background-color: -fx-primary-subtle;
     -fx-border-color: -fx-primary;
+    -fx-effect: -fx-shadow-md;
+}
+
+/* Empty State */
+.notes-list .list-cell:empty {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-effect: none;
 }
 
 /* ====================
-   EDITOR - Distraction-Free
+   EDITOR - Distraction Free
    ==================== */
 .editor-container {
     -fx-background-color: -fx-bg-card;
@@ -366,37 +510,49 @@
     -fx-background-color: transparent;
     -fx-border-color: transparent transparent -fx-border-subtle transparent;
     -fx-border-width: 0 0 1px 0;
-    -fx-padding: 16px 20px 12px 20px;
+    -fx-padding: 20px 24px 16px 24px;
 }
 
 .note-title-field {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-font-size: 20px;
+    -fx-font-size: 22px;
     -fx-font-weight: 600;
     -fx-text-fill: -fx-text-primary;
     -fx-prompt-text-fill: -fx-text-tertiary;
     -fx-padding: 0;
 }
 
+.note-title-field:focused {
+    -fx-background-color: transparent;
+}
+
 .favorite-button,
 .delete-button {
     -fx-background-color: transparent;
-    -fx-background-radius: 4px;
-    -fx-padding: 6px 10px;
-    -fx-font-size: 15px;
+    -fx-background-radius: -fx-radius-md;
+    -fx-padding: 8px 10px;
+    -fx-font-size: 16px;
     -fx-text-fill: -fx-text-tertiary;
+    -fx-cursor: hand;
 }
 
-.favorite-button:hover,
+.favorite-button:hover {
+    -fx-background-color: rgba(245, 158, 11, 0.1);
+    -fx-text-fill: -fx-warning;
+}
+
 .delete-button:hover {
-    -fx-background-color: -fx-bg-secondary;
-    -fx-text-fill: -fx-text-primary;
+    -fx-background-color: rgba(239, 68, 68, 0.1);
+    -fx-text-fill: -fx-error;
 }
 
+/* Note Metadata */
 .note-metadata {
     -fx-background-color: -fx-bg-primary;
-    -fx-padding: 10px 20px;
+    -fx-padding: 10px 24px;
+    -fx-border-color: transparent transparent -fx-border-subtle transparent;
+    -fx-border-width: 0 0 1px 0;
 }
 
 .metadata-label {
@@ -404,55 +560,72 @@
     -fx-text-fill: -fx-text-tertiary;
 }
 
+/* Tags */
 .tags-flow {
     -fx-background-color: transparent;
+    -fx-hgap: 6px;
+    -fx-vgap: 4px;
 }
 
 .tag-label {
-    -fx-background-color: rgba(99, 102, 241, 0.08);
+    -fx-background-color: -fx-primary-subtle;
     -fx-text-fill: -fx-primary;
-    -fx-background-radius: 10px;
-    -fx-padding: 3px 10px;
+    -fx-background-radius: 12px;
+    -fx-padding: 4px 12px;
     -fx-font-size: 11px;
+    -fx-font-weight: 500;
+    -fx-cursor: hand;
 }
 
 .tag-label:hover {
-    -fx-background-color: rgba(99, 102, 241, 0.12);
+    -fx-background-color: rgba(99, 102, 241, 0.15);
 }
 
+/* Note Content Area */
 .note-content-area {
     -fx-background-color: -fx-bg-card;
     -fx-text-fill: -fx-text-primary;
     -fx-font-size: 14px;
-    -fx-font-family: "Consolas", "Monaco", "Courier New", monospace;
-    -fx-padding: 20px;
+    -fx-font-family: "JetBrains Mono", "Fira Code", "Consolas", "Monaco", monospace;
+    -fx-padding: 20px 24px;
     -fx-border-color: transparent;
-    -fx-line-spacing: 1.5;
 }
 
 .note-content-area .content {
     -fx-background-color: transparent;
 }
 
+.note-content-area:focused {
+    -fx-background-color: -fx-bg-card;
+}
+
+/* Editor Toolbar */
 .editor-toolbar {
     -fx-background-color: -fx-bg-primary;
     -fx-border-color: -fx-border-subtle transparent transparent transparent;
     -fx-border-width: 1px 0 0 0;
-    -fx-padding: 8px 14px;
+    -fx-padding: 8px 16px;
 }
 
 .format-button {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-background-radius: 3px;
-    -fx-padding: 5px 8px;
-    -fx-font-size: 12px;
+    -fx-background-radius: -fx-radius-sm;
+    -fx-padding: 6px 10px;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
     -fx-text-fill: -fx-text-tertiary;
+    -fx-cursor: hand;
 }
 
 .format-button:hover {
-    -fx-background-color: -fx-bg-secondary;
+    -fx-background-color: -fx-bg-hover;
     -fx-text-fill: -fx-text-primary;
+}
+
+.format-button:pressed {
+    -fx-background-color: -fx-primary-subtle;
+    -fx-text-fill: -fx-primary;
 }
 
 .word-count {
@@ -471,12 +644,20 @@
     -fx-background-color: -fx-bg-card;
     -fx-border-color: transparent transparent -fx-border-subtle transparent;
     -fx-border-width: 0 0 1px 0;
-    -fx-padding: 0 14px;
+    -fx-padding: 0 16px;
+}
+
+.preview-tabs .tab-header-background {
+    -fx-background-color: transparent;
 }
 
 .preview-tabs .tab {
     -fx-background-color: transparent;
-    -fx-padding: 10px 14px;
+    -fx-padding: 12px 16px;
+}
+
+.preview-tabs .tab:hover {
+    -fx-background-color: -fx-bg-hover;
 }
 
 .preview-tabs .tab:selected {
@@ -487,34 +668,31 @@
 .preview-tabs .tab .tab-label {
     -fx-text-fill: -fx-text-secondary;
     -fx-font-size: 12px;
+    -fx-font-weight: 500;
 }
 
 .preview-tabs .tab:selected .tab-label {
-    -fx-text-fill: -fx-text-primary;
+    -fx-text-fill: -fx-primary;
+    -fx-font-weight: 600;
 }
 
-.preview-content {
-    -fx-background-color: -fx-bg-card;
-    -fx-padding: 20px;
-    -fx-font-size: 13px;
-    -fx-text-fill: -fx-text-secondary;
-}
-
-.preview-scroll {
+.preview-tabs .tab-content-area {
     -fx-background-color: -fx-bg-card;
 }
 
+/* Attachments List */
 .attachments-list {
     -fx-background-color: -fx-bg-card;
-    -fx-padding: 14px;
+    -fx-padding: 16px;
 }
 
+/* Info Container */
 .info-container {
     -fx-background-color: -fx-bg-card;
 }
 
 .info-section-title {
-    -fx-font-size: 13px;
+    -fx-font-size: 14px;
     -fx-font-weight: 600;
     -fx-text-fill: -fx-text-primary;
 }
@@ -530,13 +708,13 @@
 }
 
 /* ====================
-   STATUS BAR - Minimal
+   STATUS BAR
    ==================== */
 .status-bar {
     -fx-background-color: -fx-bg-card;
     -fx-border-color: -fx-border-subtle transparent transparent transparent;
     -fx-border-width: 1px 0 0 0;
-    -fx-padding: 6px 14px;
+    -fx-padding: 8px 16px;
 }
 
 .status-text {
@@ -545,93 +723,126 @@
 }
 
 /* ====================
-   SPLIT PANES - Invisible
+   SPLIT PANES
    ==================== */
 .split-pane {
     -fx-background-color: transparent;
+    -fx-padding: 0;
 }
 
 .split-pane .split-pane-divider {
     -fx-background-color: -fx-border-subtle;
-    -fx-padding: 0 0.5px 0 0.5px;
+    -fx-padding: 0 1px 0 0;
 }
 
 .split-pane:vertical .split-pane-divider {
-    -fx-padding: 0.5px 0 0.5px 0;
+    -fx-padding: 1px 0 0 0;
 }
 
 .split-pane .split-pane-divider:hover {
-    -fx-background-color: -fx-border-light;
+    -fx-background-color: -fx-primary;
 }
 
 /* ====================
-   DIALOGS - Clean
+   DIALOGS
    ==================== */
 .dialog-pane {
     -fx-background-color: -fx-bg-card;
-    -fx-background-radius: 8px;
-    -fx-padding: 20px;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 20, 0, 0, 6);
+    -fx-background-radius: -fx-radius-xl;
+    -fx-padding: 24px;
+    -fx-effect: -fx-shadow-lg;
 }
 
 .dialog-pane .header-panel {
-    -fx-padding: 0 0 14px 0;
+    -fx-padding: 0 0 16px 0;
+}
+
+.dialog-pane .header-panel .label {
+    -fx-font-size: 18px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.dialog-pane .content.label {
+    -fx-font-size: 13px;
+    -fx-text-fill: -fx-text-secondary;
+    -fx-padding: 0 0 16px 0;
+}
+
+.dialog-pane .button-bar {
+    -fx-padding: 16px 0 0 0;
 }
 
 .dialog-pane .button {
-    -fx-background-color: -fx-primary;
-    -fx-text-fill: white;
-    -fx-background-radius: 5px;
-    -fx-padding: 8px 16px;
-    -fx-font-size: 12px;
-}
-
-.dialog-pane .button:hover {
-    -fx-background-color: -fx-primary-hover;
-}
-
-.dialog-pane .button:cancel-button {
-    -fx-background-color: transparent;
-    -fx-text-fill: -fx-text-secondary;
-    -fx-border-color: -fx-border-light;
-    -fx-border-width: 1px;
-    -fx-border-radius: 5px;
+    -fx-background-radius: -fx-radius-md;
+    -fx-padding: 10px 20px;
+    -fx-font-size: 13px;
+    -fx-font-weight: 500;
 }
 
 /* ====================
-   BUTTONS - Subtle
+   BUTTONS
    ==================== */
 .button {
     -fx-background-color: -fx-primary;
     -fx-text-fill: white;
-    -fx-background-radius: 5px;
-    -fx-padding: 8px 14px;
-    -fx-font-size: 12px;
+    -fx-background-radius: -fx-radius-md;
+    -fx-padding: 10px 18px;
+    -fx-font-size: 13px;
+    -fx-font-weight: 500;
     -fx-border-color: transparent;
+    -fx-cursor: hand;
 }
 
 .button:hover {
     -fx-background-color: -fx-primary-hover;
 }
 
+.button:pressed {
+    -fx-background-color: -fx-primary-dark;
+}
+
+.button:disabled {
+    -fx-opacity: 0.5;
+}
+
+/* Secondary Button */
+.button.secondary {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-secondary;
+    -fx-border-color: -fx-border-default;
+    -fx-border-width: 1px;
+}
+
+.button.secondary:hover {
+    -fx-background-color: -fx-bg-hover;
+    -fx-border-color: -fx-border-strong;
+}
+
 /* ====================
-   TEXT FIELDS - Clean
+   TEXT FIELDS & AREAS
    ==================== */
 .text-field,
 .text-area {
     -fx-background-color: -fx-bg-card;
-    -fx-border-color: -fx-border-subtle;
-    -fx-border-radius: 5px;
-    -fx-background-radius: 5px;
-    -fx-padding: 8px 10px;
-    -fx-font-size: 12px;
+    -fx-border-color: -fx-border-default;
+    -fx-border-radius: -fx-radius-md;
+    -fx-background-radius: -fx-radius-md;
+    -fx-padding: 10px 14px;
+    -fx-font-size: 13px;
     -fx-text-fill: -fx-text-primary;
     -fx-prompt-text-fill: -fx-text-tertiary;
 }
 
 .text-field:focused,
 .text-area:focused {
-    -fx-border-color: -fx-border-medium;
+    -fx-border-color: -fx-primary;
+    -fx-border-width: 2px;
+    -fx-effect: dropshadow(gaussian, rgba(99, 102, 241, 0.15), 4, 0, 0, 0);
+}
+
+.text-area .content {
+    -fx-background-color: transparent;
 }
 
 /* ====================
@@ -639,14 +850,93 @@
    ==================== */
 .combo-box {
     -fx-background-color: -fx-bg-secondary;
-    -fx-border-color: transparent;
-    -fx-border-radius: 4px;
-    -fx-background-radius: 4px;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-radius: -fx-radius-md;
+    -fx-background-radius: -fx-radius-md;
+    -fx-cursor: hand;
+}
+
+.combo-box:hover {
+    -fx-border-color: -fx-border-default;
+}
+
+.combo-box:focused {
+    -fx-border-color: -fx-primary;
 }
 
 .combo-box-popup .list-view {
     -fx-background-color: -fx-bg-card;
-    -fx-background-radius: 6px;
+    -fx-background-radius: -fx-radius-lg;
     -fx-padding: 4px;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.08), 12, 0, 0, 2);
+    -fx-effect: -fx-shadow-lg;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-radius: -fx-radius-lg;
+    -fx-border-width: 1px;
+}
+
+.combo-box-popup .list-cell {
+    -fx-padding: 8px 12px;
+    -fx-background-radius: -fx-radius-sm;
+}
+
+.combo-box-popup .list-cell:hover {
+    -fx-background-color: -fx-primary-subtle;
+}
+
+.combo-box-popup .list-cell:selected {
+    -fx-background-color: -fx-primary-subtle;
+    -fx-text-fill: -fx-primary;
+}
+
+/* ====================
+   TOOLTIPS
+   ==================== */
+.tooltip {
+    -fx-background-color: -fx-text-primary;
+    -fx-text-fill: -fx-text-inverse;
+    -fx-background-radius: -fx-radius-sm;
+    -fx-padding: 6px 10px;
+    -fx-font-size: 11px;
+    -fx-effect: -fx-shadow-md;
+}
+
+/* ====================
+   SEPARATOR
+   ==================== */
+.separator:vertical .line {
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-width: 0 0 0 1px;
+}
+
+/* ====================
+   RADIO MENU ITEMS
+   ==================== */
+.radio-menu-item:checked .label {
+    -fx-text-fill: -fx-primary;
+}
+
+.radio-menu-item .radio {
+    -fx-background-color: -fx-primary;
+}
+
+/* ====================
+   RESPONSIVE HELPERS
+   ==================== */
+/* These styles help with responsive behavior */
+.responsive-hide {
+    -fx-managed: false;
+    -fx-visible: false;
+}
+
+/* Compact mode for smaller screens */
+.compact .toolbar {
+    -fx-padding: 6px 12px;
+}
+
+.compact .note-header {
+    -fx-padding: 12px 16px;
+}
+
+.compact .note-title-field {
+    -fx-font-size: 18px;
 }
