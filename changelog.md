@@ -1,5 +1,102 @@
 # Changelog - Forevernote
 
+## 📅 2026-01-07 — Corrección de bugs: Tags y Notas Recientes
+
+### Resumen
+Corrección de bugs críticos donde las notas eliminadas seguían apareciendo en "Recientes" y los tags no podían ser eliminados de las notas.
+
+### Problemas Corregidos
+
+1. **Notas eliminadas aparecían en Recientes y Favoritos**
+   - ❌ **Antes**: Al eliminar una nota, seguía mostrándose en las listas de Recientes y Favoritos
+   - ✅ **Ahora**: `handleDelete()` llama a `loadRecentNotes()` y `loadFavorites()` después de eliminar
+
+2. **Tags no se podían eliminar de las notas**
+   - ❌ **Antes**: El doble-click no funcionaba correctamente debido a referencia incorrecta del objeto Tag
+   - ✅ **Ahora**: Tags tienen botón "×" visible para eliminar + el doble-click funciona correctamente
+   - ✅ Se guarda `tagId` y `tagTitle` en variables finales para asegurar referencia correcta
+
+3. **Notas recientes no se actualizaban al crear nota**
+   - ❌ **Antes**: Al crear una nueva nota, no aparecía en Recientes
+   - ✅ **Ahora**: `handleNewNote()` llama a `loadRecentNotes()` después de crear
+
+### Mejoras UX (estilo Evernote/Obsidian)
+
+- ✅ **Botón "×" en tags**: Cada tag tiene un botón visible para eliminar (más intuitivo)
+- ✅ **Diálogo de confirmación**: Al eliminar un tag se muestra confirmación
+- ✅ **Botón "+ Add Tag" con estilo**: Borde punteado, cambia color al hover
+
+### CSS Actualizado
+
+- ✅ **`.tag-container`**: Contenedor para tag + botón de eliminar
+- ✅ **`.tag-remove-btn`**: Botón "×" minimalista que cambia a rojo en hover
+- ✅ **`.add-tag-button`**: Estilo para botón de agregar tag
+- ✅ Estilos aplicados a ambos temas (light y dark)
+
+### Archivos Modificados
+- `MainController.java` - Correcciones de refresh y nuevo UI de tags
+- `modern-theme.css` - Estilos para tag-container y tag-remove-btn
+- `dark-theme.css` - Estilos dark para tag-container y tag-remove-btn
+
+---
+
+## 📅 2026-01-07 — Rediseño Obsidian-style del editor y preview
+
+### Resumen
+Rediseño completo de la experiencia de edición para que sea similar a Obsidian: editor y preview lado a lado, fácilmente redimensionable, con botones de toggle para cambiar entre modos de vista.
+
+### Cambios Principales
+
+1. **Nueva estructura de Editor/Preview (estilo Obsidian)**
+   - ✅ Editor y preview ahora están lado a lado (horizontal) en lugar de arriba/abajo
+   - ✅ SplitPane redimensionable arrastrando el divisor
+   - ✅ Divisor visual que cambia de color al hover (indica que es arrastrable)
+
+2. **Botones de Toggle para modos de vista**
+   - ✅ `✏️` - Modo solo editor (oculta preview)
+   - ✅ `◧` - Modo split view (editor + preview, por defecto)
+   - ✅ `👁` - Modo solo preview (oculta editor)
+   - ✅ Los modos se aplican instantáneamente
+
+3. **Panel de Info deslizable**
+   - ✅ Nuevo botón `ℹ` para mostrar/ocultar panel de información
+   - ✅ Panel lateral con estadísticas: palabras, caracteres, fechas
+   - ✅ Información de ubicación (latitud/longitud)
+   - ✅ Información de fuente (autor, URL)
+   - ✅ Lista de adjuntos compacta
+
+4. **Header unificado y minimalista**
+   - ✅ Título de nota con estilo limpio
+   - ✅ Barra de tags debajo del título
+   - ✅ Fecha de modificación sutil
+   - ✅ Iconos de acción (favorito, info, eliminar)
+
+5. **Toolbar de formato minimalista**
+   - ✅ Botones más pequeños y compactos
+   - ✅ Tooltips con atajos de teclado
+   - ✅ Contador de palabras discreto
+
+6. **CSS actualizado para ambos temas**
+   - ✅ `modern-theme.css` - Estilos Obsidian-style para tema light
+   - ✅ `dark-theme.css` - Estilos Obsidian-style para tema dark
+   - ✅ Cursores correctos (`col-resize` para divisores)
+   - ✅ Estilos para todos los nuevos componentes
+
+### Archivos Modificados
+- `MainView.fxml` - Estructura completamente rediseñada
+- `MainController.java` - Nuevos métodos de toggle y manejo de vista
+- `modern-theme.css` - Estilos Obsidian-style agregados
+- `dark-theme.css` - Estilos Obsidian-style agregados
+
+### Mejoras UX
+- ✅ Más fácil redimensionar el panel de preview
+- ✅ Cambio rápido entre modos de vista
+- ✅ Interfaz más limpia y menos saturada
+- ✅ Panel de info accesible sin ocupar espacio permanente
+- ✅ Experiencia similar a editores modernos como Obsidian/Typora
+
+---
+
 ## 📅 2026-01-07 — Mejoras profesionales de UI y corrección de bugs
 
 ### Resumen

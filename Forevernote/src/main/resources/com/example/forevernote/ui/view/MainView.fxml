@@ -124,130 +124,183 @@
                 </HBox>
             </VBox>
             
-            <!-- Right Content Area -->
-            <SplitPane fx:id="contentSplitPane" orientation="VERTICAL" dividerPositions="0.6">
-                <!-- Notes List / Editor Area -->
-                <SplitPane fx:id="editorSplitPane" dividerPositions="0.4">
-                    <!-- Notes List -->
-                    <VBox styleClass="notes-list-container">
-                        <HBox styleClass="notes-header" alignment="CENTER_LEFT" spacing="10">
-                            <padding>
-                                <Insets top="10" right="10" bottom="10" left="10"/>
-                            </padding>
-                            <Label text="Notes" styleClass="section-title"/>
-                            <Region HBox.hgrow="ALWAYS"/>
-                            <ComboBox fx:id="sortComboBox" prefWidth="120" styleClass="sort-combo"/>
-                            <Button text="🔄" onAction="#handleRefresh" styleClass="refresh-button"/>
-                        </HBox>
-                        
-                        <ListView fx:id="notesListView" styleClass="notes-list" VBox.vgrow="ALWAYS"/>
-                    </VBox>
+            <!-- Right Content Area - Obsidian-style layout -->
+            <SplitPane fx:id="contentSplitPane" dividerPositions="0.25">
+                <!-- Notes List Panel -->
+                <VBox styleClass="notes-list-container" minWidth="200" maxWidth="350">
+                    <HBox styleClass="notes-header" alignment="CENTER_LEFT" spacing="8">
+                        <padding>
+                            <Insets top="8" right="8" bottom="8" left="8"/>
+                        </padding>
+                        <Label text="Notes" styleClass="section-title"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <ComboBox fx:id="sortComboBox" prefWidth="100" styleClass="sort-combo"/>
+                        <Button text="↻" onAction="#handleRefresh" styleClass="icon-button">
+                            <tooltip><Tooltip text="Refresh"/></tooltip>
+                        </Button>
+                    </HBox>
                     
-                    <!-- Note Editor -->
-                    <VBox styleClass="editor-container">
-                        <!-- Note Header -->
-                        <HBox styleClass="note-header" alignment="CENTER_LEFT" spacing="10">
-                            <padding>
-                                <Insets top="10" right="10" bottom="10" left="10"/>
-                            </padding>
-                            <TextField fx:id="noteTitleField" promptText="Note Title..." styleClass="note-title-field" HBox.hgrow="ALWAYS"/>
-                            <Button text="⭐" onAction="#handleToggleFavorite" styleClass="favorite-button"/>
-                            <Button text="🗑️" onAction="#handleDeleteNote" styleClass="delete-button"/>
-                        </HBox>
-                        
-                        <!-- Note Metadata -->
-                        <HBox styleClass="note-metadata" alignment="CENTER_LEFT" spacing="15">
-                            <padding>
-                                <Insets top="5" right="10" bottom="5" left="10"/>
-                            </padding>
-                            <Label fx:id="createdDateLabel" text="Created: " styleClass="metadata-label"/>
-                            <Label fx:id="modifiedDateLabel" text="Modified: " styleClass="metadata-label"/>
-                            <Region HBox.hgrow="ALWAYS"/>
-                            <FlowPane fx:id="tagsFlowPane" hgap="5" vgap="3" styleClass="tags-flow"/>
-                        </HBox>
-                        
-                        <!-- Note Content Editor -->
-                        <TextArea fx:id="noteContentArea" promptText="Write your note here..." wrapText="true" styleClass="note-content-area" VBox.vgrow="ALWAYS"/>
-                        
-                        <!-- Editor Toolbar -->
-                        <HBox styleClass="editor-toolbar" alignment="CENTER_LEFT" spacing="5">
-                            <padding>
-                                <Insets top="5" right="10" bottom="5" left="10"/>
-                            </padding>
-                            <Button text="B" onAction="#handleBold" styleClass="format-button"/>
-                            <Button text="I" onAction="#handleItalic" styleClass="format-button"/>
-                            <Button text="U" onAction="#handleUnderline" styleClass="format-button"/>
-                            <Separator orientation="VERTICAL"/>
-                            <Button text="🔗" onAction="#handleLink" styleClass="format-button"/>
-                            <Button text="📷" onAction="#handleImage" styleClass="format-button"/>
-                            <Button text="📎" onAction="#handleAttachment" styleClass="format-button"/>
-                            <Separator orientation="VERTICAL"/>
-                            <Button text="📋" onAction="#handleTodoList" styleClass="format-button"/>
-                            <Button text="🔢" onAction="#handleNumberedList" styleClass="format-button"/>
-                            <Region HBox.hgrow="ALWAYS"/>
-                            <Label fx:id="wordCountLabel" text="0 words" styleClass="word-count"/>
-                        </HBox>
-                    </VBox>
-                </SplitPane>
+                    <ListView fx:id="notesListView" styleClass="notes-list" VBox.vgrow="ALWAYS"/>
+                </VBox>
                 
-                <!-- Preview / Attachments Area -->
-                <TabPane fx:id="previewTabPane" styleClass="preview-tabs">
-                    <Tab text="📝 Preview" closable="false">
-                        <WebView fx:id="previewWebView"/>
-                    </Tab>
+                <!-- Editor + Preview Panel (Obsidian-style) -->
+                <VBox styleClass="editor-preview-container" HBox.hgrow="ALWAYS">
+                    <!-- Unified Header Bar -->
+                    <HBox styleClass="editor-header" alignment="CENTER_LEFT" spacing="8">
+                        <padding>
+                            <Insets top="6" right="12" bottom="6" left="12"/>
+                        </padding>
+                        <TextField fx:id="noteTitleField" promptText="Untitled" styleClass="note-title-field" HBox.hgrow="ALWAYS"/>
+                        <Separator orientation="VERTICAL"/>
+                        <!-- View Mode Toggle Buttons -->
+                        <ToggleButton fx:id="editorOnlyButton" text="✏️" styleClass="view-mode-button" onAction="#handleEditorOnlyMode">
+                            <tooltip><Tooltip text="Editor only"/></tooltip>
+                        </ToggleButton>
+                        <ToggleButton fx:id="splitViewButton" text="◧" styleClass="view-mode-button" onAction="#handleSplitViewMode">
+                            <tooltip><Tooltip text="Split view"/></tooltip>
+                        </ToggleButton>
+                        <ToggleButton fx:id="previewOnlyButton" text="👁" styleClass="view-mode-button" onAction="#handlePreviewOnlyMode">
+                            <tooltip><Tooltip text="Preview only"/></tooltip>
+                        </ToggleButton>
+                        <Separator orientation="VERTICAL"/>
+                        <Button text="⭐" fx:id="favoriteButton" onAction="#handleToggleFavorite" styleClass="icon-button">
+                            <tooltip><Tooltip text="Toggle favorite"/></tooltip>
+                        </Button>
+                        <Button text="ℹ" onAction="#handleShowNoteInfo" styleClass="icon-button">
+                            <tooltip><Tooltip text="Note info"/></tooltip>
+                        </Button>
+                        <Button text="🗑" onAction="#handleDeleteNote" styleClass="icon-button-danger">
+                            <tooltip><Tooltip text="Delete note"/></tooltip>
+                        </Button>
+                    </HBox>
                     
-                    <Tab text="📎 Attachments" closable="false">
-                        <ListView fx:id="attachmentsListView" styleClass="attachments-list"/>
-                    </Tab>
+                    <!-- Tags Bar -->
+                    <HBox styleClass="tags-bar" alignment="CENTER_LEFT" spacing="6">
+                        <padding>
+                            <Insets top="4" right="12" bottom="4" left="12"/>
+                        </padding>
+                        <FlowPane fx:id="tagsFlowPane" hgap="6" vgap="4" styleClass="tags-flow"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Label fx:id="modifiedDateLabel" text="" styleClass="metadata-label-subtle"/>
+                    </HBox>
                     
-                    <Tab text="📊 Info" closable="false">
-                        <VBox styleClass="info-container" spacing="15" alignment="TOP_LEFT">
-                            <padding>
-                                <Insets top="20" right="20" bottom="20" left="20"/>
-                            </padding>
+                    <!-- Editor/Preview Split (Obsidian-style horizontal) -->
+                    <SplitPane fx:id="editorPreviewSplitPane" orientation="HORIZONTAL" dividerPositions="0.5" VBox.vgrow="ALWAYS" styleClass="editor-preview-split">
+                        <!-- Editor Pane -->
+                        <VBox fx:id="editorPane" styleClass="editor-pane">
+                            <TextArea fx:id="noteContentArea" promptText="Start writing..." wrapText="true" styleClass="note-content-area" VBox.vgrow="ALWAYS"/>
                             
-                            <VBox spacing="5">
-                                <Label text="Note Information" styleClass="info-section-title"/>
-                                <GridPane hgap="10" vgap="5">
-                                    <Label text="Created:" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="info-label"/>
-                                    <Label fx:id="infoCreatedLabel" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="info-value"/>
-                                    
-                                    <Label text="Modified:" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="info-label"/>
-                                    <Label fx:id="infoModifiedLabel" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="info-value"/>
-                                    
-                                    <Label text="Words:" GridPane.rowIndex="2" GridPane.columnIndex="0" styleClass="info-label"/>
-                                    <Label fx:id="infoWordsLabel" GridPane.rowIndex="2" GridPane.columnIndex="1" styleClass="info-value"/>
-                                    
-                                    <Label text="Characters:" GridPane.rowIndex="3" GridPane.columnIndex="0" styleClass="info-label"/>
-                                    <Label fx:id="infoCharsLabel" GridPane.rowIndex="3" GridPane.columnIndex="1" styleClass="info-value"/>
-                                </GridPane>
-                            </VBox>
-                            
-                            <VBox spacing="5">
-                                <Label text="Location" styleClass="info-section-title"/>
-                                <GridPane hgap="10" vgap="5">
-                                    <Label text="Latitude:" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="info-label"/>
-                                    <Label fx:id="infoLatitudeLabel" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="info-value"/>
-                                    
-                                    <Label text="Longitude:" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="info-label"/>
-                                    <Label fx:id="infoLongitudeLabel" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="info-value"/>
-                                </GridPane>
-                            </VBox>
-                            
-                            <VBox spacing="5">
-                                <Label text="Source" styleClass="info-section-title"/>
-                                <GridPane hgap="10" vgap="5">
-                                    <Label text="Author:" GridPane.rowIndex="0" GridPane.columnIndex="0" styleClass="info-label"/>
-                                    <Label fx:id="infoAuthorLabel" GridPane.rowIndex="0" GridPane.columnIndex="1" styleClass="info-value"/>
-                                    
-                                    <Label text="Source URL:" GridPane.rowIndex="1" GridPane.columnIndex="0" styleClass="info-label"/>
-                                    <Label fx:id="infoSourceUrlLabel" GridPane.rowIndex="1" GridPane.columnIndex="1" styleClass="info-value"/>
-                                </GridPane>
-                            </VBox>
+                            <!-- Minimal Editor Toolbar -->
+                            <HBox styleClass="editor-toolbar-minimal" alignment="CENTER_LEFT" spacing="4">
+                                <padding>
+                                    <Insets top="4" right="8" bottom="4" left="8"/>
+                                </padding>
+                                <Button text="B" onAction="#handleBold" styleClass="format-btn">
+                                    <tooltip><Tooltip text="Bold (Ctrl+B)"/></tooltip>
+                                </Button>
+                                <Button text="I" onAction="#handleItalic" styleClass="format-btn format-btn-italic">
+                                    <tooltip><Tooltip text="Italic (Ctrl+I)"/></tooltip>
+                                </Button>
+                                <Button text="~" onAction="#handleUnderline" styleClass="format-btn">
+                                    <tooltip><Tooltip text="Strikethrough"/></tooltip>
+                                </Button>
+                                <Separator orientation="VERTICAL" styleClass="toolbar-separator"/>
+                                <Button text="🔗" onAction="#handleLink" styleClass="format-btn">
+                                    <tooltip><Tooltip text="Insert link"/></tooltip>
+                                </Button>
+                                <Button text="📷" onAction="#handleImage" styleClass="format-btn">
+                                    <tooltip><Tooltip text="Insert image"/></tooltip>
+                                </Button>
+                                <Separator orientation="VERTICAL" styleClass="toolbar-separator"/>
+                                <Button text="☐" onAction="#handleTodoList" styleClass="format-btn">
+                                    <tooltip><Tooltip text="Todo list"/></tooltip>
+                                </Button>
+                                <Button text="#" onAction="#handleNumberedList" styleClass="format-btn">
+                                    <tooltip><Tooltip text="Numbered list"/></tooltip>
+                                </Button>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="wordCountLabel" text="0 words" styleClass="word-count-label"/>
+                            </HBox>
                         </VBox>
-                    </Tab>
-                </TabPane>
+                        
+                        <!-- Preview Pane -->
+                        <VBox fx:id="previewPane" styleClass="preview-pane">
+                            <HBox styleClass="preview-header" alignment="CENTER_LEFT">
+                                <padding>
+                                    <Insets top="4" right="8" bottom="4" left="12"/>
+                                </padding>
+                                <Label text="Preview" styleClass="preview-title"/>
+                            </HBox>
+                            <WebView fx:id="previewWebView" VBox.vgrow="ALWAYS"/>
+                        </VBox>
+                    </SplitPane>
+                </VBox>
             </SplitPane>
+            
+            <!-- Note Info Panel (hidden by default, toggled) -->
+            <VBox fx:id="infoPanel" styleClass="info-panel" visible="false" managed="false" minWidth="250" maxWidth="300">
+                <HBox styleClass="info-panel-header" alignment="CENTER_LEFT">
+                    <padding>
+                        <Insets top="10" right="10" bottom="10" left="10"/>
+                    </padding>
+                    <Label text="Note Info" styleClass="info-panel-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Button text="✕" onAction="#handleCloseInfoPanel" styleClass="close-button"/>
+                </HBox>
+                
+                <VBox styleClass="info-content" spacing="12" VBox.vgrow="ALWAYS">
+                    <padding>
+                        <Insets top="10" right="15" bottom="15" left="15"/>
+                    </padding>
+                    
+                    <VBox spacing="4">
+                        <Label text="CREATED" styleClass="info-section-label"/>
+                        <Label fx:id="infoCreatedLabel" text="-" styleClass="info-value"/>
+                    </VBox>
+                    
+                    <VBox spacing="4">
+                        <Label text="MODIFIED" styleClass="info-section-label"/>
+                        <Label fx:id="infoModifiedLabel" text="-" styleClass="info-value"/>
+                    </VBox>
+                    
+                    <Separator/>
+                    
+                    <VBox spacing="4">
+                        <Label text="STATISTICS" styleClass="info-section-label"/>
+                        <HBox spacing="20">
+                            <VBox spacing="2">
+                                <Label fx:id="infoWordsLabel" text="0" styleClass="info-stat-value"/>
+                                <Label text="words" styleClass="info-stat-label"/>
+                            </VBox>
+                            <VBox spacing="2">
+                                <Label fx:id="infoCharsLabel" text="0" styleClass="info-stat-value"/>
+                                <Label text="characters" styleClass="info-stat-label"/>
+                            </VBox>
+                        </HBox>
+                    </VBox>
+                    
+                    <Separator/>
+                    
+                    <VBox spacing="4">
+                        <Label text="LOCATION" styleClass="info-section-label"/>
+                        <Label fx:id="infoLatitudeLabel" text="Lat: -" styleClass="info-value-small"/>
+                        <Label fx:id="infoLongitudeLabel" text="Lon: -" styleClass="info-value-small"/>
+                    </VBox>
+                    
+                    <VBox spacing="4">
+                        <Label text="SOURCE" styleClass="info-section-label"/>
+                        <Label fx:id="infoAuthorLabel" text="Author: -" styleClass="info-value-small"/>
+                        <Label fx:id="infoSourceUrlLabel" text="URL: -" styleClass="info-value-small" wrapText="true"/>
+                    </VBox>
+                    
+                    <Separator/>
+                    
+                    <VBox spacing="4">
+                        <Label text="ATTACHMENTS" styleClass="info-section-label"/>
+                        <ListView fx:id="attachmentsListView" styleClass="attachments-list-compact" prefHeight="100"/>
+                    </VBox>
+                </VBox>
+            </VBox>
         </SplitPane>
     </center>
     

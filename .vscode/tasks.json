@@ -72,6 +72,24 @@
             "problemMatcher": []
         },
         {
+            "label": "maven-javafx-run",
+            "type": "shell",
+            "command": "mvn",
+            "args": [
+                "-f",
+                "Forevernote/pom.xml",
+                "javafx:run",
+                "-q"
+            ],
+            "group": "test",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [],
+            "isBackground": true
+        },
+        {
             "label": "run-forevernote-script",
             "type": "shell",
             "command": "${workspaceFolder}/scripts/run_all.sh",

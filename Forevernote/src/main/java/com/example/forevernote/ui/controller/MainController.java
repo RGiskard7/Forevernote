@@ -89,9 +89,8 @@ public class MainController {
     @FXML private MenuBar menuBar;
     @FXML private SplitPane mainSplitPane;
     @FXML private SplitPane contentSplitPane;
-    @FXML private SplitPane editorSplitPane;
+    @FXML private SplitPane editorPreviewSplitPane;
     @FXML private TabPane navigationTabPane;
-    @FXML private TabPane previewTabPane;
     
     // Navigation components
     @FXML private TreeView<Folder> folderTreeView;
@@ -112,9 +111,19 @@ public class MainController {
     @FXML private TextField noteTitleField;
     @FXML private TextArea noteContentArea;
     @FXML private FlowPane tagsFlowPane;
-    @FXML private Label createdDateLabel;
     @FXML private Label modifiedDateLabel;
     @FXML private Label wordCountLabel;
+    
+    // Editor/Preview panes (Obsidian-style)
+    @FXML private VBox editorPane;
+    @FXML private VBox previewPane;
+    @FXML private ToggleButton editorOnlyButton;
+    @FXML private ToggleButton splitViewButton;
+    @FXML private ToggleButton previewOnlyButton;
+    @FXML private Button favoriteButton;
+    
+    // Info panel (slide-out)
+    @FXML private VBox infoPanel;
     
     // Preview and info
     @FXML private javafx.scene.web.WebView previewWebView;
@@ -139,6 +148,10 @@ public class MainController {
     @FXML private RadioMenuItem systemThemeMenuItem;
     private ToggleGroup themeToggleGroup;
     
+    // View mode state
+    private enum ViewMode { EDITOR_ONLY, SPLIT, PREVIEW_ONLY }
+    private ViewMode currentViewMode = ViewMode.SPLIT;
+    
     /**
      * Initialize the controller after FXML loading.
      */
@@ -157,6 +170,7 @@ public class MainController {
             initializeEditor();
             initializeSearch();
             initializeSortOptions();
+            initializeViewModeButtons();
             
             // Load initial data
             loadFolders();
@@ -353,6 +367,20 @@ public class MainController {
         }
         // Set initial selection based on current theme
         updateThemeMenuSelection();
+        
+        // Apply saved theme after scene is ready
+        Platform.runLater(() -> {
+            if ("system".equals(currentTheme)) {
+                // For system theme, detect and apply
+                String detectedTheme = detectSystemTheme();
+                String savedTheme = currentTheme;
+                currentTheme = detectedTheme;
+                applyTheme();
+                currentTheme = savedTheme;
+            } else {
+                applyTheme();
+            }
+        });
     }
     
     /**
@@ -395,6 +423,184 @@ public class MainController {
                 sortNotes(newValue);
             }
         );
+    }
+    
+    /**
+     * Initialize view mode toggle buttons (Obsidian-style).
+     */
+    private void initializeViewModeButtons() {
+        // Create toggle group for view modes
+        ToggleGroup viewModeGroup = new ToggleGroup();
+        if (editorOnlyButton != null) {
+            editorOnlyButton.setToggleGroup(viewModeGroup);
+        }
+        if (splitViewButton != null) {
+            splitViewButton.setToggleGroup(viewModeGroup);
+            splitViewButton.setSelected(true); // Default to split view
+        }
+        if (previewOnlyButton != null) {
+            previewOnlyButton.setToggleGroup(viewModeGroup);
+        }
+        
+        // Apply initial view mode
+        applyViewMode();
+    }
+    
+    /**
+     * Apply the current view mode to the UI.
+     */
+    private void applyViewMode() {
+        if (editorPreviewSplitPane == null || editorPane == null || previewPane == null) {
+            return;
+        }
+        
+        switch (currentViewMode) {
+            case EDITOR_ONLY:
+                editorPane.setVisible(true);
+                editorPane.setManaged(true);
+                previewPane.setVisible(false);
+                previewPane.setManaged(false);
+                // Remove preview from split pane
+                if (editorPreviewSplitPane.getItems().contains(previewPane)) {
+                    editorPreviewSplitPane.getItems().remove(previewPane);
+                }
+                if (!editorPreviewSplitPane.getItems().contains(editorPane)) {
+                    editorPreviewSplitPane.getItems().add(editorPane);
+                }
+                break;
+                
+            case PREVIEW_ONLY:
+                editorPane.setVisible(false);
+                editorPane.setManaged(false);
+                previewPane.setVisible(true);
+                previewPane.setManaged(true);
+                // Remove editor from split pane
+                if (editorPreviewSplitPane.getItems().contains(editorPane)) {
+                    editorPreviewSplitPane.getItems().remove(editorPane);
+                }
+                if (!editorPreviewSplitPane.getItems().contains(previewPane)) {
+                    editorPreviewSplitPane.getItems().add(previewPane);
+                }
+                updatePreview(); // Ensure preview is updated
+                break;
+                
+            case SPLIT:
+            default:
+                editorPane.setVisible(true);
+                editorPane.setManaged(true);
+                previewPane.setVisible(true);
+                previewPane.setManaged(true);
+                // Ensure both are in split pane
+                editorPreviewSplitPane.getItems().clear();
+                editorPreviewSplitPane.getItems().addAll(editorPane, previewPane);
+                editorPreviewSplitPane.setDividerPositions(0.5);
+                updatePreview();
+                break;
+        }
+        
+        // Update button states
+        if (editorOnlyButton != null) {
+            editorOnlyButton.setSelected(currentViewMode == ViewMode.EDITOR_ONLY);
+        }
+        if (splitViewButton != null) {
+            splitViewButton.setSelected(currentViewMode == ViewMode.SPLIT);
+        }
+        if (previewOnlyButton != null) {
+            previewOnlyButton.setSelected(currentViewMode == ViewMode.PREVIEW_ONLY);
+        }
+    }
+    
+    /**
+     * Handle editor-only mode button click.
+     */
+    @FXML
+    private void handleEditorOnlyMode(ActionEvent event) {
+        currentViewMode = ViewMode.EDITOR_ONLY;
+        applyViewMode();
+        updateStatus("Editor mode");
+    }
+    
+    /**
+     * Handle split view mode button click.
+     */
+    @FXML
+    private void handleSplitViewMode(ActionEvent event) {
+        currentViewMode = ViewMode.SPLIT;
+        applyViewMode();
+        updateStatus("Split view mode");
+    }
+    
+    /**
+     * Handle preview-only mode button click.
+     */
+    @FXML
+    private void handlePreviewOnlyMode(ActionEvent event) {
+        currentViewMode = ViewMode.PREVIEW_ONLY;
+        applyViewMode();
+        updateStatus("Preview mode");
+    }
+    
+    /**
+     * Handle show note info panel.
+     */
+    @FXML
+    private void handleShowNoteInfo(ActionEvent event) {
+        if (infoPanel != null) {
+            boolean isVisible = infoPanel.isVisible();
+            infoPanel.setVisible(!isVisible);
+            infoPanel.setManaged(!isVisible);
+            
+            if (!isVisible && currentNote != null) {
+                updateNoteInfoPanel();
+            }
+        }
+    }
+    
+    /**
+     * Handle close info panel button.
+     */
+    @FXML
+    private void handleCloseInfoPanel(ActionEvent event) {
+        if (infoPanel != null) {
+            infoPanel.setVisible(false);
+            infoPanel.setManaged(false);
+        }
+    }
+    
+    /**
+     * Update the note info panel with current note data.
+     */
+    private void updateNoteInfoPanel() {
+        if (currentNote == null) return;
+        
+        if (infoCreatedLabel != null && currentNote.getCreatedDate() != null) {
+            infoCreatedLabel.setText(currentNote.getCreatedDate().toString());
+        }
+        if (infoModifiedLabel != null && currentNote.getModifiedDate() != null) {
+            infoModifiedLabel.setText(currentNote.getModifiedDate().toString());
+        }
+        
+        String content = noteContentArea.getText();
+        if (infoWordsLabel != null) {
+            int words = content == null || content.trim().isEmpty() ? 0 : content.trim().split("\\s+").length;
+            infoWordsLabel.setText(String.valueOf(words));
+        }
+        if (infoCharsLabel != null) {
+            infoCharsLabel.setText(String.valueOf(content == null ? 0 : content.length()));
+        }
+        
+        if (infoLatitudeLabel != null) {
+            infoLatitudeLabel.setText("Lat: " + (currentNote.getLatitude() != 0 ? currentNote.getLatitude() : "-"));
+        }
+        if (infoLongitudeLabel != null) {
+            infoLongitudeLabel.setText("Lon: " + (currentNote.getLongitude() != 0 ? currentNote.getLongitude() : "-"));
+        }
+        if (infoAuthorLabel != null) {
+            infoAuthorLabel.setText("Author: " + (currentNote.getAuthor() != null && !currentNote.getAuthor().isEmpty() ? currentNote.getAuthor() : "-"));
+        }
+        if (infoSourceUrlLabel != null) {
+            infoSourceUrlLabel.setText("URL: " + (currentNote.getSourceUrl() != null && !currentNote.getSourceUrl().isEmpty() ? currentNote.getSourceUrl() : "-"));
+        }
     }
     
     /**
@@ -555,20 +761,43 @@ public class MainController {
             tagsFlowPane.getChildren().clear();
             
             for (Tag tag : tags) {
+                // Create tag label with X button for removal (like Evernote/Obsidian)
+                HBox tagContainer = new HBox(4);
+                tagContainer.getStyleClass().add("tag-container");
+                tagContainer.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                
                 Label tagLabel = new Label(tag.getTitle());
                 tagLabel.getStyleClass().add("tag-label");
+                
+                // X button to remove tag (more intuitive than double-click)
+                Button removeBtn = new Button("×");
+                removeBtn.getStyleClass().add("tag-remove-btn");
+                removeBtn.setTooltip(new Tooltip("Remove tag from note"));
+                
+                // Store tag ID to ensure it's accessible when removing
+                final int tagId = tag.getId();
+                final String tagTitle = tag.getTitle();
+                removeBtn.setOnAction(e -> {
+                    Tag tagToRemove = new Tag(tagId, tagTitle, null, null);
+                    removeTagFromNote(tagToRemove);
+                });
+                
+                // Also support double-click on label for removal (backward compatibility)
                 tagLabel.setOnMouseClicked(event -> {
                     if (event.getClickCount() == 2) {
-                        removeTagFromNote(tag);
+                        Tag tagToRemove = new Tag(tagId, tagTitle, null, null);
+                        removeTagFromNote(tagToRemove);
                     }
                 });
-                // Add tooltip
                 tagLabel.setTooltip(new Tooltip("Double-click to remove"));
-                tagsFlowPane.getChildren().add(tagLabel);
+                
+                tagContainer.getChildren().addAll(tagLabel, removeBtn);
+                tagsFlowPane.getChildren().add(tagContainer);
             }
             
             // Add button to add new tag
             Button addTagButton = new Button("+ Add Tag");
+            addTagButton.getStyleClass().add("add-tag-button");
             addTagButton.setOnAction(e -> handleAddTagToNote());
             tagsFlowPane.getChildren().add(addTagButton);
         } catch (Exception e) {
@@ -580,17 +809,41 @@ public class MainController {
      * Update note metadata display.
      */
     private void updateNoteMetadata(Note note) {
-        createdDateLabel.setText("Created: " + (note.getCreatedDate() != null ? note.getCreatedDate() : "N/A"));
-        modifiedDateLabel.setText("Modified: " + (note.getModifiedDate() != null ? note.getModifiedDate() : "N/A"));
-        infoCreatedLabel.setText(note.getCreatedDate() != null ? note.getCreatedDate() : "N/A");
-        infoModifiedLabel.setText(note.getModifiedDate() != null ? note.getModifiedDate() : "N/A");
+        // Update the modified date in the tags bar (subtle format)
+        if (modifiedDateLabel != null) {
+            String modifiedText = note.getModifiedDate() != null 
+                ? "Modified " + note.getModifiedDate() 
+                : "";
+            modifiedDateLabel.setText(modifiedText);
+        }
+        
+        // Update info panel labels
+        if (infoCreatedLabel != null) {
+            infoCreatedLabel.setText(note.getCreatedDate() != null ? note.getCreatedDate() : "-");
+        }
+        if (infoModifiedLabel != null) {
+            infoModifiedLabel.setText(note.getModifiedDate() != null ? note.getModifiedDate() : "-");
+        }
+        
         String content = note.getContent() != null ? note.getContent() : "";
-        infoWordsLabel.setText(String.valueOf(countWords(content)));
-        infoCharsLabel.setText(String.valueOf(content.length()));
-        infoLatitudeLabel.setText(note.getLatitude() != null ? note.getLatitude().toString() : "0.0");
-        infoLongitudeLabel.setText(note.getLongitude() != null ? note.getLongitude().toString() : "0.0");
-        infoAuthorLabel.setText(note.getAuthor() != null ? note.getAuthor() : "N/A");
-        infoSourceUrlLabel.setText(note.getSourceUrl() != null ? note.getSourceUrl() : "N/A");
+        if (infoWordsLabel != null) {
+            infoWordsLabel.setText(String.valueOf(countWords(content)));
+        }
+        if (infoCharsLabel != null) {
+            infoCharsLabel.setText(String.valueOf(content.length()));
+        }
+        if (infoLatitudeLabel != null) {
+            infoLatitudeLabel.setText("Lat: " + (note.getLatitude() != 0 ? note.getLatitude() : "-"));
+        }
+        if (infoLongitudeLabel != null) {
+            infoLongitudeLabel.setText("Lon: " + (note.getLongitude() != 0 ? note.getLongitude() : "-"));
+        }
+        if (infoAuthorLabel != null) {
+            infoAuthorLabel.setText("Author: " + (note.getAuthor() != null && !note.getAuthor().isEmpty() ? note.getAuthor() : "-"));
+        }
+        if (infoSourceUrlLabel != null) {
+            infoSourceUrlLabel.setText("URL: " + (note.getSourceUrl() != null && !note.getSourceUrl().isEmpty() ? note.getSourceUrl() : "-"));
+        }
     }
     
     /**
@@ -775,11 +1028,13 @@ public class MainController {
         
         try {
             List<Note> allNotes = noteDAO.fetchAllNotes();
+            String searchLower = searchText.toLowerCase();
             List<Note> filteredNotes = allNotes.stream()
-                .filter(note -> 
-                    note.getTitle().toLowerCase().contains(searchText.toLowerCase()) ||
-                    note.getContent().toLowerCase().contains(searchText.toLowerCase())
-                )
+                .filter(note -> {
+                    String title = note.getTitle() != null ? note.getTitle().toLowerCase() : "";
+                    String content = note.getContent() != null ? note.getContent().toLowerCase() : "";
+                    return title.contains(searchLower) || content.contains(searchLower);
+                })
                 .toList();
             
             notesListView.getItems().setAll(filteredNotes);
@@ -852,11 +1107,20 @@ public class MainController {
      * Update word count.
      */
     private void updateWordCount() {
-        String content = noteContentArea.getText();
+        String content = noteContentArea != null ? noteContentArea.getText() : "";
+        if (content == null) content = "";
+        
         int wordCount = countWords(content);
-        wordCountLabel.setText(wordCount + " words");
-        infoWordsLabel.setText(String.valueOf(wordCount));
-        infoCharsLabel.setText(String.valueOf(content.length()));
+        
+        if (wordCountLabel != null) {
+            wordCountLabel.setText(wordCount + " words");
+        }
+        if (infoWordsLabel != null) {
+            infoWordsLabel.setText(String.valueOf(wordCount));
+        }
+        if (infoCharsLabel != null) {
+            infoCharsLabel.setText(String.valueOf(content.length()));
+        }
     }
     
     /**
@@ -1127,13 +1391,31 @@ public class MainController {
      * Remove tag from note.
      */
     private void removeTagFromNote(Tag tag) {
-        try {
-            noteDAO.removeTag(currentNote, tag);
-            loadNoteTags(currentNote);
-            updateStatus("Removed tag: " + tag.getTitle());
-        } catch (Exception e) {
-            logger.severe("Failed to remove tag: " + e.getMessage());
-            updateStatus("Error removing tag");
+        if (currentNote == null) {
+            updateStatus("No note selected");
+            return;
+        }
+        if (tag == null || tag.getId() == null) {
+            updateStatus("Invalid tag");
+            return;
+        }
+        
+        // Confirm removal
+        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
+        confirm.setTitle("Remove Tag");
+        confirm.setHeaderText("Remove tag '" + tag.getTitle() + "' from this note?");
+        confirm.setContentText("This will only remove the tag from this note, not delete the tag itself.");
+        
+        Optional<ButtonType> result = confirm.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                noteDAO.removeTag(currentNote, tag);
+                loadNoteTags(currentNote);
+                updateStatus("Removed tag: " + tag.getTitle());
+            } catch (Exception e) {
+                logger.severe("Failed to remove tag: " + e.getMessage());
+                updateStatus("Error removing tag: " + e.getMessage());
+            }
         }
     }
     
@@ -1163,6 +1445,9 @@ public class MainController {
             notesListView.getItems().add(0, newNote);
             notesListView.getSelectionModel().select(newNote);
             loadNoteInEditor(newNote);
+            
+            // Refresh recent notes to include new note
+            loadRecentNotes();
             
             updateStatus("Created new note");
         } catch (Exception e) {
@@ -1313,8 +1598,10 @@ public class MainController {
                     tagsFlowPane.getChildren().clear();
                     previewWebView.getEngine().loadContent("", "text/html");
                     
-                    // Refresh the notes list automatically
+                    // Refresh ALL lists - notes, recent, favorites
                     refreshNotesList();
+                    loadRecentNotes();  // Update recent notes to remove deleted note
+                    loadFavorites();    // Update favorites to remove deleted note
                     
                     updateStatus("Note deleted");
                 } catch (Exception e) {

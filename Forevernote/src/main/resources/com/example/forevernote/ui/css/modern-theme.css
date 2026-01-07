@@ -500,33 +500,358 @@
 }
 
 /* ====================
-   EDITOR - Distraction Free
+   EDITOR/PREVIEW - Obsidian Style
    ==================== */
-.editor-container {
+
+/* Main Editor-Preview Container */
+.editor-preview-container {
     -fx-background-color: -fx-bg-card;
 }
 
-.note-header {
-    -fx-background-color: transparent;
+/* Unified Header Bar */
+.editor-header {
+    -fx-background-color: -fx-bg-card;
     -fx-border-color: transparent transparent -fx-border-subtle transparent;
     -fx-border-width: 0 0 1px 0;
-    -fx-padding: 20px 24px 16px 24px;
+    -fx-padding: 8px 16px;
 }
 
 .note-title-field {
     -fx-background-color: transparent;
     -fx-border-color: transparent;
-    -fx-font-size: 22px;
+    -fx-font-size: 18px;
     -fx-font-weight: 600;
     -fx-text-fill: -fx-text-primary;
     -fx-prompt-text-fill: -fx-text-tertiary;
-    -fx-padding: 0;
+    -fx-padding: 4px 8px;
 }
 
 .note-title-field:focused {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-background-radius: -fx-radius-md;
+}
+
+/* View Mode Toggle Buttons */
+.view-mode-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: -fx-radius-md;
+    -fx-padding: 6px 10px;
+    -fx-font-size: 14px;
+    -fx-text-fill: -fx-text-tertiary;
+    -fx-cursor: hand;
+}
+
+.view-mode-button:hover {
+    -fx-background-color: -fx-bg-hover;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.view-mode-button:selected {
+    -fx-background-color: -fx-primary-subtle;
+    -fx-text-fill: -fx-primary;
+}
+
+/* Icon Buttons */
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: -fx-radius-md;
+    -fx-padding: 6px 10px;
+    -fx-font-size: 14px;
+    -fx-text-fill: -fx-text-tertiary;
+    -fx-cursor: hand;
+}
+
+.icon-button:hover {
+    -fx-background-color: -fx-bg-hover;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.icon-button-danger {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: -fx-radius-md;
+    -fx-padding: 6px 10px;
+    -fx-font-size: 14px;
+    -fx-text-fill: -fx-text-tertiary;
+    -fx-cursor: hand;
+}
+
+.icon-button-danger:hover {
+    -fx-background-color: rgba(239, 68, 68, 0.1);
+    -fx-text-fill: -fx-error;
+}
+
+/* Tags Bar */
+.tags-bar {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-padding: 6px 16px;
+    -fx-border-color: transparent transparent -fx-border-subtle transparent;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.metadata-label-subtle {
+    -fx-font-size: 11px;
+    -fx-text-fill: -fx-text-tertiary;
+    -fx-font-style: italic;
+}
+
+/* Tags */
+.tags-flow {
+    -fx-background-color: transparent;
+    -fx-hgap: 6px;
+    -fx-vgap: 4px;
+}
+
+.tag-label {
+    -fx-background-color: -fx-primary-subtle;
+    -fx-text-fill: -fx-primary;
+    -fx-background-radius: 12px;
+    -fx-padding: 3px 10px;
+    -fx-font-size: 11px;
+    -fx-font-weight: 500;
+    -fx-cursor: hand;
+}
+
+.tag-label:hover {
+    -fx-background-color: rgba(99, 102, 241, 0.18);
+}
+
+/* Tag Container with Remove Button (Evernote/Obsidian style) */
+.tag-container {
+    -fx-background-color: -fx-primary-subtle;
+    -fx-background-radius: 12px;
+    -fx-padding: 2px 4px 2px 10px;
+    -fx-alignment: CENTER_LEFT;
+    -fx-cursor: hand;
+}
+
+.tag-container:hover {
+    -fx-background-color: rgba(99, 102, 241, 0.18);
+}
+
+.tag-container .tag-label {
+    -fx-background-color: transparent;
+    -fx-padding: 0 4px 0 0;
+}
+
+.tag-remove-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-tertiary;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 4px;
+    -fx-cursor: hand;
+    -fx-min-width: 16px;
+    -fx-max-width: 16px;
+    -fx-min-height: 16px;
+    -fx-max-height: 16px;
+    -fx-background-radius: 50%;
+}
+
+.tag-remove-btn:hover {
+    -fx-background-color: -fx-error-light;
+    -fx-text-fill: -fx-error;
+}
+
+.add-tag-button {
+    -fx-background-color: transparent;
+    -fx-border-color: -fx-border-subtle;
+    -fx-border-style: dashed;
+    -fx-border-radius: 12px;
+    -fx-background-radius: 12px;
+    -fx-padding: 3px 10px;
+    -fx-font-size: 11px;
+    -fx-text-fill: -fx-text-tertiary;
+    -fx-cursor: hand;
+}
+
+.add-tag-button:hover {
+    -fx-background-color: -fx-bg-hover;
+    -fx-border-color: -fx-primary;
+    -fx-text-fill: -fx-primary;
+}
+
+/* Editor-Preview Split Pane (Obsidian-style) */
+.editor-preview-split {
     -fx-background-color: transparent;
 }
 
+.editor-preview-split > .split-pane-divider {
+    -fx-background-color: -fx-border-subtle;
+    -fx-padding: 0 2px 0 2px;
+    -fx-cursor: col-resize;
+}
+
+.editor-preview-split > .split-pane-divider:hover {
+    -fx-background-color: -fx-primary;
+}
+
+/* Editor Pane */
+.editor-pane {
+    -fx-background-color: -fx-bg-card;
+}
+
+/* Note Content Area - Clean Editor */
+.note-content-area {
+    -fx-background-color: -fx-bg-card;
+    -fx-text-fill: -fx-text-primary;
+    -fx-font-size: 14px;
+    -fx-font-family: "JetBrains Mono", "Fira Code", "Consolas", "Monaco", monospace;
+    -fx-padding: 16px 20px;
+    -fx-border-color: transparent;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.note-content-area .content {
+    -fx-background-color: transparent;
+}
+
+.note-content-area:focused {
+    -fx-background-color: -fx-bg-card;
+}
+
+/* Minimal Editor Toolbar */
+.editor-toolbar-minimal {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-border-color: -fx-border-subtle transparent transparent transparent;
+    -fx-border-width: 1px 0 0 0;
+    -fx-padding: 4px 12px;
+}
+
+.format-btn {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-radius: -fx-radius-sm;
+    -fx-padding: 4px 8px;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -fx-text-tertiary;
+    -fx-cursor: hand;
+    -fx-min-width: 28px;
+}
+
+.format-btn:hover {
+    -fx-background-color: -fx-bg-hover;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.format-btn:pressed {
+    -fx-background-color: -fx-primary-subtle;
+    -fx-text-fill: -fx-primary;
+}
+
+.format-btn-italic {
+    -fx-font-style: italic;
+}
+
+.toolbar-separator {
+    -fx-padding: 0 4px;
+}
+
+.word-count-label {
+    -fx-font-size: 11px;
+    -fx-text-fill: -fx-text-tertiary;
+}
+
+/* Preview Pane */
+.preview-pane {
+    -fx-background-color: -fx-bg-primary;
+    -fx-border-color: -fx-border-subtle transparent transparent transparent;
+    -fx-border-width: 0 0 0 1px;
+}
+
+.preview-header {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-border-color: transparent transparent -fx-border-subtle transparent;
+    -fx-border-width: 0 0 1px 0;
+    -fx-padding: 8px 16px;
+}
+
+.preview-title {
+    -fx-font-size: 11px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -fx-text-tertiary;
+    -fx-text-transform: uppercase;
+}
+
+/* ====================
+   INFO PANEL (Slide-out)
+   ==================== */
+.info-panel {
+    -fx-background-color: -fx-bg-card;
+    -fx-border-color: -fx-border-subtle transparent transparent transparent;
+    -fx-border-width: 0 0 0 1px;
+}
+
+.info-panel-header {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-border-color: transparent transparent -fx-border-subtle transparent;
+    -fx-border-width: 0 0 1px 0;
+    -fx-padding: 12px 16px;
+}
+
+.info-panel-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.close-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-text-fill: -fx-text-tertiary;
+    -fx-font-size: 14px;
+    -fx-padding: 4px 8px;
+    -fx-cursor: hand;
+}
+
+.close-button:hover {
+    -fx-background-color: -fx-bg-hover;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.info-content {
+    -fx-background-color: -fx-bg-card;
+}
+
+.info-section-label {
+    -fx-font-size: 10px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -fx-text-tertiary;
+    -fx-text-transform: uppercase;
+}
+
+.info-value {
+    -fx-font-size: 13px;
+    -fx-text-fill: -fx-text-primary;
+}
+
+.info-value-small {
+    -fx-font-size: 12px;
+    -fx-text-fill: -fx-text-secondary;
+}
+
+.info-stat-value {
+    -fx-font-size: 18px;
+    -fx-font-weight: 600;
+    -fx-text-fill: -fx-primary;
+}
+
+.info-stat-label {
+    -fx-font-size: 10px;
+    -fx-text-fill: -fx-text-tertiary;
+}
+
+.attachments-list-compact {
+    -fx-background-color: -fx-bg-secondary;
+    -fx-background-radius: -fx-radius-md;
+    -fx-padding: 4px;
+}
+
+/* Legacy compatibility */
 .favorite-button,
 .delete-button {
     -fx-background-color: transparent;
@@ -547,7 +872,7 @@
     -fx-text-fill: -fx-error;
 }
 
-/* Note Metadata */
+/* Note Metadata (legacy) */
 .note-metadata {
     -fx-background-color: -fx-bg-primary;
     -fx-padding: 10px 24px;
@@ -560,46 +885,7 @@
     -fx-text-fill: -fx-text-tertiary;
 }
 
-/* Tags */
-.tags-flow {
-    -fx-background-color: transparent;
-    -fx-hgap: 6px;
-    -fx-vgap: 4px;
-}
-
-.tag-label {
-    -fx-background-color: -fx-primary-subtle;
-    -fx-text-fill: -fx-primary;
-    -fx-background-radius: 12px;
-    -fx-padding: 4px 12px;
-    -fx-font-size: 11px;
-    -fx-font-weight: 500;
-    -fx-cursor: hand;
-}
-
-.tag-label:hover {
-    -fx-background-color: rgba(99, 102, 241, 0.15);
-}
-
-/* Note Content Area */
-.note-content-area {
-    -fx-background-color: -fx-bg-card;
-    -fx-text-fill: -fx-text-primary;
-    -fx-font-size: 14px;
-    -fx-font-family: "JetBrains Mono", "Fira Code", "Consolas", "Monaco", monospace;
-    -fx-padding: 20px 24px;
-    -fx-border-color: transparent;
-}
-
-.note-content-area .content {
-    -fx-background-color: transparent;
-}
-
-.note-content-area:focused {
-    -fx-background-color: -fx-bg-card;
-}
-
-/* Editor Toolbar */
+/* Legacy Editor Toolbar */
 .editor-toolbar {
     -fx-background-color: -fx-bg-primary;
     -fx-border-color: -fx-border-subtle transparent transparent transparent;
