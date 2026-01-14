@@ -1,0 +1,576 @@
+package com.example.forevernote.ui.components;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
+import com.example.forevernote.config.LoggerConfig;
+
+import javafx.animation.FadeTransition;
+import javafx.animation.ScaleTransition;
+import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
+import javafx.scene.Scene;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.TextField;
+import javafx.scene.input.KeyEvent;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
+import javafx.stage.StageStyle;
+import javafx.util.Duration;
+
+/**
+ * Command Palette component - similar to Obsidian/VS Code.
+ * Provides quick access to all application commands via keyboard.
+ * Uses universal text symbols for cross-platform compatibility.
+ * 
+ * @author Edu Díaz (RGiskard7)
+ * @since 1.1.0
+ */
+public class CommandPalette {
+    
+    private static final Logger logger = LoggerConfig.getLogger(CommandPalette.class);
+    
+    private final Stage parentStage;
+    private Stage paletteStage;
+    private TextField searchField;
+    private ListView<Command> commandListView;
+    private final List<Command> commands = new ArrayList<>();
+    private Consumer<String> commandHandler;
+    private boolean isDarkTheme = false;
+    
+    /**
+     * Creates a new Command Palette.
+     * 
+     * @param parentStage The parent stage to center the palette on
+     */
+    public CommandPalette(Stage parentStage) {
+        this.parentStage = parentStage;
+        initializeDefaultCommands();
+    }
+    
+    /**
+     * Represents a command in the palette.
+     */
+    public static class Command {
+        private final String name;
+        private final String description;
+        private final String shortcut;
+        private final String icon;
+        private final String category;
+        private Runnable action;
+        
+        public Command(String name, String description, String shortcut, Runnable action) {
+            this(name, description, shortcut, ">", "General", action);
+        }
+        
+        public Command(String name, String description, String shortcut, String icon, String category, Runnable action) {
+            this.name = name;
+            this.description = description;
+            this.shortcut = shortcut;
+            this.icon = icon;
+            this.category = category;
+            this.action = action;
+        }
+        
+        public String getName() { return name; }
+        public String getDescription() { return description; }
+        public String getShortcut() { return shortcut; }
+        public String getIcon() { return icon; }
+        public String getCategory() { return category; }
+        public void setAction(Runnable action) { this.action = action; }
+        public void execute() { if (action != null) action.run(); }
+    }
+    
+    /**
+     * Adds a command to the palette.
+     */
+    public void addCommand(Command command) {
+        commands.add(command);
+    }
+    
+    /**
+     * Removes a command from the palette.
+     */
+    public void removeCommand(String commandName) {
+        commands.removeIf(c -> c.getName().equals(commandName));
+    }
+    
+    /**
+     * Clears all commands.
+     */
+    public void clearCommands() {
+        commands.clear();
+    }
+    
+    /**
+     * Initialize default commands with universal icons.
+     */
+    private void initializeDefaultCommands() {
+        // File commands - using simple ASCII/text symbols
+        commands.add(new Command("New Note", "Create a new note", "Ctrl+N", "+", "File", null));
+        commands.add(new Command("New Folder", "Create a new folder", "Ctrl+Shift+N", "+", "File", null));
+        commands.add(new Command("Save", "Save current note", "Ctrl+S", "*", "File", null));
+        commands.add(new Command("Save All", "Save all notes", "Ctrl+Shift+S", "*", "File", null));
+        commands.add(new Command("Import", "Import notes from files", "Ctrl+I", "<", "File", null));
+        commands.add(new Command("Export", "Export current note", "Ctrl+E", ">", "File", null));
+        commands.add(new Command("Delete Note", "Delete current note", "Del", "x", "File", null));
+        
+        // Edit commands
+        commands.add(new Command("Undo", "Undo last action", "Ctrl+Z", "<", "Edit", null));
+        commands.add(new Command("Redo", "Redo last action", "Ctrl+Y", ">", "Edit", null));
+        commands.add(new Command("Find", "Find text in note", "Ctrl+F", "?", "Edit", null));
+        commands.add(new Command("Find and Replace", "Find and replace text", "Ctrl+H", "~", "Edit", null));
+        commands.add(new Command("Cut", "Cut selection", "Ctrl+X", "x", "Edit", null));
+        commands.add(new Command("Copy", "Copy selection", "Ctrl+C", "=", "Edit", null));
+        commands.add(new Command("Paste", "Paste from clipboard", "Ctrl+V", "v", "Edit", null));
+        
+        // Format commands
+        commands.add(new Command("Bold", "Make text bold", "Ctrl+B", "B", "Format", null));
+        commands.add(new Command("Italic", "Make text italic", "Ctrl+I", "I", "Format", null));
+        commands.add(new Command("Underline", "Underline text", "Ctrl+U", "U", "Format", null));
+        commands.add(new Command("Insert Link", "Insert a hyperlink", "Ctrl+K", "@", "Format", null));
+        commands.add(new Command("Insert Image", "Insert an image", null, "#", "Format", null));
+        commands.add(new Command("Insert Todo", "Insert a todo item", null, "[]", "Format", null));
+        commands.add(new Command("Insert List", "Insert numbered list", null, "1.", "Format", null));
+        
+        // View commands
+        commands.add(new Command("Toggle Sidebar", "Show/hide sidebar", "F9", "|", "View", null));
+        commands.add(new Command("Toggle Info Panel", "Show/hide info panel", "Ctrl+Shift+I", "i", "View", null));
+        commands.add(new Command("Editor Mode", "Show only editor", null, "E", "View", null));
+        commands.add(new Command("Preview Mode", "Show only preview", null, "P", "View", null));
+        commands.add(new Command("Split Mode", "Show editor and preview", null, "||", "View", null));
+        commands.add(new Command("Zoom In", "Increase text size", "Ctrl++", "+", "View", null));
+        commands.add(new Command("Zoom Out", "Decrease text size", "Ctrl+-", "-", "View", null));
+        commands.add(new Command("Reset Zoom", "Reset text size to 100%", "Ctrl+0", "0", "View", null));
+        
+        // Theme commands
+        commands.add(new Command("Light Theme", "Switch to light theme", null, "O", "Theme", null));
+        commands.add(new Command("Dark Theme", "Switch to dark theme", null, "*", "Theme", null));
+        commands.add(new Command("System Theme", "Use system theme", null, "S", "Theme", null));
+        
+        // Navigation commands
+        commands.add(new Command("Quick Switcher", "Switch between notes", "Ctrl+O", "/", "Navigation", null));
+        commands.add(new Command("Global Search", "Search all notes", "Ctrl+Shift+F", "?", "Navigation", null));
+        commands.add(new Command("Go to All Notes", "Show all notes", null, "*", "Navigation", null));
+        commands.add(new Command("Go to Favorites", "Show favorite notes", null, "*", "Navigation", null));
+        commands.add(new Command("Go to Recent", "Show recent notes", null, "~", "Navigation", null));
+        
+        // Tools commands
+        commands.add(new Command("Tag Manager", "Manage tags", null, "#", "Tools", null));
+        commands.add(new Command("Preferences", "Open settings", "Ctrl+,", "=", "Tools", null));
+        commands.add(new Command("Toggle Favorite", "Mark/unmark as favorite", null, "*", "Tools", null));
+        commands.add(new Command("Refresh", "Refresh current view", "F5", "~", "Tools", null));
+        
+        // Help commands
+        commands.add(new Command("Keyboard Shortcuts", "View all shortcuts", "F1", "?", "Help", null));
+        commands.add(new Command("Documentation", "View user guide", null, "?", "Help", null));
+        commands.add(new Command("About Forevernote", "About this application", null, "i", "Help", null));
+    }
+    
+    /**
+     * Sets the theme for the palette.
+     */
+    public void setDarkTheme(boolean isDark) {
+        this.isDarkTheme = isDark;
+    }
+    
+    /**
+     * Sets the action handler for commands.
+     */
+    public void setCommandHandler(Consumer<String> handler) {
+        this.commandHandler = handler;
+        // Update all commands to use this handler
+        for (Command cmd : commands) {
+            final String cmdName = cmd.getName();
+            cmd.setAction(() -> {
+                if (commandHandler != null) {
+                    commandHandler.accept(cmdName);
+                }
+            });
+        }
+    }
+    
+    /**
+     * Shows the Command Palette.
+     */
+    public void show() {
+        if (paletteStage != null && paletteStage.isShowing()) {
+            paletteStage.toFront();
+            searchField.requestFocus();
+            return;
+        }
+        
+        createPaletteStage();
+        paletteStage.show();
+        animateEntrance();
+        
+        Platform.runLater(() -> {
+            searchField.requestFocus();
+            searchField.selectAll();
+            commandListView.getItems().setAll(commands);
+            if (!commands.isEmpty()) {
+                commandListView.getSelectionModel().selectFirst();
+            }
+        });
+    }
+    
+    /**
+     * Hides the Command Palette.
+     */
+    public void hide() {
+        if (paletteStage != null && paletteStage.isShowing()) {
+            animateExit(() -> paletteStage.hide());
+        }
+    }
+    
+    /**
+     * Creates the palette stage and UI.
+     */
+    private void createPaletteStage() {
+        paletteStage = new Stage();
+        paletteStage.initOwner(parentStage);
+        paletteStage.initModality(Modality.APPLICATION_MODAL);
+        paletteStage.initStyle(StageStyle.TRANSPARENT);
+        
+        // Colors based on theme
+        String bg = isDarkTheme ? "#1a1a2e" : "#ffffff";
+        String fg = isDarkTheme ? "#eaeaea" : "#1a1a2e";
+        String border = isDarkTheme ? "#2d2d44" : "#e0e0e0";
+        String searchBg = isDarkTheme ? "#252540" : "#f8f8f8";
+        String hoverBg = isDarkTheme ? "#2d2d44" : "#f0f0f0";
+        String accentColor = "#6c5ce7";
+        String mutedColor = isDarkTheme ? "#888" : "#666";
+        
+        // Main container with elegant styling
+        VBox mainContainer = new VBox(0);
+        mainContainer.setMaxWidth(600);
+        mainContainer.setMaxHeight(450);
+        mainContainer.setStyle(String.format(
+            "-fx-background-color: %s; " +
+            "-fx-background-radius: 12; " +
+            "-fx-border-radius: 12; " +
+            "-fx-border-color: %s; " +
+            "-fx-border-width: 1; " +
+            "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 25, 0, 0, 8);",
+            bg, border
+        ));
+        
+        // Search container
+        HBox searchContainer = new HBox(12);
+        searchContainer.setAlignment(Pos.CENTER_LEFT);
+        searchContainer.setPadding(new Insets(16, 20, 16, 20));
+        searchContainer.setStyle(String.format(
+            "-fx-background-color: %s; " +
+            "-fx-background-radius: 12 12 0 0;",
+            searchBg
+        ));
+        
+        // Search icon (universal character)
+        Label searchIcon = new Label(">");
+        searchIcon.setStyle(String.format(
+            "-fx-font-size: 18px; " +
+            "-fx-font-weight: bold; " +
+            "-fx-text-fill: %s;",
+            accentColor
+        ));
+        
+        // Search field
+        searchField = new TextField();
+        searchField.setPromptText("Type a command...");
+        searchField.setStyle(String.format(
+            "-fx-background-color: transparent; " +
+            "-fx-text-fill: %s; " +
+            "-fx-font-size: 16px; " +
+            "-fx-prompt-text-fill: %s; " +
+            "-fx-border-width: 0;",
+            fg, mutedColor
+        ));
+        HBox.setHgrow(searchField, Priority.ALWAYS);
+        
+        // Shortcut hint
+        Label shortcutHint = new Label("ESC to close");
+        shortcutHint.setStyle(String.format(
+            "-fx-font-size: 11px; " +
+            "-fx-text-fill: %s;",
+            mutedColor
+        ));
+        
+        searchContainer.getChildren().addAll(searchIcon, searchField, shortcutHint);
+        
+        // Separator
+        Region separator = new Region();
+        separator.setPrefHeight(1);
+        separator.setStyle(String.format("-fx-background-color: %s;", border));
+        
+        // Command list
+        commandListView = new ListView<>();
+        commandListView.setStyle(String.format(
+            "-fx-background-color: %s; " +
+            "-fx-background-insets: 0; " +
+            "-fx-padding: 8;",
+            bg
+        ));
+        commandListView.setCellFactory(lv -> createCommandCell(bg, fg, hoverBg, accentColor, mutedColor));
+        commandListView.setFixedCellSize(56);
+        VBox.setVgrow(commandListView, Priority.ALWAYS);
+        
+        // Footer hint
+        HBox footer = new HBox(20);
+        footer.setAlignment(Pos.CENTER);
+        footer.setPadding(new Insets(10, 16, 10, 16));
+        footer.setStyle(String.format(
+            "-fx-background-color: %s; " +
+            "-fx-background-radius: 0 0 12 12; " +
+            "-fx-border-color: %s transparent transparent transparent; " +
+            "-fx-border-width: 1 0 0 0;",
+            searchBg, border
+        ));
+        
+        Label navHint = new Label("Arrow keys to navigate");
+        navHint.setStyle(String.format("-fx-font-size: 11px; -fx-text-fill: %s;", mutedColor));
+        Label selectHint = new Label("Enter to select");
+        selectHint.setStyle(String.format("-fx-font-size: 11px; -fx-text-fill: %s;", mutedColor));
+        footer.getChildren().addAll(navHint, selectHint);
+        
+        mainContainer.getChildren().addAll(searchContainer, separator, commandListView, footer);
+        
+        // Overlay
+        StackPane overlay = new StackPane(mainContainer);
+        overlay.setAlignment(Pos.TOP_CENTER);
+        overlay.setPadding(new Insets(80, 0, 0, 0));
+        overlay.setStyle("-fx-background-color: rgba(0,0,0,0.4);");
+        overlay.setOnMouseClicked(e -> {
+            if (e.getTarget() == overlay) {
+                hide();
+            }
+        });
+        
+        // Scene
+        Scene scene = new Scene(overlay);
+        scene.setFill(Color.TRANSPARENT);
+        paletteStage.setScene(scene);
+        
+        // Size to match parent
+        paletteStage.setWidth(parentStage.getWidth());
+        paletteStage.setHeight(parentStage.getHeight());
+        paletteStage.setX(parentStage.getX());
+        paletteStage.setY(parentStage.getY());
+        
+        setupEventHandlers();
+    }
+    
+    /**
+     * Creates a styled command cell.
+     */
+    private ListCell<Command> createCommandCell(String bg, String fg, String hoverBg, String accentColor, String mutedColor) {
+        return new ListCell<>() {
+            @Override
+            protected void updateItem(Command command, boolean empty) {
+                super.updateItem(command, empty);
+                
+                if (empty || command == null) {
+                    setGraphic(null);
+                    setText(null);
+                    setStyle("-fx-background-color: transparent;");
+                } else {
+                    HBox container = new HBox(14);
+                    container.setAlignment(Pos.CENTER_LEFT);
+                    container.setPadding(new Insets(8, 12, 8, 12));
+                    
+                    // Icon container
+                    Label iconLabel = new Label(command.getIcon() != null ? command.getIcon() : ">");
+                    iconLabel.setMinWidth(28);
+                    iconLabel.setAlignment(Pos.CENTER);
+                    iconLabel.setStyle(String.format(
+                        "-fx-font-size: 14px; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-text-fill: %s; " +
+                        "-fx-background-color: %s; " +
+                        "-fx-background-radius: 6; " +
+                        "-fx-padding: 4 8;",
+                        accentColor, isDarkTheme ? "#2d2d44" : "#f0f0f0"
+                    ));
+                    
+                    // Text container
+                    VBox textContainer = new VBox(2);
+                    Label nameLabel = new Label(command.getName());
+                    nameLabel.setStyle(String.format(
+                        "-fx-font-size: 14px; " +
+                        "-fx-font-weight: bold; " +
+                        "-fx-text-fill: %s;",
+                        fg
+                    ));
+                    
+                    Label descLabel = new Label(command.getDescription());
+                    descLabel.setStyle(String.format(
+                        "-fx-font-size: 11px; " +
+                        "-fx-text-fill: %s;",
+                        mutedColor
+                    ));
+                    
+                    textContainer.getChildren().addAll(nameLabel, descLabel);
+                    HBox.setHgrow(textContainer, Priority.ALWAYS);
+                    
+                    container.getChildren().addAll(iconLabel, textContainer);
+                    
+                    // Shortcut badge
+                    if (command.getShortcut() != null && !command.getShortcut().isEmpty()) {
+                        Label shortcutLabel = new Label(command.getShortcut());
+                        shortcutLabel.setStyle(String.format(
+                            "-fx-font-size: 10px; " +
+                            "-fx-text-fill: %s; " +
+                            "-fx-background-color: %s; " +
+                            "-fx-padding: 3 8; " +
+                            "-fx-background-radius: 4;",
+                            mutedColor, isDarkTheme ? "#2d2d44" : "#e8e8e8"
+                        ));
+                        container.getChildren().add(shortcutLabel);
+                    }
+                    
+                    setGraphic(container);
+                    
+                    // Hover and selection styles
+                    String baseStyle = "-fx-background-color: transparent; -fx-background-radius: 8; -fx-padding: 2;";
+                    String hoverStyle = String.format("-fx-background-color: %s; -fx-background-radius: 8; -fx-padding: 2;", hoverBg);
+                    String selectedStyle = String.format("-fx-background-color: %s; -fx-background-radius: 8; -fx-padding: 2;", accentColor);
+                    
+                    if (isSelected()) {
+                        setStyle(selectedStyle);
+                        nameLabel.setStyle("-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: white;");
+                        descLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: rgba(255,255,255,0.8);");
+                    } else {
+                        setStyle(baseStyle);
+                        setOnMouseEntered(e -> setStyle(hoverStyle));
+                        setOnMouseExited(e -> setStyle(baseStyle));
+                    }
+                }
+            }
+        };
+    }
+    
+    /**
+     * Setup keyboard and search handlers.
+     */
+    private void setupEventHandlers() {
+        searchField.textProperty().addListener((obs, oldVal, newVal) -> filterCommands(newVal));
+        searchField.setOnKeyPressed(this::handleKeyPress);
+        commandListView.setOnKeyPressed(this::handleKeyPress);
+        commandListView.setOnMouseClicked(e -> {
+            if (e.getClickCount() == 2) {
+                executeSelectedCommand();
+            }
+        });
+    }
+    
+    private void handleKeyPress(KeyEvent event) {
+        switch (event.getCode()) {
+            case ESCAPE:
+                hide();
+                event.consume();
+                break;
+            case ENTER:
+                executeSelectedCommand();
+                event.consume();
+                break;
+            case UP:
+                navigateUp();
+                event.consume();
+                break;
+            case DOWN:
+                navigateDown();
+                event.consume();
+                break;
+            default:
+                break;
+        }
+    }
+    
+    private void filterCommands(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            commandListView.getItems().setAll(commands);
+        } else {
+            String searchLower = query.toLowerCase().trim();
+            List<Command> filtered = commands.stream()
+                .filter(cmd -> 
+                    cmd.getName().toLowerCase().contains(searchLower) ||
+                    cmd.getDescription().toLowerCase().contains(searchLower) ||
+                    cmd.getCategory().toLowerCase().contains(searchLower))
+                .collect(Collectors.toList());
+            commandListView.getItems().setAll(filtered);
+        }
+        
+        if (!commandListView.getItems().isEmpty()) {
+            commandListView.getSelectionModel().selectFirst();
+        }
+    }
+    
+    private void navigateUp() {
+        int idx = commandListView.getSelectionModel().getSelectedIndex();
+        if (idx > 0) {
+            commandListView.getSelectionModel().select(idx - 1);
+            commandListView.scrollTo(idx - 1);
+        }
+    }
+    
+    private void navigateDown() {
+        int idx = commandListView.getSelectionModel().getSelectedIndex();
+        if (idx < commandListView.getItems().size() - 1) {
+            commandListView.getSelectionModel().select(idx + 1);
+            commandListView.scrollTo(idx + 1);
+        }
+    }
+    
+    private void executeSelectedCommand() {
+        Command selected = commandListView.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            hide();
+            Platform.runLater(() -> {
+                try {
+                    selected.execute();
+                    logger.info("Executed command: " + selected.getName());
+                } catch (Exception e) {
+                    logger.severe("Error executing command: " + e.getMessage());
+                }
+            });
+        }
+    }
+    
+    private void animateEntrance() {
+        VBox container = (VBox) ((StackPane) paletteStage.getScene().getRoot()).getChildren().get(0);
+        
+        FadeTransition fade = new FadeTransition(Duration.millis(150), container);
+        fade.setFromValue(0);
+        fade.setToValue(1);
+        
+        ScaleTransition scale = new ScaleTransition(Duration.millis(150), container);
+        scale.setFromX(0.95);
+        scale.setFromY(0.95);
+        scale.setToX(1);
+        scale.setToY(1);
+        
+        fade.play();
+        scale.play();
+    }
+    
+    private void animateExit(Runnable onFinished) {
+        VBox container = (VBox) ((StackPane) paletteStage.getScene().getRoot()).getChildren().get(0);
+        
+        FadeTransition fade = new FadeTransition(Duration.millis(100), container);
+        fade.setFromValue(1);
+        fade.setToValue(0);
+        fade.setOnFinished(e -> onFinished.run());
+        fade.play();
+    }
+}

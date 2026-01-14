@@ -28,9 +28,12 @@ import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
+import javafx.geometry.Pos;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.KeyCode;
 
@@ -44,6 +47,10 @@ import com.example.forevernote.data.models.Folder;
 import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.Tag;
 import com.example.forevernote.data.models.interfaces.Component;
+import com.example.forevernote.ui.components.CommandPalette;
+import com.example.forevernote.ui.components.QuickSwitcher;
+
+import javafx.stage.Stage;
 
 import java.util.logging.Logger;
 import java.util.List;
@@ -121,6 +128,38 @@ public class MainController {
     @FXML private ToggleButton splitViewButton;
     @FXML private ToggleButton previewOnlyButton;
     @FXML private Button favoriteButton;
+    @FXML private Button infoButton;
+    @FXML private Button deleteNoteBtn;
+    
+    // Toolbar buttons
+    @FXML private Button newNoteBtn;
+    @FXML private Button newFolderBtn;
+    @FXML private Button saveBtn;
+    @FXML private Button deleteBtn;
+    @FXML private Button refreshBtn;
+    
+    // Sidebar buttons
+    @FXML private Button sidebarNewNoteBtn;
+    @FXML private Button sidebarNewFolderBtn;
+    @FXML private Button sidebarNewTagBtn;
+    
+    // Format toolbar buttons
+    @FXML private Button heading1Btn;
+    @FXML private Button heading2Btn;
+    @FXML private Button heading3Btn;
+    @FXML private Button boldBtn;
+    @FXML private Button italicBtn;
+    @FXML private Button strikeBtn;
+    @FXML private Button underlineBtn;
+    @FXML private Button highlightBtn;
+    @FXML private Button linkBtn;
+    @FXML private Button imageBtn;
+    @FXML private Button todoBtn;
+    @FXML private Button bulletBtn;
+    @FXML private Button numberBtn;
+    @FXML private Button quoteBtn;
+    @FXML private Button codeBtn;
+    @FXML private Button closeInfoBtn;
     
     // Info panel (slide-out)
     @FXML private VBox infoPanel;
@@ -151,6 +190,10 @@ public class MainController {
     private enum ViewMode { EDITOR_ONLY, SPLIT, PREVIEW_ONLY }
     private ViewMode currentViewMode = ViewMode.SPLIT;
     
+    // UI Components for quick access
+    private CommandPalette commandPalette;
+    private QuickSwitcher quickSwitcher;
+    
     /**
      * Initialize the controller after FXML loading.
      */
@@ -170,12 +213,16 @@ public class MainController {
             initializeSearch();
             initializeSortOptions();
             initializeViewModeButtons();
+            initializeIcons();
             
             // Load initial data
             loadFolders();
             loadRecentNotes();
             loadTags();
             loadFavorites();
+            
+            // Initialize keyboard shortcuts after scene is ready
+            Platform.runLater(this::initializeKeyboardShortcuts);
             
             updateStatus("Ready");
             logger.info("MainController initialized successfully");
@@ -210,44 +257,75 @@ public class MainController {
      */
     private void initializeFolderTree() {
         // Create a visible root folder for "All Notes" (like Evernote/Joplin/Obsidian)
-        Folder rootFolder = new Folder("📚 All Notes", null, null);
+        Folder rootFolder = new Folder("All Notes", null, null);
         TreeItem<Folder> rootItem = new TreeItem<>(rootFolder);
         rootItem.setExpanded(true);
         folderTreeView.setRoot(rootItem);
-        folderTreeView.setShowRoot(true); // Make root visible
+        folderTreeView.setShowRoot(true);
         
         // Handle folder selection
         folderTreeView.getSelectionModel().selectedItemProperty().addListener(
             (observable, oldValue, newValue) -> {
                 if (newValue != null && newValue.getValue() != null) {
                     Folder selectedFolder = newValue.getValue();
-                    if (selectedFolder.getTitle().equals("📚 All Notes") || selectedFolder.getTitle().equals("All Notes")) {
+                    if (selectedFolder.getTitle().equals("All Notes")) {
                         currentFolder = null;
                         loadAllNotes();
                     } else {
                         handleFolderSelection(selectedFolder);
                     }
                 } else {
-                    // Selection cleared - show all notes
                     currentFolder = null;
                     loadAllNotes();
                 }
             }
         );
         
-        // Allow clicking on "All Notes" to deselect and show all notes
-        // This is handled in the selection listener above
-        
-        // Enable context menu
+        // Enable context menu with note count display (Obsidian-style)
         folderTreeView.setCellFactory(tv -> {
             TreeCell<Folder> cell = new TreeCell<Folder>() {
+                private final HBox container = new HBox(6);
+                private final Label iconLabel = new Label();
+                private final Label nameLabel = new Label();
+                private final Label countLabel = new Label();
+                private final Region spacer = new Region();
+                
+                {
+                    container.setAlignment(Pos.CENTER_LEFT);
+                    HBox.setHgrow(spacer, Priority.ALWAYS);
+                    iconLabel.getStyleClass().add("folder-icon");
+                    nameLabel.getStyleClass().add("folder-name");
+                    countLabel.getStyleClass().add("folder-count");
+                    container.getChildren().addAll(iconLabel, nameLabel, spacer, countLabel);
+                }
+                
                 @Override
                 protected void updateItem(Folder folder, boolean empty) {
                     super.updateItem(folder, empty);
                     if (empty || folder == null) {
                         setText(null);
+                        setGraphic(null);
                     } else {
-                        setText(folder.getTitle());
+                        // Simple text icons that always work
+                        TreeItem<Folder> treeItem = getTreeItem();
+                        boolean hasChildren = treeItem != null && !treeItem.getChildren().isEmpty();
+                        boolean isExpanded = treeItem != null && treeItem.isExpanded();
+                        
+                        if (folder.getTitle().equals("All Notes")) {
+                            iconLabel.setText("=");
+                        } else if (hasChildren && isExpanded) {
+                            iconLabel.setText("v");
+                        } else if (hasChildren) {
+                            iconLabel.setText(">");
+                        } else {
+                            iconLabel.setText("-");
+                        }
+                        
+                        nameLabel.setText(folder.getTitle());
+                        int noteCount = getNoteCountForFolder(folder);
+                        countLabel.setText(noteCount > 0 ? String.valueOf(noteCount) : "");
+                        setText(null);
+                        setGraphic(container);
                     }
                 }
             };
@@ -256,7 +334,7 @@ public class MainController {
                 if (!cell.isEmpty() && cell.getItem() != null) {
                     Folder folder = cell.getItem();
                     String title = folder.getTitle();
-                    if (!title.equals("📚 All Notes") && !title.equals("All Notes")) {
+                    if (!title.equals("All Notes")) {
                         showFolderContextMenu(folder, cell);
                     }
                 }
@@ -264,6 +342,43 @@ public class MainController {
             
             return cell;
         });
+    }
+    
+    /**
+     * Get the count of notes in a folder (including subfolders recursively).
+     */
+    private int getNoteCountForFolder(Folder folder) {
+        try {
+            if (folder == null) return 0;
+            
+            // "All Notes" shows total count
+            if (folder.getTitle().equals("All Notes")) {
+                List<Note> allNotes = noteDAO.fetchAllNotes();
+                return allNotes != null ? allNotes.size() : 0;
+            }
+            
+            // Get notes directly in this folder
+            folderDAO.loadNotes(folder);
+            int count = 0;
+            for (Component child : folder.getChildren()) {
+                if (child instanceof Note) {
+                    count++;
+                }
+            }
+            
+            // Add notes from subfolders recursively
+            folderDAO.loadSubFolders(folder);
+            for (Component child : folder.getChildren()) {
+                if (child instanceof Folder) {
+                    count += getNoteCountForFolder((Folder) child);
+                }
+            }
+            
+            return count;
+        } catch (Exception e) {
+            logger.warning("Error counting notes for folder " + folder.getTitle() + ": " + e.getMessage());
+            return 0;
+        }
     }
     
     /**
@@ -404,6 +519,258 @@ public class MainController {
     }
     
     /**
+     * Initialize global keyboard shortcuts.
+     * Sets up Command Palette (Ctrl+P) and Quick Switcher (Ctrl+O).
+     */
+    private void initializeKeyboardShortcuts() {
+        try {
+            // Get the stage from any available component
+            javafx.scene.Scene scene = null;
+            if (menuBar != null && menuBar.getScene() != null) {
+                scene = menuBar.getScene();
+            } else if (mainSplitPane != null && mainSplitPane.getScene() != null) {
+                scene = mainSplitPane.getScene();
+            }
+            
+            if (scene == null) {
+                logger.warning("Scene not available for keyboard shortcuts");
+                return;
+            }
+            
+            Stage stage = (Stage) scene.getWindow();
+            if (stage == null) {
+                logger.warning("Stage not available for keyboard shortcuts");
+                return;
+            }
+            
+            // Initialize Command Palette
+            commandPalette = new CommandPalette(stage);
+            boolean isDark = "dark".equals(currentTheme) || 
+                             ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
+            commandPalette.setDarkTheme(isDark);
+            commandPalette.setCommandHandler(this::executeCommand);
+            
+            // Initialize Quick Switcher
+            quickSwitcher = new QuickSwitcher(stage);
+            quickSwitcher.setDarkTheme(isDark);
+            quickSwitcher.setOnNoteSelected(this::loadNoteInEditor);
+            
+            // Set up global key handler
+            scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
+                if (event.isControlDown()) {
+                    switch (event.getCode()) {
+                        case P:
+                            // Ctrl+P - Command Palette
+                            if (!event.isShiftDown()) {
+                                showCommandPalette();
+                                event.consume();
+                            }
+                            break;
+                        case O:
+                            // Ctrl+O - Quick Switcher
+                            showQuickSwitcher();
+                            event.consume();
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            });
+            
+            logger.info("Keyboard shortcuts initialized (Ctrl+P: Command Palette, Ctrl+O: Quick Switcher)");
+        } catch (Exception e) {
+            logger.warning("Failed to initialize keyboard shortcuts: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Shows the Command Palette (Ctrl+P).
+     */
+    public void showCommandPalette() {
+        if (commandPalette != null) {
+            boolean isDark = "dark".equals(currentTheme) || 
+                             ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
+            commandPalette.setDarkTheme(isDark);
+            commandPalette.show();
+        }
+    }
+    
+    /**
+     * Shows the Quick Switcher (Ctrl+O).
+     */
+    public void showQuickSwitcher() {
+        if (quickSwitcher != null) {
+            boolean isDark = "dark".equals(currentTheme) || 
+                             ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
+            quickSwitcher.setDarkTheme(isDark);
+            // Update notes list before showing
+            quickSwitcher.setNotes(noteDAO.fetchAllNotes());
+            quickSwitcher.show();
+        }
+    }
+    
+    /**
+     * Execute a command from the Command Palette.
+     */
+    private void executeCommand(String commandName) {
+        logger.info("Executing command: " + commandName);
+        
+        switch (commandName) {
+            // File commands
+            case "New Note":
+                handleNewNote(null);
+                break;
+            case "New Folder":
+                handleNewFolder(null);
+                break;
+            case "Save":
+                handleSave(null);
+                break;
+            case "Save All":
+                handleSaveAll(null);
+                break;
+            case "Import":
+                handleImport(null);
+                break;
+            case "Export":
+                handleExport(null);
+                break;
+            case "Delete Note":
+                handleDelete(null);
+                break;
+                
+            // Edit commands
+            case "Undo":
+                handleUndo(null);
+                break;
+            case "Redo":
+                handleRedo(null);
+                break;
+            case "Find":
+                handleFind(null);
+                break;
+            case "Find and Replace":
+                handleReplace(null);
+                break;
+            case "Cut":
+                handleCut(null);
+                break;
+            case "Copy":
+                handleCopy(null);
+                break;
+            case "Paste":
+                handlePaste(null);
+                break;
+                
+            // Format commands
+            case "Bold":
+                handleBold(null);
+                break;
+            case "Italic":
+                handleItalic(null);
+                break;
+            case "Underline":
+                handleUnderline(null);
+                break;
+            case "Insert Link":
+                handleLink(null);
+                break;
+            case "Insert Image":
+                handleImage(null);
+                break;
+            case "Insert Todo":
+                handleTodoList(null);
+                break;
+            case "Insert List":
+                handleNumberedList(null);
+                break;
+                
+            // View commands
+            case "Toggle Sidebar":
+                handleToggleSidebar(null);
+                break;
+            case "Toggle Info Panel":
+                handleShowNoteInfo(null);
+                break;
+            case "Editor Mode":
+                handleEditorOnlyMode(null);
+                break;
+            case "Preview Mode":
+                handlePreviewOnlyMode(null);
+                break;
+            case "Split Mode":
+                handleSplitViewMode(null);
+                break;
+            case "Zoom In":
+                handleZoomIn(null);
+                break;
+            case "Zoom Out":
+                handleZoomOut(null);
+                break;
+            case "Reset Zoom":
+                handleResetZoom(null);
+                break;
+                
+            // Theme commands
+            case "Light Theme":
+                handleLightTheme(null);
+                break;
+            case "Dark Theme":
+                handleDarkTheme(null);
+                break;
+            case "System Theme":
+                handleSystemTheme(null);
+                break;
+                
+            // Navigation commands
+            case "Quick Switcher":
+                showQuickSwitcher();
+                break;
+            case "Global Search":
+                searchField.requestFocus();
+                break;
+            case "Go to All Notes":
+                loadAllNotes();
+                break;
+            case "Go to Favorites":
+                loadFavorites();
+                break;
+            case "Go to Recent":
+                loadRecentNotes();
+                break;
+                
+            // Tools commands
+            case "Tag Manager":
+                handleTagsManager(null);
+                break;
+            case "Preferences":
+                handlePreferences(null);
+                break;
+            case "Toggle Favorite":
+                handleToggleFavorite(null);
+                break;
+            case "Refresh":
+                handleRefresh(null);
+                break;
+                
+            // Help commands
+            case "Keyboard Shortcuts":
+                handleKeyboardShortcuts(null);
+                break;
+            case "Documentation":
+                handleDocumentation(null);
+                break;
+            case "About Forevernote":
+                handleAbout(null);
+                break;
+                
+            default:
+                logger.warning("Unknown command: " + commandName);
+                updateStatus("Unknown command: " + commandName);
+        }
+    }
+    
+    /**
      * Initialize sort options.
      */
     private void initializeSortOptions() {
@@ -537,6 +904,68 @@ public class MainController {
         currentViewMode = ViewMode.PREVIEW_ONLY;
         applyViewMode();
         updateStatus("Preview mode");
+    }
+    
+    /**
+     * Initialize all icons using Ikonli (Feather icons - similar to Obsidian).
+     * Uses simple text labels that work reliably across all platforms.
+     */
+    private void initializeIcons() {
+        // Toolbar buttons
+        setButtonText(newNoteBtn, "+", "New Note (Ctrl+N)");
+        setButtonText(newFolderBtn, "📁", "New Folder");
+        setButtonText(saveBtn, "💾", "Save (Ctrl+S)");
+        setButtonText(deleteBtn, "🗑", "Delete");
+        setButtonText(refreshBtn, "↻", "Refresh");
+        
+        // Sidebar buttons
+        setButtonText(sidebarNewNoteBtn, "+", "New Note");
+        setButtonText(sidebarNewFolderBtn, "📁", "New Folder");
+        setButtonText(sidebarNewTagBtn, "#", "New Tag");
+        
+        // View mode buttons
+        setToggleText(editorOnlyButton, "✎", "Editor only (Alt+1)");
+        setToggleText(splitViewButton, "▦", "Split view (Alt+2)");
+        setToggleText(previewOnlyButton, "👁", "Preview only (Alt+3)");
+        
+        // Action buttons  
+        setButtonText(favoriteButton, "☆", "Add to favorites");
+        setButtonText(infoButton, "ℹ", "Note information");
+        setButtonText(deleteNoteBtn, "✕", "Delete note");
+        setButtonText(closeInfoBtn, "✕", "Close panel");
+        
+        // Format toolbar
+        setButtonText(heading1Btn, "H1", "Heading 1");
+        setButtonText(heading2Btn, "H2", "Heading 2");
+        setButtonText(heading3Btn, "H3", "Heading 3");
+        setButtonText(boldBtn, "B", "Bold (Ctrl+B)");
+        setButtonText(italicBtn, "I", "Italic (Ctrl+I)");
+        setButtonText(strikeBtn, "S", "Strikethrough");
+        setButtonText(underlineBtn, "U", "Underline");
+        setButtonText(highlightBtn, "~", "Highlight");
+        setButtonText(linkBtn, "Lk", "Insert link (Ctrl+K)");
+        setButtonText(imageBtn, "Img", "Insert image");
+        setButtonText(todoBtn, "[]", "Checkbox");
+        setButtonText(bulletBtn, "•", "Bullet list");
+        setButtonText(numberBtn, "1.", "Numbered list");
+        setButtonText(quoteBtn, ">", "Blockquote");
+        setButtonText(codeBtn, "</>", "Code block");
+        
+        logger.info("Button labels initialized");
+    }
+    
+    private void setButtonText(Button btn, String text, String tooltip) {
+        if (btn != null) {
+            btn.setText(text);
+            btn.setTooltip(new Tooltip(tooltip));
+        }
+    }
+    
+    private void setToggleText(ToggleButton btn, String text, String tooltip) {
+        if (btn != null) {
+            btn.setText(text);
+            btn.setTooltip(new Tooltip(tooltip));
+        }
     }
     
     /**
@@ -743,6 +1172,9 @@ public class MainController {
         
         // Update preview
         updatePreview();
+        
+        // Update favorite button icon
+        updateFavoriteButtonIcon();
         
         // Refresh favorites list to show current favorite status
         loadFavorites();
@@ -2382,6 +2814,9 @@ public class MainController {
             noteDAO.updateNote(currentNote);
             isModified = false; // Already saved
             
+            // Update favorite button icon
+            updateFavoriteButtonIcon();
+            
             // Refresh favorites list if visible
             loadFavorites();
             
@@ -2389,6 +2824,25 @@ public class MainController {
         } catch (Exception e) {
             logger.severe("Failed to toggle favorite: " + e.getMessage());
             updateStatus("Error toggling favorite");
+        }
+    }
+    
+    /**
+     * Update the favorite button icon based on current note's favorite status.
+     */
+    private void updateFavoriteButtonIcon() {
+        if (favoriteButton != null && currentNote != null) {
+            if (currentNote.isFavorite()) {
+                favoriteButton.setText("★");
+                if (favoriteButton.getTooltip() != null) {
+                    favoriteButton.getTooltip().setText("Remove from favorites");
+                }
+            } else {
+                favoriteButton.setText("☆");
+                if (favoriteButton.getTooltip() != null) {
+                    favoriteButton.getTooltip().setText("Add to favorites");
+                }
+            }
         }
     }
     @FXML 
@@ -2585,6 +3039,94 @@ public class MainController {
         noteContentArea.requestFocus();
         isModified = true;
         updateStatus("Numbered list item inserted");
+    }
+    
+    @FXML 
+    private void handleHeading1(ActionEvent event) {
+        if (noteContentArea == null) return;
+        insertLinePrefix("# ");
+        updateStatus("Heading 1 inserted");
+    }
+    
+    @FXML 
+    private void handleHeading2(ActionEvent event) {
+        if (noteContentArea == null) return;
+        insertLinePrefix("## ");
+        updateStatus("Heading 2 inserted");
+    }
+    
+    @FXML 
+    private void handleBulletList(ActionEvent event) {
+        if (noteContentArea == null) return;
+        insertLinePrefix("- ");
+        updateStatus("Bullet list item inserted");
+    }
+    
+    @FXML 
+    private void handleCode(ActionEvent event) {
+        if (noteContentArea == null) return;
+        
+        String selectedText = noteContentArea.getSelectedText();
+        if (selectedText != null && selectedText.contains("\n")) {
+            // Multi-line: wrap in code block
+            insertMarkdownFormat("```\n", "\n```");
+        } else {
+            // Single line: inline code
+            insertMarkdownFormat("`", "`");
+        }
+        updateStatus("Code formatting applied");
+    }
+    
+    @FXML 
+    private void handleQuote(ActionEvent event) {
+        if (noteContentArea == null) return;
+        insertLinePrefix("> ");
+        updateStatus("Quote inserted");
+    }
+    
+    @FXML 
+    private void handleHeading3(ActionEvent event) {
+        if (noteContentArea == null) return;
+        insertLinePrefix("### ");
+        updateStatus("Heading 3 inserted");
+    }
+    
+    @FXML 
+    private void handleRealUnderline(ActionEvent event) {
+        insertMarkdownFormat("<u>", "</u>");
+        updateStatus("Underline formatting applied");
+    }
+    
+    @FXML 
+    private void handleHighlight(ActionEvent event) {
+        insertMarkdownFormat("==", "==");
+        updateStatus("Highlight formatting applied");
+    }
+    
+    /**
+     * Insert a prefix at the start of the current line.
+     */
+    private void insertLinePrefix(String prefix) {
+        int caretPos = noteContentArea.getCaretPosition();
+        String text = noteContentArea.getText() != null ? noteContentArea.getText() : "";
+        
+        // Find line start
+        int lineStart = text.lastIndexOf('\n', caretPos - 1) + 1;
+        String lineText = text.substring(lineStart, caretPos);
+        
+        if (lineText.trim().isEmpty() && lineStart == caretPos) {
+            // At the beginning of an empty line
+            String newText = text.substring(0, caretPos) + prefix + text.substring(caretPos);
+            noteContentArea.setText(newText);
+            noteContentArea.positionCaret(caretPos + prefix.length());
+        } else {
+            // Insert on new line
+            String newText = text.substring(0, caretPos) + "\n" + prefix + text.substring(caretPos);
+            noteContentArea.setText(newText);
+            noteContentArea.positionCaret(caretPos + prefix.length() + 1);
+        }
+        noteContentArea.requestFocus();
+        isModified = true;
     }
     
     private void handleRenameFolder(Folder folder) {
