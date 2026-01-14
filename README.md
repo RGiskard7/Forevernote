@@ -59,19 +59,19 @@
 
 ### Main Interface
 
-![Main Interface](resources/images/interfaz-1.png)
+![Main Interface](resources/images/interfaz-3.png)
 
 The main interface features a three-panel layout: navigation sidebar (folders, tags, recent, favorites), notes list, and editor with live preview.
 
 ### Dark Theme
 
-![Dark Theme](resources/images/interfaz-2.png)
+![Dark Theme](resources/images/interfaz-1.png)
 
 Professional dark theme with purple accents, optimized for extended writing sessions.
 
 ### Light Theme
 
-![Light Theme](resources/images/interfaz-3.png)
+![Light Theme](resources/images/interfaz-2.png)
 
 Clean light theme with modern styling and excellent readability.
 
