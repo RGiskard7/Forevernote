@@ -4,6 +4,41 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [3.3.0] - 2026-01-14
+
+### Professional UI Improvements & Icon System
+
+**Changed files:**
+- `Forevernote/src/main/resources/com/example/forevernote/ui/view/MainView.fxml` - Icon updates for buttons
+- `Forevernote/src/main/resources/com/example/forevernote/ui/css/dark-theme.css` - Folder icons, ComboBox styles, button improvements
+- `Forevernote/src/main/resources/com/example/forevernote/ui/css/modern-theme.css` - Folder icons, ComboBox styles, button improvements
+- `Forevernote/src/main/java/com/example/forevernote/ui/controller/MainController.java` - Enhanced folder tree with visual icons
+- `README.md` - Professional update with screenshots and improved documentation
+
+**Summary:**
+
+#### Visual Icon System:
+- **Note buttons**: Now use notebook emoji (📓) instead of plus sign
+- **Folder buttons**: Use folder emoji (📁) consistently
+- **Folder tree**: Enhanced with color-coded folder icons:
+  - `[=]` for "All Notes" (purple)
+  - `[/]` for open folders (green)
+  - `[+]` for closed folders (orange)
+- **Note counters**: Styled as badges with rounded corners and background colors
+
+#### UI Improvements:
+- **ComboBox styling**: Fixed readability in light theme with proper text colors and backgrounds
+- **Primary button**: "New Note" button now has distinctive purple styling
+- **Folder count display**: Improved visibility with badge-style formatting `(count)`
+- **Consistent sizing**: All buttons have proper min-height and alignment
+
+#### Documentation:
+- **README.md**: Completely professionalized without emojis
+- **Screenshots**: Added four interface screenshots showing main interface, dark theme, light theme, and editor features
+- **Structure**: Improved organization and clarity of all documentation
+
+---
+
 ## [3.2.0] - 2026-01-14
 
 ### Improved Icons & Responsive Format Toolbar

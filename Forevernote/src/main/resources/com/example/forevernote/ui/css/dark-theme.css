@@ -118,6 +118,17 @@
     -fx-border-color: #fc8181;
 }
 
+.toolbar-btn-primary {
+    -fx-background-color: #7c3aed;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #7c3aed;
+}
+
+.toolbar-btn-primary:hover {
+    -fx-background-color: #6d28d9;
+    -fx-border-color: #6d28d9;
+}
+
 .toolbar-separator {
     -fx-background-color: #3a3a3a;
 }
@@ -280,9 +291,23 @@
 
 /* Folder icon, name and count styles (Obsidian-style) */
 .folder-icon {
-    -fx-text-fill: #888888;
-    -fx-font-size: 10px;
-    -fx-min-width: 12px;
+    -fx-text-fill: #9f7aea;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-min-width: 24px;
+    -fx-font-family: "Consolas", "Monaco", monospace;
+}
+
+.folder-icon-all {
+    -fx-text-fill: #9f7aea;
+}
+
+.folder-icon-open {
+    -fx-text-fill: #68d391;
+}
+
+.folder-icon-closed {
+    -fx-text-fill: #f6ad55;
 }
 
 .folder-name {
@@ -291,13 +316,19 @@
 }
 
 .folder-count {
-    -fx-text-fill: #666666;
+    -fx-text-fill: #9f7aea;
     -fx-font-size: 11px;
-    -fx-padding: 0 0 0 8;
+    -fx-font-weight: 500;
+    -fx-padding: 2 6;
+    -fx-background-color: #3a3a3a;
+    -fx-background-radius: 10;
 }
 
-.tree-cell:selected .folder-icon {
-    -fx-text-fill: rgba(255, 255, 255, 0.8);
+.tree-cell:selected .folder-icon,
+.tree-cell:selected .folder-icon-all,
+.tree-cell:selected .folder-icon-open,
+.tree-cell:selected .folder-icon-closed {
+    -fx-text-fill: #ffffff;
 }
 
 .tree-cell:selected .folder-name {
@@ -305,7 +336,8 @@
 }
 
 .tree-cell:selected .folder-count {
-    -fx-text-fill: rgba(255, 255, 255, 0.7);
+    -fx-text-fill: #ffffff;
+    -fx-background-color: rgba(255, 255, 255, 0.2);
 }
 
 /* ========================================

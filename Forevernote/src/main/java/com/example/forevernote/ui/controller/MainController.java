@@ -306,24 +306,34 @@ public class MainController {
                         setText(null);
                         setGraphic(null);
                     } else {
-                        // Simple text icons that always work
+                        // Folder icons that render correctly
                         TreeItem<Folder> treeItem = getTreeItem();
                         boolean hasChildren = treeItem != null && !treeItem.getChildren().isEmpty();
                         boolean isExpanded = treeItem != null && treeItem.isExpanded();
                         
                         if (folder.getTitle().equals("All Notes")) {
-                            iconLabel.setText("=");
-                        } else if (hasChildren && isExpanded) {
-                            iconLabel.setText("v");
-                        } else if (hasChildren) {
-                            iconLabel.setText(">");
+                            iconLabel.setText("[=]"); // All notes icon
+                            iconLabel.getStyleClass().removeAll("folder-icon-open", "folder-icon-closed");
+                            iconLabel.getStyleClass().add("folder-icon-all");
+                        } else if (isExpanded) {
+                            iconLabel.setText("[/]"); // Open folder
+                            iconLabel.getStyleClass().removeAll("folder-icon-all", "folder-icon-closed");
+                            iconLabel.getStyleClass().add("folder-icon-open");
                         } else {
-                            iconLabel.setText("-");
+                            iconLabel.setText("[+]"); // Closed folder
+                            iconLabel.getStyleClass().removeAll("folder-icon-all", "folder-icon-open");
+                            iconLabel.getStyleClass().add("folder-icon-closed");
                         }
                         
                         nameLabel.setText(folder.getTitle());
                         int noteCount = getNoteCountForFolder(folder);
-                        countLabel.setText(noteCount > 0 ? String.valueOf(noteCount) : "");
+                        if (noteCount > 0) {
+                            countLabel.setText("(" + noteCount + ")");
+                            countLabel.setVisible(true);
+                        } else {
+                            countLabel.setText("");
+                            countLabel.setVisible(false);
+                        }
                         setText(null);
                         setGraphic(container);
                     }

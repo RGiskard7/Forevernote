@@ -497,17 +497,22 @@ The project uses Maven with the following key plugins:
 
 ## Features Implemented
 
-- ✅ Modern JavaFX UI with SplitPane layout
+- ✅ Modern JavaFX UI with SplitPane layout (Obsidian-inspired)
 - ✅ TreeView for folder hierarchy with visible "All Notes" root
+- ✅ Visual folder icons with color coding (open/closed/root)
+- ✅ Note count badges in folder tree
 - ✅ Note editor with metadata (title, content, dates, tags)
 - ✅ Full CRUD operations from UI (Create, Read, Update, Delete)
-- ✅ Modern CSS styling with theme support
+- ✅ Professional CSS styling with light and dark theme support
 - ✅ Global search functionality across all notes
 - ✅ Tags management with full CRUD interface
 - ✅ Markdown support with live preview and emoji rendering
-- ✅ Rich text formatting (Bold, Italic, Underline, Links, Images)
-- ✅ Lists support (Todo lists, Numbered lists)
-- ✅ Zoom controls (50%-300%)
+- ✅ Rich text formatting toolbar (Bold, Italic, Underline, Links, Images, Headings)
+- ✅ Scrollable format toolbar (responsive design)
+- ✅ Lists support (Todo lists, Numbered lists, Bullet lists)
+- ✅ Obsidian-style view modes (Editor-only, Split, Preview-only)
+- ✅ Command Palette (Ctrl+P) for quick actions
+- ✅ Quick Switcher (Ctrl+O) for fast note navigation
 - ✅ Keyboard shortcuts for all operations
 - ✅ Auto-refresh notes list on save/delete
 - ✅ Recent notes and favorites
@@ -515,17 +520,19 @@ The project uses Maven with the following key plugins:
 - ✅ Folder hierarchy display (subfolders correctly nested)
 - ✅ Tag synchronization (tags appear in sidebar after creation)
 - ✅ Root folder creation (easy creation of folders at root level)
+- ✅ Import/Export functionality (Markdown, TXT)
+- ✅ Professional button icons and styling
+- ✅ Fully responsive interface
 
 ## Next Steps (Future Enhancements)
 
-- [ ] Complete dark theme implementation
 - [ ] Add attachment support (file attachments)
-- [ ] Implement export/import functionality (Markdown, PDF, etc.)
+- [ ] Implement PDF export
 - [ ] Add spell checking
 - [ ] Implement advanced search with filters
 - [ ] Add note templates
 - [ ] Implement note versioning/history
-- [ ] Add collaboration features (if needed)
+- [ ] Grid view for notes (UI toggle exists but not implemented)
 
 ## Notes
 

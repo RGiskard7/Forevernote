@@ -18,12 +18,13 @@
 <div align="center">
   <strong>A lightweight desktop application for managing notes with hierarchical organization through folders and tags.</strong>
   <br>
-  Built with Java and JavaFX, featuring SQLite for persistent storage, Markdown support with live preview, and a modern, intuitive user interface.
+  Built with Java and JavaFX, featuring SQLite for persistent storage, Markdown support with live preview, and a modern, intuitive user interface inspired by Obsidian.
 </div>
 
 ## Table of Contents
 
 - [Features](#features)
+- [Screenshots](#screenshots)
 - [Technology Stack](#technology-stack)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
@@ -44,13 +45,41 @@
 - **Rich Text Formatting**: Bold, italic, underline, links, images, todo lists, and numbered lists
 - **Search**: Global search across all notes (titles and content)
 - **Auto-refresh**: Notes list automatically updates on save/delete operations
-- **Zoom Controls**: Adjust text size (50%-300%)
-- **Theme Support**: Light, dark, and system theme options
+- **Obsidian-style Interface**: Split view editor with toggle between editor-only, split, and preview-only modes
+- **Theme Support**: Light, dark, and system theme options with professional styling
 - **Keyboard Shortcuts**: Comprehensive keyboard shortcuts for all operations
+- **Command Palette**: Quick command access (Ctrl+P) for power users
+- **Quick Switcher**: Fast note navigation (Ctrl+O)
 - **Favorites**: Mark notes as favorites for quick access
 - **Recent Notes**: Quick access to recently modified notes
-- **To-Do Support**: Mark notes as to-do items with completion tracking
-- **Logging**: Comprehensive application logging for debugging and monitoring
+- **Responsive Design**: Fully responsive interface that adapts to window resizing
+- **Scrollable Toolbar**: Professional format toolbar with horizontal scrolling
+
+## Screenshots
+
+### Main Interface
+
+![Main Interface](resources/images/interfaz-1.png)
+
+The main interface features a three-panel layout: navigation sidebar (folders, tags, recent, favorites), notes list, and editor with live preview.
+
+### Dark Theme
+
+![Dark Theme](resources/images/interfaz-2.png)
+
+Professional dark theme with purple accents, optimized for extended writing sessions.
+
+### Light Theme
+
+![Light Theme](resources/images/interfaz-3.png)
+
+Clean light theme with modern styling and excellent readability.
+
+### Editor Features
+
+![Editor Features](resources/images/interfaz-4.png)
+
+Split-view editor with Markdown formatting toolbar, live preview, and comprehensive note management tools.
 
 ## Technology Stack
 
@@ -121,7 +150,7 @@ This creates an executable JAR at `Forevernote/target/forevernote-1.0.0-uber.jar
 
 **Windows (PowerShell):**
 ```powershell
-.\scripts\launch-forevernote.ps1
+.\scripts\run_all.ps1
 ```
 
 **Windows (CMD):**
@@ -143,6 +172,8 @@ For more detailed build and setup instructions, see [Build and Setup Guide](doc/
 Comprehensive documentation is available in the `doc/` directory:
 
 - **[Build and Setup Guide](doc/BUILD.md)**: Complete guide for building, running, and setting up the development environment. Includes prerequisites, build methods, VS Code configuration, troubleshooting, and project structure.
+
+- **[Architecture Documentation](doc/ARCHITECTURE.md)**: Detailed explanation of the application architecture, design patterns, and component structure.
 
 - **[Standalone Application Guide](doc/LAUNCH_APP.md)**: Instructions for using Forevernote as a standalone application without development tools. Covers executable JAR usage, launch scripts, and creating desktop shortcuts.
 
@@ -168,8 +199,11 @@ Forevernote/
 │   │   │   │   ├── ui/                  # User interface
 │   │   │   │   │   ├── controller/      # JavaFX controllers
 │   │   │   │   │   ├── view/            # FXML layouts
-│   │   │   │   │   └── css/             # Stylesheets
-│   │   │   │   └── util/                # Utility classes
+│   │   │   │   │   ├── css/             # Stylesheets
+│   │   │   │   │   └── components/      # Reusable UI components
+│   │   │   │   ├── service/             # Business logic layer
+│   │   │   │   ├── event/               # Event system
+│   │   │   │   └── plugin/              # Plugin system
 │   │   │   └── resources/               # Configuration and assets
 │   │   └── test/                        # Unit tests
 │   ├── pom.xml                          # Maven configuration
@@ -193,8 +227,10 @@ Forevernote/
 │
 ├── doc/                                  # Documentation
 │   ├── BUILD.md                          # Build and setup guide
+│   ├── ARCHITECTURE.md                   # Architecture documentation
 │   ├── LAUNCH_APP.md                     # Standalone application guide
-│   └── PACKAGING.md                      # Native installer guide
+│   ├── PACKAGING.md                      # Native installer guide
+│   └── interfaz-*.png                    # Application screenshots
 │
 ├── .vscode/                              # VS Code configuration
 │   ├── settings.json                     # Java configuration
@@ -307,5 +343,5 @@ For detailed development guidelines and contribution standards, see [AGENTS.md](
 ---
 
 <p align="center">
-  <small>Desarrollado por <b>Edu Díaz</b> (<b>RGiskard7</b>) ❤️</small>
+  <small>Developed by <b>Edu Díaz</b> (<b>RGiskard7</b>)</small>
 </p>

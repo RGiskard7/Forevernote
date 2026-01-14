@@ -76,10 +76,10 @@
                     <Insets top="8" right="16" bottom="8" left="16"/>
                 </padding>
                 
-                <Button fx:id="newNoteBtn" text="+ New" onAction="#handleNewNote" styleClass="toolbar-btn">
+                <Button fx:id="newNoteBtn" text="&#x1F4D3;" onAction="#handleNewNote" styleClass="toolbar-btn toolbar-btn-primary">
                     <tooltip><Tooltip text="New Note (Ctrl+N)"/></tooltip>
                 </Button>
-                <Button fx:id="newFolderBtn" text="Folder" onAction="#handleNewFolder" styleClass="toolbar-btn">
+                <Button fx:id="newFolderBtn" text="&#x1F4C1;" onAction="#handleNewFolder" styleClass="toolbar-btn">
                     <tooltip><Tooltip text="New Folder"/></tooltip>
                 </Button>
                 <Separator orientation="VERTICAL" styleClass="toolbar-separator"/>
@@ -132,13 +132,13 @@
                     <padding>
                         <Insets top="10" right="10" bottom="10" left="10"/>
                     </padding>
-                    <Button fx:id="sidebarNewNoteBtn" text="+ Note" onAction="#handleNewNote" styleClass="sidebar-btn" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                    <Button fx:id="sidebarNewNoteBtn" text="&#x1F4D3;" onAction="#handleNewNote" styleClass="sidebar-btn" HBox.hgrow="ALWAYS" maxWidth="Infinity">
                         <tooltip><Tooltip text="New Note"/></tooltip>
                     </Button>
-                    <Button fx:id="sidebarNewFolderBtn" text="+ Folder" onAction="#handleNewFolder" styleClass="sidebar-btn" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                    <Button fx:id="sidebarNewFolderBtn" text="&#x1F4C1;" onAction="#handleNewFolder" styleClass="sidebar-btn" HBox.hgrow="ALWAYS" maxWidth="Infinity">
                         <tooltip><Tooltip text="New Folder"/></tooltip>
                     </Button>
-                    <Button fx:id="sidebarNewTagBtn" text="+ Tag" onAction="#handleNewTag" styleClass="sidebar-btn" HBox.hgrow="ALWAYS" maxWidth="Infinity">
+                    <Button fx:id="sidebarNewTagBtn" text="#" onAction="#handleNewTag" styleClass="sidebar-btn" HBox.hgrow="ALWAYS" maxWidth="Infinity">
                         <tooltip><Tooltip text="New Tag"/></tooltip>
                     </Button>
                 </HBox>

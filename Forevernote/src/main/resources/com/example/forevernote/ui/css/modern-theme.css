@@ -118,6 +118,17 @@
     -fx-border-color: #fc8181;
 }
 
+.toolbar-btn-primary {
+    -fx-background-color: #7c3aed;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #7c3aed;
+}
+
+.toolbar-btn-primary:hover {
+    -fx-background-color: #6d28d9;
+    -fx-border-color: #6d28d9;
+}
+
 .toolbar-separator {
     -fx-background-color: #d4d4d4;
 }
@@ -291,9 +302,23 @@
 
 /* Folder icon, name and count styles (Obsidian-style) */
 .folder-icon {
-    -fx-text-fill: #666666;
-    -fx-font-size: 10px;
-    -fx-min-width: 12px;
+    -fx-text-fill: #7c3aed;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-min-width: 24px;
+    -fx-font-family: "Consolas", "Monaco", monospace;
+}
+
+.folder-icon-all {
+    -fx-text-fill: #7c3aed;
+}
+
+.folder-icon-open {
+    -fx-text-fill: #38a169;
+}
+
+.folder-icon-closed {
+    -fx-text-fill: #dd6b20;
 }
 
 .folder-name {
@@ -302,13 +327,19 @@
 }
 
 .folder-count {
-    -fx-text-fill: #999999;
+    -fx-text-fill: #7c3aed;
     -fx-font-size: 11px;
-    -fx-padding: 0 0 0 8;
+    -fx-font-weight: 500;
+    -fx-padding: 2 6;
+    -fx-background-color: #ebebeb;
+    -fx-background-radius: 10;
 }
 
-.tree-cell:selected .folder-icon {
-    -fx-text-fill: rgba(255, 255, 255, 0.8);
+.tree-cell:selected .folder-icon,
+.tree-cell:selected .folder-icon-all,
+.tree-cell:selected .folder-icon-open,
+.tree-cell:selected .folder-icon-closed {
+    -fx-text-fill: #ffffff;
 }
 
 .tree-cell:selected .folder-name {
@@ -316,7 +347,8 @@
 }
 
 .tree-cell:selected .folder-count {
-    -fx-text-fill: rgba(255, 255, 255, 0.7);
+    -fx-text-fill: #ffffff;
+    -fx-background-color: rgba(255, 255, 255, 0.2);
 }
 
 /* ========================================
@@ -350,7 +382,48 @@
 
 .sort-combo .list-cell {
     -fx-text-fill: #333333;
+    -fx-background-color: #ffffff;
     -fx-padding: 6 10;
+}
+
+.sort-combo .list-view {
+    -fx-background-color: #ffffff;
+}
+
+.sort-combo .list-view .list-cell {
+    -fx-text-fill: #333333;
+    -fx-background-color: #ffffff;
+}
+
+.sort-combo .list-view .list-cell:hover {
+    -fx-background-color: #f0f0f0;
+}
+
+.sort-combo .list-view .list-cell:selected {
+    -fx-background-color: #7c3aed;
+    -fx-text-fill: #ffffff;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d4d4d4;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+}
+
+.combo-box-popup .list-view .list-cell {
+    -fx-text-fill: #333333;
+    -fx-background-color: #ffffff;
+    -fx-padding: 8 12;
+}
+
+.combo-box-popup .list-view .list-cell:hover {
+    -fx-background-color: #f5f5f5;
+}
+
+.combo-box-popup .list-view .list-cell:selected {
+    -fx-background-color: #7c3aed;
+    -fx-text-fill: #ffffff;
 }
 
 .icon-btn {

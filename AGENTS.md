@@ -94,6 +94,7 @@ Ruta raíz relevante: `Forevernote/` (módulo principal dentro del repo)
 	- `ui/controller/` — controladores JavaFX
 
 - `Forevernote/src/main/resources/` — FXML, CSS, imágenes, `logging.properties`.
+- `resources/images/` — imágenes de la aplicación (banner, capturas de interfaz).
 
 - `Forevernote/pom.xml` — configuraciones Maven, JavaFX plugin y Assembly para uber-jar.
 - `scripts/` — utilidades: `build_all.ps1`, `run_all.ps1`, `build_all.sh`, `run_all.sh`, `schema.txt`.
@@ -329,3 +330,47 @@ Complete exhaustive analysis of the codebase identifying:
 - Features: ✅ All 20 core features implemented and working
 - Code Quality: ✅ Clean, maintainable, well-documented
 - CSS: ✅ No warnings, all variables properly resolved
+
+---
+
+## Session Log: 2026-01-14 - UI Improvements & Icon System
+
+### Improvements Implemented
+
+#### 1. Icon System Enhancement
+- ✅ **Visual folder icons**: Color-coded folder icons in tree view
+  - `[=]` for "All Notes" (purple)
+  - `[/]` for open folders (green)
+  - `[+]` for closed folders (orange)
+- ✅ **Note button icons**: Changed from "+" to notebook emoji (📓) for new note buttons
+- ✅ **Folder button icons**: Consistent folder emoji (📁) usage
+- ✅ **Note counters**: Styled as badges with rounded corners and background colors
+
+#### 2. UI Polish
+- ✅ **ComboBox styling**: Fixed readability in light theme with proper text colors
+- ✅ **Primary button**: "New Note" button now has distinctive purple styling
+- ✅ **Scrollable format toolbar**: Professional solution for responsive design (toolbar scrolls horizontally when window is resized)
+- ✅ **Consistent button sizing**: All buttons have proper min-height and alignment
+
+#### 3. Documentation Updates
+- ✅ **README.md**: Professionalized without emojis, added screenshots section
+- ✅ **changelog.md**: Added entry for UI improvements
+- ✅ **doc/BUILD.md**: Updated feature list with new capabilities
+- ✅ **Image organization**: Moved interface screenshots to `resources/images/`
+
+### Files Modified
+- `Forevernote/src/main/resources/com/example/forevernote/ui/view/MainView.fxml` - Icon updates
+- `Forevernote/src/main/resources/com/example/forevernote/ui/css/dark-theme.css` - Folder icons, ComboBox, button styles
+- `Forevernote/src/main/resources/com/example/forevernote/ui/css/modern-theme.css` - Folder icons, ComboBox, button styles
+- `Forevernote/src/main/java/com/example/forevernote/ui/controller/MainController.java` - Enhanced folder tree with visual icons
+- `README.md` - Professional update with screenshots
+- `changelog.md` - Added version 3.3.0 entry
+- `doc/BUILD.md` - Updated feature list
+
+### Current Status: PRODUCTION READY
+- Build: ✅ SUCCESS
+- Runtime: ✅ Fully functional
+- UI/UX: ✅ Professional, Obsidian-inspired interface with visual icons
+- Features: ✅ All core features + Command Palette, Quick Switcher, visual folder system
+- Code Quality: ✅ Clean, maintainable, well-documented
+- Documentation: ✅ Complete and professional
