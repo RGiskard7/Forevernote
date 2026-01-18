@@ -1,7 +1,9 @@
 package com.example.forevernote.plugin;
 
+import com.example.forevernote.data.models.Note;
 import com.example.forevernote.event.AppEvent;
 import com.example.forevernote.event.EventBus;
+import com.example.forevernote.event.events.NoteEvents;
 import com.example.forevernote.service.FolderService;
 import com.example.forevernote.service.NoteService;
 import com.example.forevernote.service.TagService;
@@ -183,5 +185,65 @@ public class PluginContext {
         if (error != null) {
             error.printStackTrace();
         }
+    }
+    
+    // ==================== UI Interaction ====================
+    
+    /**
+     * Requests to open a note in the editor.
+     * The note will be loaded in the main editor view.
+     * 
+     * @param note The note to open
+     */
+    public void requestOpenNote(Note note) {
+        if (note != null) {
+            publish(new NoteEvents.NoteOpenRequestEvent(note));
+            log("Requested to open note: " + note.getTitle());
+        }
+    }
+    
+    /**
+     * Requests to refresh the notes list in the UI.
+     */
+    public void requestRefreshNotes() {
+        publish(new NoteEvents.NotesRefreshRequestedEvent());
+        log("Requested notes refresh");
+    }
+    
+    /**
+     * Shows an information dialog to the user.
+     * 
+     * @param title   Dialog title
+     * @param header  Header text (can be null)
+     * @param content Content message
+     */
+    public void showInfo(String title, String header, String content) {
+        javafx.application.Platform.runLater(() -> {
+            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                javafx.scene.control.Alert.AlertType.INFORMATION
+            );
+            alert.setTitle(title);
+            alert.setHeaderText(header);
+            alert.setContentText(content);
+            alert.showAndWait();
+        });
+    }
+    
+    /**
+     * Shows an error dialog to the user.
+     * 
+     * @param title   Dialog title
+     * @param message Error message
+     */
+    public void showError(String title, String message) {
+        javafx.application.Platform.runLater(() -> {
+            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(
+                javafx.scene.control.Alert.AlertType.ERROR
+            );
+            alert.setTitle(title);
+            alert.setHeaderText("Error");
+            alert.setContentText(message);
+            alert.showAndWait();
+        });
     }
 }

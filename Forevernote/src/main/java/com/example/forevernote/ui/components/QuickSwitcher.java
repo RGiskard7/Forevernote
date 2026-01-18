@@ -102,14 +102,14 @@ public class QuickSwitcher {
         switcherStage.initModality(Modality.APPLICATION_MODAL);
         switcherStage.initStyle(StageStyle.TRANSPARENT);
         
-        // Colors based on theme
-        String bg = isDarkTheme ? "#1a1a2e" : "#ffffff";
-        String fg = isDarkTheme ? "#eaeaea" : "#1a1a2e";
-        String border = isDarkTheme ? "#2d2d44" : "#e0e0e0";
-        String searchBg = isDarkTheme ? "#252540" : "#f8f8f8";
-        String hoverBg = isDarkTheme ? "#2d2d44" : "#f0f0f0";
-        String accentColor = "#6c5ce7";
-        String mutedColor = isDarkTheme ? "#888" : "#666";
+        // Colors matching app's dark/light theme (from CSS)
+        String bg = isDarkTheme ? "#1e1e1e" : "#ffffff";
+        String fg = isDarkTheme ? "#e0e0e0" : "#1e1e1e";
+        String border = isDarkTheme ? "#3a3a3a" : "#e0e0e0";
+        String searchBg = isDarkTheme ? "#252525" : "#f5f5f5";
+        String hoverBg = isDarkTheme ? "#333333" : "#f0f0f0";
+        String accentColor = "#7c3aed";
+        String mutedColor = isDarkTheme ? "#888888" : "#666666";
         String favoriteColor = "#f39c12";
         
         // Main container
@@ -253,7 +253,7 @@ public class QuickSwitcher {
                         "-fx-background-color: %s; " +
                         "-fx-background-radius: 6; " +
                         "-fx-padding: 6 8;",
-                        iconColor, isDarkTheme ? "#2d2d44" : "#f0f0f0"
+                        iconColor, isDarkTheme ? "#333333" : "#f0f0f0"
                     ));
                     
                     // Text container

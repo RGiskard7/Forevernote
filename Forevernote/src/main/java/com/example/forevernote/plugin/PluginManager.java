@@ -347,6 +347,17 @@ public class PluginManager {
         return plugins.size();
     }
     
+    /**
+     * Checks if a plugin is enabled.
+     * 
+     * @param pluginId The plugin ID to check
+     * @return true if the plugin exists and is enabled
+     */
+    public boolean isPluginEnabled(String pluginId) {
+        PluginState state = pluginStates.get(pluginId);
+        return state == PluginState.ENABLED;
+    }
+    
     // ==================== Helper Methods ====================
     
     /**

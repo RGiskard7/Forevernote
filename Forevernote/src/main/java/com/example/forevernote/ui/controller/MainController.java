@@ -47,7 +47,15 @@ import com.example.forevernote.data.models.Folder;
 import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.Tag;
 import com.example.forevernote.data.models.interfaces.Component;
+import com.example.forevernote.event.EventBus;
+import com.example.forevernote.event.events.NoteEvents;
+import com.example.forevernote.plugin.Plugin;
+import com.example.forevernote.plugin.PluginManager;
+import com.example.forevernote.service.FolderService;
+import com.example.forevernote.service.NoteService;
+import com.example.forevernote.service.TagService;
 import com.example.forevernote.ui.components.CommandPalette;
+import com.example.forevernote.ui.components.PluginManagerDialog;
 import com.example.forevernote.ui.components.QuickSwitcher;
 
 import javafx.stage.Stage;
@@ -194,6 +202,14 @@ public class MainController {
     private CommandPalette commandPalette;
     private QuickSwitcher quickSwitcher;
     
+    // Services and Plugin System
+    private NoteService noteService;
+    private FolderService folderService;
+    private TagService tagService;
+    private EventBus eventBus;
+    private PluginManager pluginManager;
+    private PluginManagerDialog pluginManagerDialog;
+    
     /**
      * Initialize the controller after FXML loading.
      */
@@ -224,6 +240,9 @@ public class MainController {
             // Initialize keyboard shortcuts after scene is ready
             Platform.runLater(this::initializeKeyboardShortcuts);
             
+            // Initialize plugin system after scene is ready
+            Platform.runLater(this::initializePluginSystem);
+            
             updateStatus("Ready");
             logger.info("MainController initialized successfully");
             
@@ -245,7 +264,13 @@ public class MainController {
             noteDAO = factoryDAO.getNoteDAO();
             tagDAO = factoryDAO.getLabelDAO();
             
-            logger.info("Database connections initialized");
+            // Initialize services
+            noteService = new NoteService(noteDAO, folderDAO, tagDAO);
+            folderService = new FolderService(folderDAO, noteDAO);
+            tagService = new TagService(tagDAO, noteDAO);
+            eventBus = EventBus.getInstance();
+            
+            logger.info("Database connections and services initialized");
         } catch (Exception e) {
             logger.severe("Failed to initialize database: " + e.getMessage());
             throw new RuntimeException("Database initialization failed", e);
@@ -308,7 +333,6 @@ public class MainController {
                     } else {
                         // Folder icons that render correctly
                         TreeItem<Folder> treeItem = getTreeItem();
-                        boolean hasChildren = treeItem != null && !treeItem.getChildren().isEmpty();
                         boolean isExpanded = treeItem != null && treeItem.isExpanded();
                         
                         if (folder.getTitle().equals("All Notes")) {
@@ -602,6 +626,10 @@ public class MainController {
                              ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
             commandPalette.setDarkTheme(isDark);
             commandPalette.show();
+            logger.info("Command Palette opened");
+        } else {
+            logger.warning("Command Palette not initialized yet");
+            updateStatus("Command Palette not ready. Please wait...");
         }
     }
     
@@ -617,6 +645,324 @@ public class MainController {
             quickSwitcher.setNotes(noteDAO.fetchAllNotes());
             quickSwitcher.show();
         }
+    }
+    
+    /**
+     * Initialize the plugin system.
+     * Creates PluginManager, registers built-in plugins, loads external plugins, and initializes them.
+     */
+    private void initializePluginSystem() {
+        try {
+            if (commandPalette == null) {
+                logger.warning("CommandPalette not available, delaying plugin initialization");
+                return;
+            }
+            
+            // Create the plugin manager with all required services
+            pluginManager = new PluginManager(noteService, folderService, tagService, eventBus, commandPalette);
+            
+            // Load plugins from plugins/ directory (completely decoupled - no hardcoded plugins)
+            loadExternalPlugins();
+            
+            // Initialize all registered plugins
+            pluginManager.initializeAll();
+            
+            // Create the plugin manager dialog
+            Stage stage = (Stage) menuBar.getScene().getWindow();
+            pluginManagerDialog = new PluginManagerDialog(stage, pluginManager);
+            
+            // Register plugin manager command in Command Palette
+            commandPalette.addCommand(new CommandPalette.Command(
+                "Plugins: Manage Plugins",
+                "Open plugin manager to enable/disable plugins",
+                "Ctrl+Shift+P",
+                "=",
+                "Tools",
+                this::showPluginManager
+            ));
+            
+            // Subscribe to plugin events
+            subscribeToPluginEvents();
+            
+            logger.info("Plugin system initialized with " + pluginManager.getPluginCount() + " plugins");
+        } catch (Exception e) {
+            logger.warning("Failed to initialize plugin system: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Subscribe to events from plugins.
+     */
+    private void subscribeToPluginEvents() {
+        // Listen for note open requests from plugins
+        eventBus.subscribe(NoteEvents.NoteOpenRequestEvent.class, event -> {
+            Platform.runLater(() -> {
+                Note note = event.getNote();
+                if (note != null) {
+                    loadNoteInEditor(note);
+                    // Also refresh notes list to show the note
+                    loadAllNotes();
+                    notesListView.getSelectionModel().select(note);
+                    logger.info("Opened note from plugin: " + note.getTitle());
+                }
+            });
+        });
+        
+        // Listen for notes refresh requests from plugins
+        eventBus.subscribe(NoteEvents.NotesRefreshRequestedEvent.class, event -> {
+            Platform.runLater(() -> {
+                loadFolders();
+                loadAllNotes();
+                loadRecentNotes();
+                loadTags();
+                loadFavorites();
+                logger.info("Refreshed notes from plugin request");
+            });
+        });
+    }
+    
+    /**
+     * Shows the Plugin Manager dialog (Obsidian-style).
+     */
+    public void showPluginManager() {
+        if (pluginManagerDialog != null) {
+            boolean isDark = "dark".equals(currentTheme) || 
+                             ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
+            pluginManagerDialog.setDarkTheme(isDark);
+            pluginManagerDialog.show();
+        } else {
+            Alert alert = new Alert(Alert.AlertType.WARNING);
+            alert.setTitle("Plugin Manager");
+            alert.setHeaderText("Plugin system not initialized");
+            alert.setContentText("Please restart the application.");
+            alert.showAndWait();
+        }
+    }
+    
+    // ==================== MENU HANDLERS ====================
+    
+    /**
+     * Menu handler: Opens Command Palette (Tools > Command Palette).
+     */
+    @FXML
+    private void handleCommandPalette(ActionEvent event) {
+        showCommandPalette();
+    }
+    
+    /**
+     * Menu handler: Opens Quick Switcher (Tools > Quick Switcher).
+     */
+    @FXML
+    private void handleQuickSwitcher(ActionEvent event) {
+        showQuickSwitcher();
+    }
+    
+    /**
+     * Menu handler: Opens Plugin Manager (Tools > Plugins > Manage Plugins).
+     */
+    @FXML
+    private void handlePluginManager(ActionEvent event) {
+        showPluginManager();
+    }
+    
+    /**
+     * Menu handler: Executes Word Count plugin command.
+     */
+    @FXML
+    private void handlePluginWordCount(ActionEvent event) {
+        if (pluginManager != null && pluginManager.isPluginEnabled("word-count")) {
+            // Execute the word count for current note
+            if (currentNote != null) {
+                String content = currentNote.getContent() != null ? currentNote.getContent() : "";
+                int words = content.trim().isEmpty() ? 0 : content.trim().split("\\s+").length;
+                int chars = content.length();
+                int lines = content.isEmpty() ? 0 : content.split("\n").length;
+                
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Word Count");
+                alert.setHeaderText("Statistics for: " + currentNote.getTitle());
+                alert.setContentText(String.format(
+                    "Words: %d\nCharacters: %d\nLines: %d",
+                    words, chars, lines
+                ));
+                alert.showAndWait();
+            } else {
+                updateStatus("No note selected for word count");
+            }
+        } else {
+            updateStatus("Word Count plugin is not enabled");
+        }
+    }
+    
+    /**
+     * Menu handler: Executes Daily Notes plugin command.
+     */
+    @FXML
+    private void handlePluginDailyNotes(ActionEvent event) {
+        if (pluginManager != null && pluginManager.isPluginEnabled("daily-notes")) {
+            // Create or open today's daily note
+            executeCommand("Daily Notes: Open Today");
+        } else {
+            updateStatus("Daily Notes plugin is not enabled");
+        }
+    }
+    
+    /**
+     * Menu handler: Executes Reading Time plugin command.
+     */
+    @FXML
+    private void handlePluginReadingTime(ActionEvent event) {
+        if (pluginManager != null && pluginManager.isPluginEnabled("reading-time")) {
+            if (currentNote != null) {
+                String content = currentNote.getContent() != null ? currentNote.getContent() : "";
+                int words = content.trim().isEmpty() ? 0 : content.trim().split("\\s+").length;
+                int readingMinutes = (int) Math.ceil(words / 200.0);
+                
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Reading Time");
+                alert.setHeaderText("Estimated reading time for: " + currentNote.getTitle());
+                alert.setContentText(String.format(
+                    "Words: %d\nReading time: ~%d minute(s)\n(Based on 200 words/minute)",
+                    words, Math.max(1, readingMinutes)
+                ));
+                alert.showAndWait();
+            } else {
+                updateStatus("No note selected for reading time");
+            }
+        } else {
+            updateStatus("Reading Time plugin is not enabled");
+        }
+    }
+    
+    /**
+     * Menu handler: Opens Templates plugin dialog.
+     */
+    @FXML
+    private void handlePluginTemplates(ActionEvent event) {
+        if (pluginManager != null && pluginManager.isPluginEnabled("templates")) {
+            executeCommand("Templates: New from Template");
+        } else {
+            updateStatus("Templates plugin is not enabled");
+        }
+    }
+    
+    /**
+     * Menu handler: Executes Table of Contents plugin.
+     */
+    @FXML
+    private void handlePluginTOC(ActionEvent event) {
+        if (pluginManager != null && pluginManager.isPluginEnabled("table-of-contents")) {
+            executeCommand("TOC: Generate Table of Contents");
+        } else {
+            updateStatus("Table of Contents plugin is not enabled");
+        }
+    }
+    
+    /**
+     * Menu handler: Opens Backup plugin dialog.
+     */
+    @FXML
+    private void handlePluginBackup(ActionEvent event) {
+        if (pluginManager != null && pluginManager.isPluginEnabled("auto-backup")) {
+            executeCommand("Backup: Export All Notes");
+        } else {
+            updateStatus("Auto Backup plugin is not enabled");
+        }
+    }
+    
+    /**
+     * Menu handler: Opens AI Assistant configuration dialog.
+     */
+    @FXML
+    private void handlePluginAIConfig(ActionEvent event) {
+        if (pluginManager != null && pluginManager.isPluginEnabled("ai-assistant")) {
+            executeCommand("AI: Configure API");
+        } else {
+            updateStatus("AI Assistant plugin is not enabled");
+        }
+    }
+    
+    /**
+     * Menu handler: Executes AI Summarize command.
+     */
+    @FXML
+    private void handlePluginAISummarize(ActionEvent event) {
+        if (pluginManager != null && pluginManager.isPluginEnabled("ai-assistant")) {
+            executeCommand("AI: Summarize Note");
+        } else {
+            updateStatus("AI Assistant plugin is not enabled");
+        }
+    }
+    
+    /**
+     * Menu handler: Executes AI Translate command.
+     */
+    @FXML
+    private void handlePluginAITranslate(ActionEvent event) {
+        if (pluginManager != null && pluginManager.isPluginEnabled("ai-assistant")) {
+            executeCommand("AI: Translate Note");
+        } else {
+            updateStatus("AI Assistant plugin is not enabled");
+        }
+    }
+    
+    /**
+     * Menu handler: Executes AI Improve Writing command.
+     */
+    @FXML
+    private void handlePluginAIImprove(ActionEvent event) {
+        if (pluginManager != null && pluginManager.isPluginEnabled("ai-assistant")) {
+            executeCommand("AI: Improve Writing");
+        } else {
+            updateStatus("AI Assistant plugin is not enabled");
+        }
+    }
+    
+    /**
+     * Menu handler: Executes AI Generate Content command.
+     */
+    @FXML
+    private void handlePluginAIGenerate(ActionEvent event) {
+        if (pluginManager != null && pluginManager.isPluginEnabled("ai-assistant")) {
+            executeCommand("AI: Generate Content");
+        } else {
+            updateStatus("AI Assistant plugin is not enabled");
+        }
+    }
+    
+    /**
+     * Loads plugins from the plugins/ directory.
+     * All plugins (including built-in ones) must be in plugins/ as JAR files.
+     * The core application is completely decoupled from specific plugins.
+     */
+    private void loadExternalPlugins() {
+        try {
+            List<Plugin> externalPlugins = com.example.forevernote.plugin.PluginLoader.loadExternalPlugins();
+            int registeredCount = 0;
+            
+            for (Plugin plugin : externalPlugins) {
+                if (pluginManager.registerPlugin(plugin)) {
+                    registeredCount++;
+                } else {
+                    logger.warning("Failed to register external plugin: " + plugin.getName());
+                }
+            }
+            
+            if (registeredCount > 0) {
+                logger.info("Registered " + registeredCount + " external plugin(s)");
+            }
+        } catch (Exception e) {
+            logger.warning("Failed to load external plugins: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Gets the plugin manager for external access.
+     * 
+     * @return The plugin manager, or null if not initialized
+     */
+    public PluginManager getPluginManager() {
+        return pluginManager;
     }
     
     /**
@@ -762,6 +1108,9 @@ public class MainController {
             case "Refresh":
                 handleRefresh(null);
                 break;
+            case "Plugins: Manage Plugins":
+                showPluginManager();
+                break;
                 
             // Help commands
             case "Keyboard Shortcuts":
@@ -775,6 +1124,14 @@ public class MainController {
                 break;
                 
             default:
+                // Try to find command in Command Palette (for plugin commands)
+                if (commandPalette != null) {
+                    CommandPalette.Command cmd = commandPalette.findCommand(commandName);
+                    if (cmd != null) {
+                        cmd.execute();
+                        return;
+                    }
+                }
                 logger.warning("Unknown command: " + commandName);
                 updateStatus("Unknown command: " + commandName);
         }

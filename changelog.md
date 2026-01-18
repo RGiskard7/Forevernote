@@ -4,6 +4,303 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [4.4.1] - 2026-01-18
+
+### Plugin Build Fix - Inner Classes & ClassLoader
+
+**Fixed:**
+- **Plugin JARs now include inner classes** - Fixed `NoClassDefFoundError` for inner classes like `TemplatesPlugin$Template`
+  - Script now correctly includes all `.class` files from plugin compilation
+  - JARs now contain only plugin classes (not dependency classes)
+  - Removed source `.java` files from JARs (only `.class` files included)
+  - Improved JAR verification to check for main class and inner classes
+- **ClassLoader lifecycle fix** - Fixed issue where `URLClassLoader` was closed too early
+  - Classloaders are now kept open while plugins are active
+  - Inner classes remain accessible during plugin initialization and execution
+  - Added `closeAllClassLoaders()` method for proper cleanup on shutdown
+
+**Modified files:**
+- `scripts/build-plugins.ps1`:
+  - Fixed JAR creation to include inner classes (e.g., `TemplatesPlugin$Template.class`)
+  - Changed from `-C $TempDir .` to `-C $TempDir com` to include only plugin classes
+  - Added removal of `.java` source files before JAR creation
+  - Improved verification to check only plugin classes in JAR
+  - Better error messages and inner class detection
+- `PluginLoader.java`:
+  - **CRITICAL FIX**: Keep `URLClassLoader` instances open while plugins are active
+  - Added `activeClassLoaders` list to track all classloaders
+  - Removed premature `classLoader.close()` calls that prevented inner class access
+  - Added `closeAllClassLoaders()` method for proper cleanup on application shutdown
+  - Inner classes now accessible during plugin initialization and execution
+
+**Verified plugins:**
+- ✅ `TemplatesPlugin` - Now includes `TemplatesPlugin$Template.class`
+- ✅ `TableOfContentsPlugin` - Now includes `TableOfContentsPlugin$TocEntry.class`
+- ✅ `WordCountPlugin` - Now includes `WordCountPlugin$Statistics.class`
+- ✅ `AIPlugin` - Now includes `AIPlugin$ProviderInfo.class`
+- ✅ All other plugins verified working
+
+---
+
+## [4.4.0] - 2026-01-18
+
+### Complete Plugin Decoupling + AI Plugin Fixes
+
+**BREAKING CHANGE**: The core application is now **completely decoupled** from all plugins. No plugins are hardcoded in the core.
+
+**New features:**
+- **External Plugin Loading** - Plugins can now be loaded dynamically from `plugins/` directory
+  - No recompilation needed - just place JAR files in `plugins/` folder
+  - Auto-discovery on application startup
+  - Supports manifest-based and auto-detection plugin class discovery
+  - Community can create and share plugins independently
+
+**New files:**
+- `PluginLoader.java` - Dynamic plugin loader that scans `plugins/` directory
+  - Loads JAR files using URLClassLoader
+  - Reads `Plugin-Class` from manifest or auto-detects plugin classes
+  - Creates `plugins/` directory automatically if missing
+  - Comprehensive error handling and logging
+
+**Fixed:**
+- **AI Plugin Commands** - Commands now work from menu and Command Palette
+  - Added cases for all AI commands in `executeCommand()` method
+  - Added `executePluginCommand()` helper method
+  - Added `findCommand()` method to CommandPalette
+  - Commands now fallback to CommandPalette lookup for plugin commands
+
+**Modified files:**
+- `MainController.java`:
+  - **REMOVED** `registerBuiltInPlugins()` method - no plugins are hardcoded anymore
+  - **REMOVED** all hardcoded plugin references (WordCountPlugin, DailyNotesPlugin, AIPlugin, etc.)
+  - **REMOVED** hardcoded AI command cases from `executeCommand()` switch
+  - **REMOVED** `executePluginCommand()` method (redundant)
+  - Renamed `loadExternalPlugins()` to just load all plugins from `plugins/` directory
+  - Core application now has **zero knowledge** of specific plugins
+- `CommandPalette.java`:
+  - Added `findCommand(String name)` method to search commands by name
+- `AIPlugin.java`:
+  - Improved error handling in `initialize()` method
+  - Added try-catch for Preferences loading with fallback to defaults
+
+**Documentation:**
+- `doc/PLUGINS.md` - Added comprehensive "External Plugins" section
+  - Step-by-step guide for creating external plugins
+  - JAR packaging instructions
+  - Manifest configuration
+  - Troubleshooting guide
+  - Best practices for community plugins
+  - Example minimal plugin code
+
+**How it works:**
+1. Place plugin JAR files in `plugins/` directory (created automatically)
+2. Plugin JAR must contain a class implementing `Plugin` interface
+3. Optionally specify `Plugin-Class` in JAR manifest
+4. Application automatically loads plugins on startup
+5. Plugins appear in Plugin Manager and can be enabled/disabled
+6. Remove plugins by deleting JAR files
+
+**Plugin requirements:**
+- Must implement `Plugin` interface
+- Must be packaged as JAR file
+- Should include all dependencies (fat JAR)
+- Must have unique plugin ID
+
+---
+
+## [4.3.0] - 2026-01-18
+
+### AI Assistant Plugin + Enhanced Configuration
+
+**New plugin:**
+- `AIPlugin.java` - AI-powered features: summarize, translate, improve writing, generate content
+  - Supports multiple providers (OpenAI, Anthropic, Local LLMs)
+  - Persistent configuration via Preferences API
+  - Provider selector with auto-fill for endpoints and models
+  - Full menu integration (Tools > Plugins > AI Assistant)
+
+**Modified files:**
+- `MainController.java` - Registered AI plugin, added 5 menu handlers for AI commands
+- `MainView.fxml` - Added "AI Assistant" submenu with all commands
+- `AIPlugin.java` - Enhanced with Preferences-based configuration, provider selector, improved error handling
+
+**AI Plugin Features:**
+- **Summarize Note** (Ctrl+Shift+S) - Generate AI summary
+- **Translate Note** - Translate to multiple languages
+- **Improve Writing** - Fix grammar and style
+- **Generate Content** - Generate from prompts
+- **Configure API** - Set provider, API key, endpoint, model
+
+**Supported Providers:**
+- OpenAI (GPT-3.5, GPT-4)
+- Anthropic (Claude)
+- Local LLMs (Ollama, LM Studio)
+- Custom endpoints
+
+---
+
+## [4.2.0] - 2026-01-18
+
+### New Useful Plugins + Improved Plugin System
+
+**New plugin files:**
+- `TemplatesPlugin.java` - Create notes from 7 built-in templates (Meeting Notes, Project Plan, Weekly Review, Checklist, Cornell Notes, Blog Post, Bug Report)
+- `TableOfContentsPlugin.java` - Generate table of contents from Markdown headers
+- `AutoBackupPlugin.java` - Backup notes to files and database
+
+**Modified files:**
+- `DailyNotesPlugin.java` - Now opens notes directly in editor after creating
+- `PluginContext.java` - Added `requestOpenNote()`, `requestRefreshNotes()`, `showInfo()`, `showError()` methods
+- `NoteEvents.java` - Added `NoteOpenRequestEvent` for plugin→UI communication
+- `MainController.java` - Subscribes to plugin events, registers 6 plugins, added menu handlers
+- `MainView.fxml` - Reorganized plugins menu into Core/Productivity/Utilities submenus
+
+**Summary:**
+
+#### New Plugins (7 total):
+
+| Plugin | Description | Shortcut |
+|--------|-------------|----------|
+| **Word Count** | Statistics: words, chars, lines | - |
+| **Reading Time** | Estimated reading time | - |
+| **Daily Notes** | Create/open daily notes (opens in editor!) | Ctrl+Alt+D |
+| **Templates** | Create notes from 7 templates | Ctrl+Shift+T |
+| **Table of Contents** | Generate TOC from headers | Ctrl+Shift+O |
+| **Auto Backup** | Export notes to files, backup DB | Ctrl+Shift+B |
+| **AI Assistant** | Summarize, translate, improve, generate | Ctrl+Shift+S |
+
+#### Plugin System Improvements:
+- Plugins can now open notes directly in the editor via `context.requestOpenNote(note)`
+- Plugins can request UI refresh via `context.requestRefreshNotes()`
+- Helper methods: `context.showInfo()`, `context.showError()` for user feedback
+- Event-based communication between plugins and MainController
+
+#### Templates Available:
+1. **Meeting Notes** - Agenda, discussion, action items
+2. **Project Plan** - Goals, milestones, resources
+3. **Weekly Review** - Accomplishments, challenges, next week
+4. **Checklist** - Simple task list
+5. **Cornell Notes** - Academic note-taking method
+6. **Blog Post** - Draft structure with meta checklist
+7. **Bug Report** - Steps to reproduce, environment, etc.
+
+---
+
+## [4.1.0] - 2026-01-18
+
+### Menu Access for Tools & Plugins (Obsidian-style)
+
+**Modified files:**
+- `Forevernote/src/main/resources/com/example/forevernote/ui/view/MainView.fxml` - Added menu handlers
+- `Forevernote/src/main/java/com/example/forevernote/ui/controller/MainController.java` - Added FXML handlers
+- `Forevernote/src/main/java/com/example/forevernote/plugin/PluginManager.java` - Added `isPluginEnabled()` method
+- `Forevernote/src/main/java/com/example/forevernote/ui/components/CommandPalette.java` - Fixed theme colors
+- `Forevernote/src/main/java/com/example/forevernote/ui/components/QuickSwitcher.java` - Fixed theme colors
+- `Forevernote/src/main/java/com/example/forevernote/ui/components/PluginManagerDialog.java` - Fixed unmodifiable list bug
+
+**Summary:**
+
+#### Full Menu Access (No Shortcuts Required)
+All tools are now accessible via the Tools menu, not just keyboard shortcuts:
+
+**Tools Menu:**
+- `Command Palette...` (Ctrl+P) - Opens Command Palette
+- `Quick Switcher...` (Ctrl+O) - Opens Quick Switcher
+- `Global Search` (Ctrl+Shift+F) - Focus search field
+- `Tags Manager...` - Opens tag management
+- **Plugins submenu:**
+  - `Manage Plugins...` - Opens Plugin Manager dialog
+  - `Word Count` - Execute word count for current note
+  - `Daily Notes` - Open today's daily note
+  - `Reading Time` - Show reading time estimate
+
+#### Bug Fixes:
+- Fixed FXML menu items missing `onAction` handlers
+- Added `isPluginEnabled()` method to PluginManager for checking plugin state
+- Fixed `UnsupportedOperationException` when opening Plugin Manager (unmodifiable list sorting)
+- Fixed Command Palette and Quick Switcher theme colors to match app's Catppuccin theme
+- Added logging and error handling for uninitialized Command Palette
+
+#### Theme Consistency:
+Updated all modal dialogs (Command Palette, Quick Switcher, Plugin Manager) to use consistent colors:
+- Dark theme: `#1e1e2e` (bg), `#313244` (secondary), `#cdd6f4` (fg), `#7c3aed` (accent)
+- Light theme: `#ffffff` (bg), `#f5f5f5` (secondary), `#1e1e2e` (fg), `#7c3aed` (accent)
+
+**Rationale:**
+Users should be able to access all features through menus, not just keyboard shortcuts (which may conflict with other applications). This follows Obsidian's UX pattern.
+
+---
+
+## [4.0.0] - 2026-01-18
+
+### Plugin System Implementation (Obsidian-style)
+
+**Added files:**
+- `Forevernote/src/main/java/com/example/forevernote/plugin/builtin/WordCountPlugin.java`
+- `Forevernote/src/main/java/com/example/forevernote/plugin/builtin/DailyNotesPlugin.java`
+- `Forevernote/src/main/java/com/example/forevernote/plugin/builtin/ReadingTimePlugin.java`
+- `Forevernote/src/main/java/com/example/forevernote/plugin/builtin/package-info.java`
+- `Forevernote/src/main/java/com/example/forevernote/ui/components/PluginManagerDialog.java` - Obsidian-style plugin manager UI
+- `doc/PLUGINS.md` - Complete plugin system documentation
+
+**Modified files:**
+- `Forevernote/src/main/java/com/example/forevernote/ui/controller/MainController.java` - Plugin system integration
+
+**Summary:**
+
+#### Plugin System Integration
+The existing plugin architecture (PluginManager, PluginContext, Plugin interface) has been fully integrated into the application. The system is now functional and ready for use.
+
+#### Plugin Manager UI (Obsidian-style):
+- Visual dialog to manage plugins (Ctrl+Shift+P or Command Palette → "Plugins: Manage Plugins")
+- Toggle switches to enable/disable plugins
+- Shows plugin info: name, version, author, description, status
+- Professional styling matching the app theme (light/dark)
+
+#### Built-in Plugins (3 included):
+
+1. **Word Count Plugin** (`word-count`)
+   - Commands: `Word Count: Current Note` (Ctrl+Shift+W), `Word Count: All Notes`
+   - Statistics: words, characters, lines, paragraphs
+   
+2. **Daily Notes Plugin** (`daily-notes`)
+   - Commands: `Daily Notes: Open Today` (Ctrl+Alt+D), `Open Yesterday`, `Open Tomorrow`, `This Week`
+   - Creates dated notes in "Daily Notes" folder with template
+   
+3. **Reading Time Plugin** (`reading-time`)
+   - Commands: `Reading Time: Current Note` (Ctrl+Shift+R), `All Notes`, `Quick Estimate`
+   - Calculates slow, average, fast reading and speaking times
+
+#### Technical Changes:
+- Added Services (NoteService, FolderService, TagService) instantiation in MainController
+- Added PluginManager initialization with CommandPalette integration
+- Plugins register commands that appear in Command Palette (Ctrl+P)
+- Plugins can subscribe to application events
+- Full plugin lifecycle management (register, initialize, enable, disable, shutdown)
+- PluginManagerDialog for visual plugin management
+
+#### Documentation:
+- Complete `doc/PLUGINS.md` with architecture, API reference, and examples
+- Instructions for creating custom plugins
+
+---
+
+## [3.3.1] - 2026-01-14
+
+### Project Status Analysis & Documentation
+
+**Added files:**
+- `doc/PROJECT_STATUS.md` - Comprehensive project status analysis
+
+**Summary:**
+- Complete analysis of project viability and current state
+- Documentation of all implemented features (100% core features)
+- Architecture review and code quality assessment
+- Identification of pending features (low priority)
+- Project metrics and recommendations
+
+---
+
 ## [3.3.0] - 2026-01-14
 
 ### Professional UI Improvements & Icon System

@@ -132,4 +132,20 @@ public final class NoteEvents {
             return content;
         }
     }
+    
+    /**
+     * Event fired when a plugin requests to open a note in the editor.
+     */
+    public static class NoteOpenRequestEvent extends AppEvent {
+        private final Note note;
+        
+        public NoteOpenRequestEvent(Note note) {
+            super("Plugin");
+            this.note = note;
+        }
+        
+        public Note getNote() {
+            return note;
+        }
+    }
 }

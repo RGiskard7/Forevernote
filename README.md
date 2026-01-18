@@ -52,6 +52,11 @@
 - **Quick Switcher**: Fast note navigation (Ctrl+O)
 - **Favorites**: Mark notes as favorites for quick access
 - **Recent Notes**: Quick access to recently modified notes
+- **Plugin System**: Extensible architecture with external plugin support (Obsidian-style)
+  - Dynamic plugin loading from `plugins/` directory
+  - Built-in plugins: Word Count, Daily Notes, Reading Time, Templates, Table of Contents, Auto Backup, AI Assistant
+  - Plugin Manager UI for enabling/disabling plugins
+  - Community plugins support
 - **Responsive Design**: Fully responsive interface that adapts to window resizing
 - **Scrollable Toolbar**: Professional format toolbar with horizontal scrolling
 
@@ -173,11 +178,9 @@ Comprehensive documentation is available in the `doc/` directory:
 
 - **[Build and Setup Guide](doc/BUILD.md)**: Complete guide for building, running, and setting up the development environment. Includes prerequisites, build methods, VS Code configuration, troubleshooting, and project structure.
 
+- **[Plugin System Guide](doc/PLUGINS.md)**: Comprehensive documentation for the plugin system. Includes plugin architecture, API reference, built-in plugins, and guide for creating external plugins.
+
 - **[Architecture Documentation](doc/ARCHITECTURE.md)**: Detailed explanation of the application architecture, design patterns, and component structure.
-
-- **[Standalone Application Guide](doc/LAUNCH_APP.md)**: Instructions for using Forevernote as a standalone application without development tools. Covers executable JAR usage, launch scripts, and creating desktop shortcuts.
-
-- **[Native Installer Guide](doc/PACKAGING.md)**: Guide for creating native installers (MSI for Windows, DMG for macOS, DEB/RPM for Linux) using jpackage. Includes prerequisites, platform-specific instructions, and distribution guidelines.
 
 For agent-oriented development guidelines, see [AGENTS.md](AGENTS.md).
 
@@ -208,12 +211,17 @@ Forevernote/
 │   │   └── test/                        # Unit tests
 │   ├── pom.xml                          # Maven configuration
 │   ├── target/                          # Build output directory
+│   ├── plugins/                         # Compiled plugin JARs (created at runtime)
 │   ├── data/                            # Runtime data directory (created on first run)
 │   └── logs/                            # Runtime logs directory (created on first run)
+│
+├── plugins-source/                       # Plugin source code (external to core)
+│   └── com/example/forevernote/plugin/builtin/  # Built-in plugin implementations
 │
 ├── scripts/
 │   ├── build_all.ps1                    # Windows build script
 │   ├── build_all.sh                     # Unix build script
+│   ├── build-plugins.ps1                # Plugin compilation script
 │   ├── run_all.ps1                      # Windows run script
 │   ├── run_all.sh                       # Unix run script
 │   ├── launch-forevernote.ps1           # Windows PowerShell standalone launcher
@@ -227,9 +235,8 @@ Forevernote/
 │
 ├── doc/                                  # Documentation
 │   ├── BUILD.md                          # Build and setup guide
+│   ├── PLUGINS.md                        # Plugin system documentation
 │   ├── ARCHITECTURE.md                   # Architecture documentation
-│   ├── LAUNCH_APP.md                     # Standalone application guide
-│   ├── PACKAGING.md                      # Native installer guide
 │   └── interfaz-*.png                    # Application screenshots
 │
 ├── .vscode/                              # VS Code configuration
