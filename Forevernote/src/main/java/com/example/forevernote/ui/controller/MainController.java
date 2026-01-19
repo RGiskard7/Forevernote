@@ -10,9 +10,11 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
+import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Separator;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TabPane;
 import javafx.scene.control.TextArea;
@@ -26,6 +28,7 @@ import javafx.scene.control.Tooltip;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -51,6 +54,8 @@ import com.example.forevernote.event.EventBus;
 import com.example.forevernote.event.events.NoteEvents;
 import com.example.forevernote.plugin.Plugin;
 import com.example.forevernote.plugin.PluginManager;
+import com.example.forevernote.plugin.PluginMenuRegistry;
+import com.example.forevernote.plugin.SidePanelRegistry;
 import com.example.forevernote.service.FolderService;
 import com.example.forevernote.service.NoteService;
 import com.example.forevernote.service.TagService;
@@ -61,6 +66,8 @@ import com.example.forevernote.ui.components.QuickSwitcher;
 import javafx.stage.Stage;
 
 import java.util.logging.Logger;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Optional;
@@ -75,8 +82,10 @@ import javafx.stage.FileChooser;
 /**
  * Main controller for the Forevernote application.
  * Handles all UI interactions and manages the application state.
+ * Implements PluginMenuRegistry and SidePanelRegistry to allow plugins to register 
+ * menu items and UI panels dynamically (Obsidian-style).
  */
-public class MainController {
+public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     
     private static final Logger logger = LoggerConfig.getLogger(MainController.class);
     
@@ -193,6 +202,16 @@ public class MainController {
     @FXML private RadioMenuItem darkThemeMenuItem;
     @FXML private RadioMenuItem systemThemeMenuItem;
     private ToggleGroup themeToggleGroup;
+    
+    // Plugin menu (dynamic)
+    @FXML private Menu pluginsMenu;
+    private final Map<String, Menu> pluginCategoryMenus = new HashMap<>();
+    private final Map<String, List<MenuItem>> pluginMenuItems = new HashMap<>();
+    
+    // Plugin side panels (dynamic UI)
+    @FXML private VBox pluginPanelsContainer;
+    private final Map<String, VBox> pluginPanels = new HashMap<>();
+    private final Map<String, List<String>> pluginPanelIds = new HashMap<>();
     
     // View mode state
     private enum ViewMode { EDITOR_ONLY, SPLIT, PREVIEW_ONLY }
@@ -649,7 +668,8 @@ public class MainController {
     
     /**
      * Initialize the plugin system.
-     * Creates PluginManager, registers built-in plugins, loads external plugins, and initializes them.
+     * Creates PluginManager, loads external plugins, and initializes them.
+     * The core is completely decoupled - plugins register their own menu items dynamically.
      */
     private void initializePluginSystem() {
         try {
@@ -659,12 +679,13 @@ public class MainController {
             }
             
             // Create the plugin manager with all required services
-            pluginManager = new PluginManager(noteService, folderService, tagService, eventBus, commandPalette);
+            // Pass 'this' as both PluginMenuRegistry and SidePanelRegistry so plugins can register UI components
+            pluginManager = new PluginManager(noteService, folderService, tagService, eventBus, commandPalette, this, this);
             
             // Load plugins from plugins/ directory (completely decoupled - no hardcoded plugins)
             loadExternalPlugins();
             
-            // Initialize all registered plugins
+            // Initialize all registered plugins (they will register their menu items during init)
             pluginManager.initializeAll();
             
             // Create the plugin manager dialog
@@ -765,169 +786,263 @@ public class MainController {
         showPluginManager();
     }
     
+    // ==================== PLUGIN MENU REGISTRY IMPLEMENTATION ====================
+    
     /**
-     * Menu handler: Executes Word Count plugin command.
+     * Registers a menu item for a plugin.
+     * Called by plugins during initialization to add their commands to the UI.
      */
-    @FXML
-    private void handlePluginWordCount(ActionEvent event) {
-        if (pluginManager != null && pluginManager.isPluginEnabled("word-count")) {
-            // Execute the word count for current note
-            if (currentNote != null) {
-                String content = currentNote.getContent() != null ? currentNote.getContent() : "";
-                int words = content.trim().isEmpty() ? 0 : content.trim().split("\\s+").length;
-                int chars = content.length();
-                int lines = content.isEmpty() ? 0 : content.split("\n").length;
-                
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Word Count");
-                alert.setHeaderText("Statistics for: " + currentNote.getTitle());
-                alert.setContentText(String.format(
-                    "Words: %d\nCharacters: %d\nLines: %d",
-                    words, chars, lines
-                ));
-                alert.showAndWait();
-            } else {
-                updateStatus("No note selected for word count");
+    @Override
+    public void registerMenuItem(String pluginId, String category, String itemName, Runnable action) {
+        registerMenuItem(pluginId, category, itemName, null, action);
+    }
+    
+    /**
+     * Registers a menu item with a keyboard shortcut.
+     */
+    @Override
+    public void registerMenuItem(String pluginId, String category, String itemName, String shortcut, Runnable action) {
+        Platform.runLater(() -> {
+            if (pluginsMenu == null) {
+                logger.warning("Plugins menu not available for registration: " + itemName);
+                return;
             }
-        } else {
-            updateStatus("Word Count plugin is not enabled");
-        }
-    }
-    
-    /**
-     * Menu handler: Executes Daily Notes plugin command.
-     */
-    @FXML
-    private void handlePluginDailyNotes(ActionEvent event) {
-        if (pluginManager != null && pluginManager.isPluginEnabled("daily-notes")) {
-            // Create or open today's daily note
-            executeCommand("Daily Notes: Open Today");
-        } else {
-            updateStatus("Daily Notes plugin is not enabled");
-        }
-    }
-    
-    /**
-     * Menu handler: Executes Reading Time plugin command.
-     */
-    @FXML
-    private void handlePluginReadingTime(ActionEvent event) {
-        if (pluginManager != null && pluginManager.isPluginEnabled("reading-time")) {
-            if (currentNote != null) {
-                String content = currentNote.getContent() != null ? currentNote.getContent() : "";
-                int words = content.trim().isEmpty() ? 0 : content.trim().split("\\s+").length;
-                int readingMinutes = (int) Math.ceil(words / 200.0);
+            
+            // Get or create the category submenu
+            Menu categoryMenu = pluginCategoryMenus.get(category);
+            if (categoryMenu == null) {
+                categoryMenu = new Menu(category);
+                pluginCategoryMenus.put(category, categoryMenu);
                 
-                Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                alert.setTitle("Reading Time");
-                alert.setHeaderText("Estimated reading time for: " + currentNote.getTitle());
-                alert.setContentText(String.format(
-                    "Words: %d\nReading time: ~%d minute(s)\n(Based on 200 words/minute)",
-                    words, Math.max(1, readingMinutes)
-                ));
-                alert.showAndWait();
-            } else {
-                updateStatus("No note selected for reading time");
+                // Add category menu after the separator (index 1 is after "Manage Plugins" and separator)
+                int insertIndex = Math.min(pluginsMenu.getItems().size(), 2);
+                pluginsMenu.getItems().add(insertIndex, categoryMenu);
             }
-        } else {
-            updateStatus("Reading Time plugin is not enabled");
-        }
+            
+            // Create the menu item
+            MenuItem menuItem = new MenuItem(itemName);
+            menuItem.setOnAction(e -> {
+                if (pluginManager != null && pluginManager.isPluginEnabled(pluginId)) {
+                    action.run();
+                } else {
+                    updateStatus("Plugin '" + pluginId + "' is not enabled");
+                }
+            });
+            
+            // Set shortcut if provided
+            if (shortcut != null && !shortcut.isEmpty()) {
+                try {
+                    menuItem.setAccelerator(KeyCombination.keyCombination(shortcut));
+                } catch (Exception e) {
+                    logger.warning("Invalid shortcut for menu item: " + shortcut);
+                }
+            }
+            
+            // Add to category menu
+            categoryMenu.getItems().add(menuItem);
+            
+            // Track menu items by plugin for removal later
+            pluginMenuItems.computeIfAbsent(pluginId, k -> new ArrayList<>()).add(menuItem);
+            
+            logger.fine("Registered menu item: " + category + " > " + itemName + " for plugin " + pluginId);
+        });
     }
     
     /**
-     * Menu handler: Opens Templates plugin dialog.
+     * Adds a separator in the plugin's menu category.
      */
-    @FXML
-    private void handlePluginTemplates(ActionEvent event) {
-        if (pluginManager != null && pluginManager.isPluginEnabled("templates")) {
-            executeCommand("Templates: New from Template");
-        } else {
-            updateStatus("Templates plugin is not enabled");
-        }
+    @Override
+    public void addMenuSeparator(String pluginId, String category) {
+        Platform.runLater(() -> {
+            Menu categoryMenu = pluginCategoryMenus.get(category);
+            if (categoryMenu != null) {
+                SeparatorMenuItem separator = new SeparatorMenuItem();
+                categoryMenu.getItems().add(separator);
+                pluginMenuItems.computeIfAbsent(pluginId, k -> new ArrayList<>()).add(separator);
+            }
+        });
     }
     
     /**
-     * Menu handler: Executes Table of Contents plugin.
+     * Removes all menu items for a plugin.
+     * Called when a plugin is disabled or unloaded.
      */
-    @FXML
-    private void handlePluginTOC(ActionEvent event) {
-        if (pluginManager != null && pluginManager.isPluginEnabled("table-of-contents")) {
-            executeCommand("TOC: Generate Table of Contents");
-        } else {
-            updateStatus("Table of Contents plugin is not enabled");
-        }
+    @Override
+    public void removePluginMenuItems(String pluginId) {
+        Platform.runLater(() -> {
+            List<MenuItem> items = pluginMenuItems.remove(pluginId);
+            if (items != null) {
+                for (MenuItem item : items) {
+                    // Remove from all category menus
+                    for (Menu categoryMenu : pluginCategoryMenus.values()) {
+                        categoryMenu.getItems().remove(item);
+                    }
+                }
+                
+                // Clean up empty category menus
+                pluginCategoryMenus.entrySet().removeIf(entry -> {
+                    Menu menu = entry.getValue();
+                    if (menu.getItems().isEmpty()) {
+                        pluginsMenu.getItems().remove(menu);
+                        return true;
+                    }
+                    return false;
+                });
+                
+                logger.info("Removed menu items for plugin: " + pluginId);
+            }
+        });
     }
     
     /**
-     * Menu handler: Opens Backup plugin dialog.
+     * Checks if a plugin is enabled.
      */
-    @FXML
-    private void handlePluginBackup(ActionEvent event) {
-        if (pluginManager != null && pluginManager.isPluginEnabled("auto-backup")) {
-            executeCommand("Backup: Export All Notes");
-        } else {
-            updateStatus("Auto Backup plugin is not enabled");
-        }
+    @Override
+    public boolean isPluginEnabled(String pluginId) {
+        return pluginManager != null && pluginManager.isPluginEnabled(pluginId);
+    }
+    
+    // ==================== SIDE PANEL REGISTRY IMPLEMENTATION (Obsidian-style UI) ====================
+    
+    /**
+     * Registers a side panel for a plugin.
+     * Creates a collapsible section in the right sidebar with the plugin's content.
+     */
+    @Override
+    public void registerSidePanel(String pluginId, String panelId, String title, javafx.scene.Node content, String icon) {
+        Platform.runLater(() -> {
+            if (pluginPanelsContainer == null) {
+                logger.warning("Plugin panels container not available for registration: " + panelId);
+                return;
+            }
+            
+            String fullPanelId = pluginId + ":" + panelId;
+            
+            // Create panel wrapper
+            VBox panelWrapper = new VBox();
+            panelWrapper.getStyleClass().add("plugin-panel");
+            panelWrapper.setSpacing(8);
+            
+            // Create header with icon, title, and collapse button
+            HBox header = new HBox();
+            header.getStyleClass().add("plugin-panel-header");
+            header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            header.setSpacing(8);
+            
+            String headerText = (icon != null ? icon + " " : "") + title;
+            Label titleLabel = new Label(headerText);
+            titleLabel.getStyleClass().add("plugin-panel-title");
+            
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, Priority.ALWAYS);
+            
+            Button collapseBtn = new Button("▼");
+            collapseBtn.getStyleClass().add("plugin-panel-collapse-btn");
+            collapseBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2 6; -fx-background-color: transparent;");
+            
+            header.getChildren().addAll(titleLabel, spacer, collapseBtn);
+            
+            // Content wrapper
+            VBox contentWrapper = new VBox();
+            contentWrapper.getStyleClass().add("plugin-panel-content");
+            contentWrapper.getChildren().add(content);
+            
+            // Toggle collapse
+            collapseBtn.setOnAction(e -> {
+                boolean isCollapsed = !contentWrapper.isVisible();
+                contentWrapper.setVisible(isCollapsed);
+                contentWrapper.setManaged(isCollapsed);
+                collapseBtn.setText(isCollapsed ? "▼" : "▶");
+            });
+            
+            panelWrapper.getChildren().addAll(header, contentWrapper);
+            
+            // Add to container
+            pluginPanelsContainer.getChildren().add(panelWrapper);
+            pluginPanels.put(fullPanelId, panelWrapper);
+            pluginPanelIds.computeIfAbsent(pluginId, k -> new ArrayList<>()).add(fullPanelId);
+            
+            // Show the container if it has content
+            pluginPanelsContainer.setVisible(true);
+            pluginPanelsContainer.setManaged(true);
+            
+            logger.fine("Registered side panel: " + title + " for plugin " + pluginId);
+        });
     }
     
     /**
-     * Menu handler: Opens AI Assistant configuration dialog.
+     * Removes a side panel.
      */
-    @FXML
-    private void handlePluginAIConfig(ActionEvent event) {
-        if (pluginManager != null && pluginManager.isPluginEnabled("ai-assistant")) {
-            executeCommand("AI: Configure API");
-        } else {
-            updateStatus("AI Assistant plugin is not enabled");
-        }
+    @Override
+    public void removeSidePanel(String pluginId, String panelId) {
+        Platform.runLater(() -> {
+            String fullPanelId = pluginId + ":" + panelId;
+            VBox panel = pluginPanels.remove(fullPanelId);
+            if (panel != null && pluginPanelsContainer != null) {
+                pluginPanelsContainer.getChildren().remove(panel);
+                
+                // Update tracking
+                List<String> ids = pluginPanelIds.get(pluginId);
+                if (ids != null) {
+                    ids.remove(fullPanelId);
+                }
+                
+                // Hide container if empty
+                if (pluginPanelsContainer.getChildren().isEmpty()) {
+                    pluginPanelsContainer.setVisible(false);
+                    pluginPanelsContainer.setManaged(false);
+                }
+                
+                logger.info("Removed side panel: " + panelId);
+            }
+        });
     }
     
     /**
-     * Menu handler: Executes AI Summarize command.
+     * Removes all side panels for a plugin.
      */
-    @FXML
-    private void handlePluginAISummarize(ActionEvent event) {
-        if (pluginManager != null && pluginManager.isPluginEnabled("ai-assistant")) {
-            executeCommand("AI: Summarize Note");
-        } else {
-            updateStatus("AI Assistant plugin is not enabled");
-        }
+    @Override
+    public void removeAllSidePanels(String pluginId) {
+        Platform.runLater(() -> {
+            List<String> ids = pluginPanelIds.remove(pluginId);
+            if (ids != null && pluginPanelsContainer != null) {
+                for (String fullPanelId : ids) {
+                    VBox panel = pluginPanels.remove(fullPanelId);
+                    if (panel != null) {
+                        pluginPanelsContainer.getChildren().remove(panel);
+                    }
+                }
+                
+                // Hide container if empty
+                if (pluginPanelsContainer.getChildren().isEmpty()) {
+                    pluginPanelsContainer.setVisible(false);
+                    pluginPanelsContainer.setManaged(false);
+                }
+                
+                logger.info("Removed all side panels for plugin: " + pluginId);
+            }
+        });
     }
     
     /**
-     * Menu handler: Executes AI Translate command.
+     * Shows or hides the plugin panels section.
      */
-    @FXML
-    private void handlePluginAITranslate(ActionEvent event) {
-        if (pluginManager != null && pluginManager.isPluginEnabled("ai-assistant")) {
-            executeCommand("AI: Translate Note");
-        } else {
-            updateStatus("AI Assistant plugin is not enabled");
-        }
+    @Override
+    public void setPluginPanelsVisible(boolean visible) {
+        Platform.runLater(() -> {
+            if (pluginPanelsContainer != null) {
+                pluginPanelsContainer.setVisible(visible);
+                pluginPanelsContainer.setManaged(visible);
+            }
+        });
     }
     
     /**
-     * Menu handler: Executes AI Improve Writing command.
+     * Checks if the plugin panels section is visible.
      */
-    @FXML
-    private void handlePluginAIImprove(ActionEvent event) {
-        if (pluginManager != null && pluginManager.isPluginEnabled("ai-assistant")) {
-            executeCommand("AI: Improve Writing");
-        } else {
-            updateStatus("AI Assistant plugin is not enabled");
-        }
-    }
-    
-    /**
-     * Menu handler: Executes AI Generate Content command.
-     */
-    @FXML
-    private void handlePluginAIGenerate(ActionEvent event) {
-        if (pluginManager != null && pluginManager.isPluginEnabled("ai-assistant")) {
-            executeCommand("AI: Generate Content");
-        } else {
-            updateStatus("AI Assistant plugin is not enabled");
-        }
+    @Override
+    public boolean isPluginPanelsVisible() {
+        return pluginPanelsContainer != null && pluginPanelsContainer.isVisible();
     }
     
     /**
@@ -1279,27 +1394,27 @@ public class MainController {
      */
     private void initializeIcons() {
         // Toolbar buttons
-        setButtonText(newNoteBtn, "+", "New Note (Ctrl+N)");
+        setButtonText(newNoteBtn, "📝", "New Note (Ctrl+N)");
         setButtonText(newFolderBtn, "📁", "New Folder");
         setButtonText(saveBtn, "💾", "Save (Ctrl+S)");
-        setButtonText(deleteBtn, "🗑", "Delete");
+        setButtonText(deleteBtn, "🗑️", "Delete");
         setButtonText(refreshBtn, "↻", "Refresh");
         
         // Sidebar buttons
-        setButtonText(sidebarNewNoteBtn, "+", "New Note");
+        setButtonText(sidebarNewNoteBtn, "📝", "New Note");
         setButtonText(sidebarNewFolderBtn, "📁", "New Folder");
         setButtonText(sidebarNewTagBtn, "#", "New Tag");
         
         // View mode buttons
         setToggleText(editorOnlyButton, "✎", "Editor only (Alt+1)");
-        setToggleText(splitViewButton, "▦", "Split view (Alt+2)");
-        setToggleText(previewOnlyButton, "👁", "Preview only (Alt+3)");
+        setToggleText(splitViewButton, "││", "Split view (Alt+2)");
+        setToggleText(previewOnlyButton, "🔍", "Preview only (Alt+3)");
         
         // Action buttons  
-        setButtonText(favoriteButton, "☆", "Add to favorites");
+        setButtonText(favoriteButton, "★", "Add to favorites");
         setButtonText(infoButton, "ℹ", "Note information");
-        setButtonText(deleteNoteBtn, "✕", "Delete note");
-        setButtonText(closeInfoBtn, "✕", "Close panel");
+        setButtonText(deleteNoteBtn, "❌", "Delete note");
+        setButtonText(closeInfoBtn, "❌", "Close panel");
         
         // Format toolbar
         setButtonText(heading1Btn, "H1", "Heading 1");

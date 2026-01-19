@@ -398,8 +398,10 @@ Complete exhaustive analysis of the codebase identifying:
 #### 3. Plugin System
 - ✅ Dynamic loading from `plugins/` directory
 - ✅ Auto-discovery on startup
+- ✅ **Dynamic menu registration** - plugins register their own menu items via `context.registerMenuItem()`
 - ✅ No recompilation needed to add/remove plugins
 - ✅ Community can create plugins independently
+- ✅ Core has **zero** hardcoded plugin handlers or menu items
 
 ### Files Added
 - `Forevernote/src/main/java/com/example/forevernote/plugin/builtin/WordCountPlugin.java`

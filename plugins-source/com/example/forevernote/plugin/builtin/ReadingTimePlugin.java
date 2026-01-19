@@ -105,6 +105,10 @@ public class ReadingTimePlugin implements Plugin {
             this::showQuickEstimate
         );
         
+        // Register menu items (dynamic plugin menu)
+        context.registerMenuItem("Core", "Reading Time", "Ctrl+Shift+R", this::showCurrentNoteReadingTime);
+        context.registerMenuItem("Core", "Quick Estimate", this::showQuickEstimate);
+        
         // Subscribe to note selection events
         EventBus.Subscription sub = context.subscribe(NoteEvents.NoteSelectedEvent.class, event -> {
             this.currentNote = event.getNote();

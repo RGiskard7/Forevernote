@@ -54,9 +54,10 @@
 - **Recent Notes**: Quick access to recently modified notes
 - **Plugin System**: Extensible architecture with external plugin support (Obsidian-style)
   - Dynamic plugin loading from `plugins/` directory
+  - **Dynamic menu registration** - plugins add their own menu items
   - Built-in plugins: Word Count, Daily Notes, Reading Time, Templates, Table of Contents, Auto Backup, AI Assistant
   - Plugin Manager UI for enabling/disabling plugins
-  - Community plugins support
+  - Community plugins support - no core modifications needed
 - **Responsive Design**: Fully responsive interface that adapts to window resizing
 - **Scrollable Toolbar**: Professional format toolbar with horizontal scrolling
 

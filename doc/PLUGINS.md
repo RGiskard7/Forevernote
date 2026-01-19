@@ -7,11 +7,14 @@ This document describes the plugin system architecture in Forevernote, enabling 
 Forevernote includes a robust plugin system that allows extending the application's functionality. Plugins can:
 
 - Register commands in the Command Palette (Ctrl+P)
+- **Register menu items dynamically** in categorized submenus (Core, Productivity, Utilities, AI, etc.)
 - Subscribe to application events
 - Access notes, folders, and tags through services
 - Create custom UI dialogs
 - Request to open notes in the editor
 - Trigger UI refreshes
+
+**Important:** The core application is completely decoupled from plugins. All menu items are registered dynamically by plugins during initialization.
 
 ## Plugin Manager (Obsidian-style UI)
 
@@ -111,6 +114,56 @@ context.registerCommand("My Command", "Description", "Ctrl+Shift+M", this::myAct
 context.unregisterCommand("My Command");
 ```
 
+### Menu Registration (Dynamic)
+
+Plugins can register menu items in the **Tools > Plugins** menu dynamically:
+
+```java
+// Register a menu item in a category
+context.registerMenuItem("Core", "My Action", this::myAction);
+
+// Register with keyboard shortcut
+context.registerMenuItem("AI", "Generate Summary", "Ctrl+Shift+G", this::generateSummary);
+
+// Add a separator
+context.addMenuSeparator("Utilities");
+
+// Available categories (create your own or use existing):
+// - "Core" - Core functionality (Word Count, Reading Time)
+// - "Productivity" - Productivity tools (Templates, TOC, Daily Notes)
+// - "Utilities" - Utility functions (Backup, Export)
+// - "AI" - AI-powered features
+// - Custom categories are created automatically
+```
+
+**Note:** Menu items are automatically removed when a plugin is disabled.
+
+### Side Panel Registration (UI Modification - Obsidian-style)
+
+Plugins can add custom UI panels to the right sidebar:
+
+```java
+// Create a custom panel with JavaFX components
+VBox myPanel = new VBox();
+myPanel.getChildren().add(new Label("Hello from plugin!"));
+myPanel.getChildren().add(new Button("Do Something"));
+
+// Register the panel (appears in right sidebar when info panel is shown)
+context.registerSidePanel("my-panel", "My Plugin Panel", myPanel);
+
+// Register with an icon/emoji
+context.registerSidePanel("calendar", "Calendar", calendarWidget, "📅");
+
+// Remove when plugin shuts down
+context.removeSidePanel("my-panel");
+```
+
+**Example: CalendarPlugin** creates a mini calendar in the sidebar that:
+- Shows current month with day buttons
+- Highlights today (blue) and days with notes (green)
+- Click any date to open/create a daily note
+- Navigates between months
+
 ### Event System
 
 ```java
@@ -145,7 +198,7 @@ context.log("Plugin action executed");
 context.logError("Something went wrong", exception);
 ```
 
-## Built-in Plugins (6 Total)
+## Built-in Plugins (8 Total)
 
 ### 1. Word Count Plugin (`word-count`)
 
@@ -272,7 +325,33 @@ Backup notes to files and export database.
 
 ---
 
-### 7. AI Assistant Plugin (`ai-assistant`) - **Example/Demo**
+### 7. Calendar Plugin (`calendar`) - **UI Modification Demo**
+
+Adds a mini calendar widget to the sidebar, demonstrating **Obsidian-style UI modification**.
+
+**Commands:**
+| Command | Shortcut | Description |
+|---------|----------|-------------|
+| Calendar: Show/Hide Panel | Ctrl+Shift+C | Toggle calendar visibility |
+| Calendar: Go to Today | - | Navigate to current month |
+| Calendar: Refresh | - | Refresh note dates |
+
+**Features:**
+- Mini calendar in the right sidebar (info panel area)
+- Navigate between months (◀/▶ buttons)
+- Click any date to open/create a daily note
+- **Visual indicators:**
+  - 🔵 Blue: Today
+  - 🟢 Green: Days with daily notes
+  - 🔴 Red text: Weekends
+- Integrates with Daily Notes plugin format
+
+**UI Modification Example:**
+This plugin demonstrates how plugins can add custom JavaFX components to the application interface using `context.registerSidePanel()`.
+
+---
+
+### 8. AI Assistant Plugin (`ai-assistant`) - **Example/Demo**
 
 Integrates AI capabilities into Forevernote using external AI APIs.
 
@@ -297,8 +376,9 @@ Integrates AI capabilities into Forevernote using external AI APIs.
 - Configurable API endpoint (OpenAI-compatible)
 
 **To Enable:**
-1. Uncomment the AIPlugin registration in `MainController.registerBuiltInPlugins()`
-2. Configure your API key using "AI: Configure API" command
+1. Place `AIPlugin.jar` in the `plugins/` directory
+2. Run `.\scripts\build-plugins.ps1` if you need to rebuild
+3. Configure your API key using "AI: Configure API" command (Tools > Plugins > AI)
 3. Start using AI features!
 
 **Example API Services:**
@@ -452,22 +532,25 @@ private void registerBuiltInPlugins() {
 }
 ```
 
-### Step 3: Add Menu Item (Optional)
+### Step 3: Register Menu Items (Automatic)
 
-In `MainView.fxml`, add a menu item under Tools > Plugins:
-
-```xml
-<MenuItem text="My Plugin" onAction="#handlePluginMyPlugin"/>
-```
-
-In `MainController.java`:
+Plugins register their menu items dynamically in the `initialize()` method:
 
 ```java
-@FXML
-private void handlePluginMyPlugin(ActionEvent event) {
-    // Execute plugin command
+@Override
+public void initialize(PluginContext context) {
+    this.context = context;
+    
+    // Register command (appears in Command Palette)
+    context.registerCommand("My Plugin: Action", "Description", this::myAction);
+    
+    // Register menu item (appears in Tools > Plugins > [Category])
+    context.registerMenuItem("MyCategory", "My Action", this::myAction);
+    context.registerMenuItem("MyCategory", "Another Action", "Ctrl+M", this::anotherAction);
 }
 ```
+
+**No FXML or MainController changes needed!** The menu is built dynamically.
 
 ## Available Events
 
@@ -531,8 +614,9 @@ REGISTERED → INITIALIZED → ENABLED ⟷ DISABLED
 | File system access | ✅ | Standard Java I/O |
 | Network access | ✅ | Standard Java networking |
 | Custom UI panels | ⚠️ | Via JavaFX dialogs only |
-| Modify main UI | ❌ | Not currently supported |
-| Add menu items | ⚠️ | Requires code changes |
+| Modify main UI | ⚠️ | Side panels only via `registerSidePanel()` |
+| Add menu items | ✅ | Via `registerMenuItem()` |
+| Add side panels | ✅ | Via `registerSidePanel()` (Obsidian-style) |
 | **AI Integration** | ✅ | HTTP requests to AI APIs |
 | **External APIs** | ✅ | Full network access |
 | **JSON Processing** | ✅ | Standard Java libraries |
@@ -541,7 +625,7 @@ REGISTERED → INITIALIZED → ENABLED ⟷ DISABLED
 
 1. **No Runtime Plugin Loading**: Plugins must be compiled with the app
 2. **No Sandboxing**: Plugins have full Java access
-3. **UI Customization**: Limited to dialogs; can't modify main UI
+3. **UI Customization**: Supports side panels and menu items; can't modify toolbar or main editing area
 4. **No Plugin Repository**: Manual installation required
 
 ## Best Practices
@@ -597,8 +681,8 @@ The Forevernote plugin system provides a powerful and flexible way to extend the
 - Respond to user actions
 
 **What you CANNOT do (currently):**
-- Add new UI panels to the main window
-- Modify the main toolbar/menu dynamically
+- Modify the main toolbar (buttons, etc.)
+- Replace or modify the editor/preview components
 - Create background services that run independently
 
 **Note**: External plugins can now be loaded dynamically from the `plugins/` directory without recompiling the application!

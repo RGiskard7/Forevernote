@@ -51,6 +51,8 @@ public class PluginManager {
     private final TagService tagService;
     private final EventBus eventBus;
     private final CommandPalette commandPalette;
+    private final PluginMenuRegistry menuRegistry;
+    private final SidePanelRegistry sidePanelRegistry;
     
     /**
      * Plugin state enumeration.
@@ -66,19 +68,24 @@ public class PluginManager {
     /**
      * Creates a new PluginManager.
      * 
-     * @param noteService    The note service
-     * @param folderService  The folder service
-     * @param tagService     The tag service
-     * @param eventBus       The event bus
-     * @param commandPalette The command palette
+     * @param noteService       The note service
+     * @param folderService     The folder service
+     * @param tagService        The tag service
+     * @param eventBus          The event bus
+     * @param commandPalette    The command palette
+     * @param menuRegistry      The menu registry for plugin menu items
+     * @param sidePanelRegistry The side panel registry for plugin UI panels
      */
     public PluginManager(NoteService noteService, FolderService folderService, 
-                        TagService tagService, EventBus eventBus, CommandPalette commandPalette) {
+                        TagService tagService, EventBus eventBus, CommandPalette commandPalette,
+                        PluginMenuRegistry menuRegistry, SidePanelRegistry sidePanelRegistry) {
         this.noteService = noteService;
         this.folderService = folderService;
         this.tagService = tagService;
         this.eventBus = eventBus;
         this.commandPalette = commandPalette;
+        this.menuRegistry = menuRegistry;
+        this.sidePanelRegistry = sidePanelRegistry;
         logger.info("PluginManager initialized");
     }
     
@@ -169,7 +176,7 @@ public class PluginManager {
         try {
             // Create context
             PluginContext context = new PluginContext(
-                pluginId, noteService, folderService, tagService, eventBus, commandPalette
+                pluginId, noteService, folderService, tagService, eventBus, commandPalette, menuRegistry, sidePanelRegistry
             );
             pluginContexts.put(pluginId, context);
             

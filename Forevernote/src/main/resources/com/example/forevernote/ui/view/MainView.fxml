@@ -59,29 +59,10 @@
                     <MenuItem text="Global Search" onAction="#handleSearch" accelerator="Shortcut+Shift+F"/>
                     <MenuItem text="Tags Manager..." onAction="#handleTagsManager"/>
                     <SeparatorMenuItem/>
-                    <Menu text="Plugins">
+                    <Menu fx:id="pluginsMenu" text="Plugins">
                         <MenuItem text="Manage Plugins..." onAction="#handlePluginManager"/>
                         <SeparatorMenuItem/>
-                        <Menu text="Core">
-                            <MenuItem text="Word Count" onAction="#handlePluginWordCount"/>
-                            <MenuItem text="Reading Time" onAction="#handlePluginReadingTime"/>
-                        </Menu>
-                        <Menu text="Productivity">
-                            <MenuItem text="Daily Notes" onAction="#handlePluginDailyNotes"/>
-                            <MenuItem text="Templates..." onAction="#handlePluginTemplates"/>
-                            <MenuItem text="Table of Contents" onAction="#handlePluginTOC"/>
-                        </Menu>
-                        <Menu text="Utilities">
-                            <MenuItem text="Backup Notes..." onAction="#handlePluginBackup"/>
-                        </Menu>
-                        <Menu text="AI Assistant">
-                            <MenuItem text="Configure API..." onAction="#handlePluginAIConfig"/>
-                            <SeparatorMenuItem/>
-                            <MenuItem text="Summarize Note" onAction="#handlePluginAISummarize"/>
-                            <MenuItem text="Translate Note" onAction="#handlePluginAITranslate"/>
-                            <MenuItem text="Improve Writing" onAction="#handlePluginAIImprove"/>
-                            <MenuItem text="Generate Content" onAction="#handlePluginAIGenerate"/>
-                        </Menu>
+                        <!-- Plugin menu items are added dynamically by plugins -->
                     </Menu>
                     <SeparatorMenuItem/>
                     <MenuItem text="Preferences..." onAction="#handlePreferences"/>
@@ -373,6 +354,12 @@
                     <Label text="METADATA" styleClass="info-label"/>
                     <Label fx:id="infoAuthorLabel" text="Author: -" styleClass="info-value"/>
                     <Label fx:id="infoSourceUrlLabel" text="URL: -" styleClass="info-value" wrapText="true"/>
+                </VBox>
+                
+                <!-- Plugin Panels Container (dynamic, Obsidian-style) -->
+                <Separator styleClass="info-separator"/>
+                <VBox fx:id="pluginPanelsContainer" spacing="12" visible="false" managed="false">
+                    <!-- Plugin panels are added dynamically here -->
                 </VBox>
             </VBox>
         </VBox>

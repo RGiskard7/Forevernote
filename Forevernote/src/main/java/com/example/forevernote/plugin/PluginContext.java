@@ -9,6 +9,7 @@ import com.example.forevernote.service.NoteService;
 import com.example.forevernote.service.TagService;
 import com.example.forevernote.ui.components.CommandPalette;
 
+import javafx.scene.Node;
 import java.util.function.Consumer;
 
 /**
@@ -19,6 +20,7 @@ import java.util.function.Consumer;
  *   <li>Access to application services (NoteService, FolderService, TagService)</li>
  *   <li>Event subscription and publishing</li>
  *   <li>Command registration</li>
+ *   <li>Menu item registration</li>
  *   <li>UI customization capabilities</li>
  * </ul>
  * 
@@ -32,26 +34,33 @@ public class PluginContext {
     private final TagService tagService;
     private final EventBus eventBus;
     private final CommandPalette commandPalette;
+    private final PluginMenuRegistry menuRegistry;
+    private final SidePanelRegistry sidePanelRegistry;
     private final String pluginId;
     
     /**
      * Creates a new plugin context.
      * 
-     * @param pluginId       The ID of the plugin this context belongs to
-     * @param noteService    The note service
-     * @param folderService  The folder service
-     * @param tagService     The tag service
-     * @param eventBus       The event bus
-     * @param commandPalette The command palette
+     * @param pluginId          The ID of the plugin this context belongs to
+     * @param noteService       The note service
+     * @param folderService     The folder service
+     * @param tagService        The tag service
+     * @param eventBus          The event bus
+     * @param commandPalette    The command palette
+     * @param menuRegistry      The menu registry for adding menu items
+     * @param sidePanelRegistry The side panel registry for adding UI panels
      */
     public PluginContext(String pluginId, NoteService noteService, FolderService folderService, 
-                         TagService tagService, EventBus eventBus, CommandPalette commandPalette) {
+                         TagService tagService, EventBus eventBus, CommandPalette commandPalette,
+                         PluginMenuRegistry menuRegistry, SidePanelRegistry sidePanelRegistry) {
         this.pluginId = pluginId;
         this.noteService = noteService;
         this.folderService = folderService;
         this.tagService = tagService;
         this.eventBus = eventBus;
         this.commandPalette = commandPalette;
+        this.menuRegistry = menuRegistry;
+        this.sidePanelRegistry = sidePanelRegistry;
     }
     
     // ==================== Service Access ====================
@@ -245,5 +254,106 @@ public class PluginContext {
             alert.setContentText(message);
             alert.showAndWait();
         });
+    }
+    
+    // ==================== Menu Registration ====================
+    
+    /**
+     * Registers a menu item in the Plugins menu.
+     * 
+     * @param category The menu category (e.g., "Core", "Productivity", "AI")
+     * @param itemName The display name of the menu item
+     * @param action   The action to execute when clicked
+     */
+    public void registerMenuItem(String category, String itemName, Runnable action) {
+        if (menuRegistry != null) {
+            menuRegistry.registerMenuItem(pluginId, category, itemName, action);
+            log("Registered menu item: " + category + " > " + itemName);
+        }
+    }
+    
+    /**
+     * Registers a menu item with a keyboard shortcut.
+     * 
+     * @param category The menu category
+     * @param itemName The display name
+     * @param shortcut The keyboard shortcut (e.g., "Ctrl+Shift+W")
+     * @param action   The action to execute
+     */
+    public void registerMenuItem(String category, String itemName, String shortcut, Runnable action) {
+        if (menuRegistry != null) {
+            menuRegistry.registerMenuItem(pluginId, category, itemName, shortcut, action);
+            log("Registered menu item: " + category + " > " + itemName + " (" + shortcut + ")");
+        }
+    }
+    
+    /**
+     * Adds a separator in the plugin's menu category.
+     * 
+     * @param category The menu category
+     */
+    public void addMenuSeparator(String category) {
+        if (menuRegistry != null) {
+            menuRegistry.addMenuSeparator(pluginId, category);
+        }
+    }
+    
+    /**
+     * Gets the menu registry for advanced menu operations.
+     * 
+     * @return The menu registry, or null if not available
+     */
+    public PluginMenuRegistry getMenuRegistry() {
+        return menuRegistry;
+    }
+    
+    // ==================== Side Panel Registration (UI Modification) ====================
+    
+    /**
+     * Registers a side panel in the application's right sidebar.
+     * This allows plugins to add custom UI components (Obsidian-style).
+     * 
+     * @param panelId A unique identifier for this panel
+     * @param title   The display title for the panel header
+     * @param content The JavaFX Node to display as panel content
+     */
+    public void registerSidePanel(String panelId, String title, Node content) {
+        registerSidePanel(panelId, title, content, null);
+    }
+    
+    /**
+     * Registers a side panel with an icon.
+     * 
+     * @param panelId A unique identifier for this panel
+     * @param title   The display title for the panel header
+     * @param content The JavaFX Node to display as panel content
+     * @param icon    An icon/emoji for the panel header (e.g., "📅")
+     */
+    public void registerSidePanel(String panelId, String title, Node content, String icon) {
+        if (sidePanelRegistry != null) {
+            sidePanelRegistry.registerSidePanel(pluginId, panelId, title, content, icon);
+            log("Registered side panel: " + title);
+        }
+    }
+    
+    /**
+     * Removes a side panel.
+     * 
+     * @param panelId The panel's unique ID
+     */
+    public void removeSidePanel(String panelId) {
+        if (sidePanelRegistry != null) {
+            sidePanelRegistry.removeSidePanel(pluginId, panelId);
+            log("Removed side panel: " + panelId);
+        }
+    }
+    
+    /**
+     * Gets the side panel registry for advanced operations.
+     * 
+     * @return The side panel registry, or null if not available
+     */
+    public SidePanelRegistry getSidePanelRegistry() {
+        return sidePanelRegistry;
     }
 }

@@ -4,6 +4,81 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [4.6.0] - 2026-01-19
+
+### UI Modification Support (Obsidian-style)
+
+**NEW:** Plugins can now add custom UI panels to the sidebar, similar to Obsidian.
+
+**Added:**
+- `SidePanelRegistry` interface for dynamic UI panel registration
+- Plugins can register collapsible panels in the right sidebar
+- New **CalendarPlugin** demonstrating UI modification capabilities:
+  - Mini calendar widget in sidebar
+  - Highlights days with daily notes (green)
+  - Click date to open/create daily note
+  - Month navigation (prev/next/today)
+  - Integration with Daily Notes plugin
+
+**New methods in PluginContext:**
+- `registerSidePanel(panelId, title, content)` - Add UI panel
+- `registerSidePanel(panelId, title, content, icon)` - Add UI panel with icon
+- `removeSidePanel(panelId)` - Remove UI panel
+- `getSidePanelRegistry()` - Get registry for advanced operations
+
+**Files Added:**
+- `SidePanelRegistry.java` - Interface for side panel registration
+- `CalendarPlugin.java` - New plugin with sidebar calendar widget
+
+**Files Modified:**
+- `PluginContext.java` - Added side panel methods
+- `PluginManager.java` - Now receives `SidePanelRegistry`
+- `MainController.java` - Implements `SidePanelRegistry`
+- `MainView.fxml` - Added `pluginPanelsContainer` in right panel
+
+**Plugin Count:** 8 plugins (7 original + CalendarPlugin)
+
+---
+
+## [4.5.0] - 2026-01-18
+
+### Core Decoupling - Dynamic Plugin Menus
+
+**BREAKING CHANGE:** Plugin menu items are now registered dynamically by plugins.
+
+**Added:**
+- `PluginMenuRegistry` interface for dynamic menu registration
+- Plugins can now register menu items in categorized submenus
+- Support for keyboard shortcuts in plugin menus
+- Menu separators support for plugin menus
+- Automatic cleanup of plugin menus when plugins are disabled
+
+**Removed:**
+- All hardcoded plugin handlers from `MainController`:
+  - `handlePluginWordCount()`
+  - `handlePluginDailyNotes()`
+  - `handlePluginReadingTime()`
+  - `handlePluginTemplates()`
+  - `handlePluginTOC()`
+  - `handlePluginBackup()`
+  - `handlePluginAI*()` methods
+- Hardcoded plugin menu items from `MainView.fxml`
+
+**Modified files:**
+- `PluginMenuRegistry.java` (NEW) - Interface for plugin menu registration
+- `PluginContext.java` - Added `registerMenuItem()`, `addMenuSeparator()` methods
+- `PluginManager.java` - Now receives `PluginMenuRegistry` in constructor
+- `MainController.java` - Implements `PluginMenuRegistry`, removed all hardcoded plugin handlers
+- `MainView.fxml` - Simplified plugins menu (dynamic content only)
+- All plugins updated to register their own menu items
+
+**How it works:**
+1. Plugins call `context.registerMenuItem("Category", "Item Name", action)` in `initialize()`
+2. MainController (as PluginMenuRegistry) creates category submenus dynamically
+3. Menu items are automatically removed when plugins are disabled
+
+---
+
 ## [4.4.1] - 2026-01-18
 
 ### Plugin Build Fix - Inner Classes & ClassLoader

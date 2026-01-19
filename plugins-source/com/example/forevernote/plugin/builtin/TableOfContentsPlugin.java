@@ -110,6 +110,11 @@ public class TableOfContentsPlugin implements Plugin {
             this::generateNumberedToc
         );
         
+        // Register menu items (dynamic plugin menu)
+        context.registerMenuItem("Productivity", "Generate TOC", "Ctrl+Shift+O", this::generateTocForCurrentNote);
+        context.registerMenuItem("Productivity", "Preview TOC", this::previewToc);
+        context.registerMenuItem("Productivity", "Numbered TOC", this::generateNumberedToc);
+        
         context.log("Table of Contents Plugin initialized");
     }
     

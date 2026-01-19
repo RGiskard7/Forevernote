@@ -103,6 +103,12 @@ public class DailyNotesPlugin implements Plugin {
             this::showThisWeekNotes
         );
         
+        // Register menu items (dynamic plugin menu)
+        context.registerMenuItem("Productivity", "Open Today's Note", "Ctrl+Alt+D", () -> openDailyNote(LocalDate.now()));
+        context.registerMenuItem("Productivity", "Open Yesterday's Note", () -> openDailyNote(LocalDate.now().minusDays(1)));
+        context.registerMenuItem("Productivity", "Open Tomorrow's Note", () -> openDailyNote(LocalDate.now().plusDays(1)));
+        context.registerMenuItem("Productivity", "This Week Overview", this::showThisWeekNotes);
+        
         context.log("Daily Notes Plugin initialized");
     }
     

@@ -120,6 +120,14 @@ public class TemplatesPlugin implements Plugin {
             () -> createFromTemplate("checklist")
         );
         
+        // Register menu items (dynamic plugin menu)
+        context.registerMenuItem("Productivity", "New from Template...", "Ctrl+Shift+T", this::showTemplateSelector);
+        context.addMenuSeparator("Productivity");
+        context.registerMenuItem("Productivity", "Meeting Notes", () -> createFromTemplate("meeting"));
+        context.registerMenuItem("Productivity", "Project Plan", () -> createFromTemplate("project"));
+        context.registerMenuItem("Productivity", "Weekly Review", () -> createFromTemplate("weekly-review"));
+        context.registerMenuItem("Productivity", "Checklist", () -> createFromTemplate("checklist"));
+        
         context.log("Templates Plugin initialized with " + templates.size() + " templates");
     }
     

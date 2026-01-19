@@ -90,6 +90,13 @@ public class AutoBackupPlugin implements Plugin {
             this::exportCurrentNote
         );
         
+        // Register menu items (dynamic plugin menu)
+        context.registerMenuItem("Utilities", "Export All Notes...", "Ctrl+Shift+B", this::exportAllNotes);
+        context.registerMenuItem("Utilities", "Export Current Note...", this::exportCurrentNote);
+        context.addMenuSeparator("Utilities");
+        context.registerMenuItem("Utilities", "Database Backup...", this::backupDatabase);
+        context.registerMenuItem("Utilities", "Full Backup...", this::fullBackup);
+        
         context.log("Auto Backup Plugin initialized");
     }
     

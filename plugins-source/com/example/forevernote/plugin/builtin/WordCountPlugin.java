@@ -86,6 +86,10 @@ public class WordCountPlugin implements Plugin {
             this::showAllNotesStats
         );
         
+        // Register menu items (dynamic plugin menu)
+        context.registerMenuItem("Core", "Word Count", "Ctrl+Shift+W", this::showCurrentNoteStats);
+        context.registerMenuItem("Core", "All Notes Stats", this::showAllNotesStats);
+        
         // Subscribe to note selection events
         EventBus.Subscription sub = context.subscribe(NoteEvents.NoteSelectedEvent.class, event -> {
             this.currentNote = event.getNote();

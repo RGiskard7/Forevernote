@@ -165,6 +165,14 @@ public class AIPlugin implements Plugin {
             this::configureAPI
         );
         
+        // Register menu items (dynamic plugin menu)
+        context.registerMenuItem("AI", "Configure API...", this::configureAPI);
+        context.addMenuSeparator("AI");
+        context.registerMenuItem("AI", "Summarize Note", "Ctrl+Shift+S", this::summarizeNote);
+        context.registerMenuItem("AI", "Translate Note...", this::translateNote);
+        context.registerMenuItem("AI", "Improve Writing", this::improveWriting);
+        context.registerMenuItem("AI", "Generate Content...", this::generateContent);
+        
         context.log("AI Plugin initialized (API key required for functionality)");
         } catch (Exception e) {
             context.logError("Failed to initialize AI Plugin", e);
