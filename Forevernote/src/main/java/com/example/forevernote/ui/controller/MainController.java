@@ -176,12 +176,17 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     @FXML private Button numberBtn;
     @FXML private Button quoteBtn;
     @FXML private Button codeBtn;
-    @FXML private Button closeInfoBtn;
+    @FXML private Button closeRightPanelBtn;
     
-    // Info panel (slide-out)
-    @FXML private VBox infoPanel;
+    // Right panel (Obsidian-style with collapsible sections)
+    @FXML private VBox rightPanel;
+    @FXML private VBox rightPanelContent;
+    @FXML private VBox noteInfoSection;
+    @FXML private HBox noteInfoHeader;
+    @FXML private Label noteInfoCollapseIcon;
+    @FXML private VBox noteInfoContent;
     
-    // Preview and info
+    // Preview and info labels
     @FXML private javafx.scene.web.WebView previewWebView;
     @FXML private Label infoCreatedLabel;
     @FXML private Label infoModifiedLabel;
@@ -213,9 +218,23 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private final Map<String, VBox> pluginPanels = new HashMap<>();
     private final Map<String, List<String>> pluginPanelIds = new HashMap<>();
     
-    // View mode state
+    // Plugin status bar items (dynamic UI)
+    @FXML private HBox pluginStatusBarContainer;
+    private final Map<String, javafx.scene.Node> pluginStatusBarItems = new HashMap<>();
+    private final Map<String, List<String>> pluginStatusBarItemIds = new HashMap<>();
+    
+    // View mode state (editor/preview)
     private enum ViewMode { EDITOR_ONLY, SPLIT, PREVIEW_ONLY }
     private ViewMode currentViewMode = ViewMode.SPLIT;
+    
+    // Notes list view mode (list/grid)
+    private enum NotesViewMode { LIST, GRID }
+    private NotesViewMode currentNotesViewMode = NotesViewMode.LIST;
+    
+    // Grid view container (dynamically created)
+    private javafx.scene.layout.TilePane notesGridPane;
+    private javafx.scene.control.ScrollPane gridScrollPane;
+    private VBox notesPanelContainer; // Reference to the notes panel container
     
     // UI Components for quick access
     private CommandPalette commandPalette;
@@ -249,6 +268,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             initializeSortOptions();
             initializeViewModeButtons();
             initializeIcons();
+            initializeRightPanelSections();
             
             // Load initial data
             loadFolders();
@@ -435,20 +455,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     }
     
     /**
-     * Initialize the notes list view.
+     * Initialize the notes list view with drag & drop support.
      */
     private void initializeNotesList() {
-        notesListView.setCellFactory(lv -> new ListCell<>() {
-            @Override
-            protected void updateItem(Note note, boolean empty) {
-                super.updateItem(note, empty);
-                if (empty || note == null) {
-                    setText(null);
-                } else {
-                    setText(note.getTitle());
-                }
-            }
-        });
+        notesListView.setCellFactory(lv -> createNoteListCell());
         
         // Handle note selection
         notesListView.getSelectionModel().selectedItemProperty().addListener(
@@ -458,6 +468,218 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 }
             }
         );
+        
+        // Setup folder tree for drop target
+        setupFolderTreeDragAndDrop();
+    }
+    
+    /**
+     * Creates a ListCell for notes with drag support.
+     */
+    private ListCell<Note> createNoteListCell() {
+        ListCell<Note> cell = new ListCell<>() {
+            @Override
+            protected void updateItem(Note note, boolean empty) {
+                super.updateItem(note, empty);
+                if (empty || note == null) {
+                    setText(null);
+                    setGraphic(null);
+                    setStyle("");
+                } else {
+                    // Create rich cell content
+                    VBox container = new VBox(2);
+                    container.setPadding(new javafx.geometry.Insets(4, 8, 4, 8));
+                    
+                    // Title with favorite indicator
+                    Label titleLabel = new Label((note.isFavorite() ? "★ " : "") + note.getTitle());
+                    titleLabel.setStyle("-fx-font-weight: 500;");
+                    
+                    // Preview text (first 60 chars of content)
+                    String preview = note.getContent() != null && !note.getContent().isEmpty()
+                        ? note.getContent().replaceAll("^#+\\s*", "").replaceAll("\\n", " ").trim()
+                        : "";
+                    if (preview.length() > 60) {
+                        preview = preview.substring(0, 57) + "...";
+                    }
+                    Label previewLabel = new Label(preview);
+                    previewLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 11px;");
+                    
+                    // Date
+                    String dateText = note.getModifiedDate() != null ? note.getModifiedDate() : note.getCreatedDate();
+                    if (dateText != null && dateText.length() > 10) {
+                        dateText = dateText.substring(0, 10);
+                    }
+                    Label dateLabel = new Label(dateText != null ? dateText : "");
+                    dateLabel.setStyle("-fx-text-fill: #666666; -fx-font-size: 10px;");
+                    
+                    container.getChildren().addAll(titleLabel, previewLabel, dateLabel);
+                    
+                    setText(null);
+                    setGraphic(container);
+                }
+            }
+        };
+        
+        // Setup drag for this cell
+        setupNoteCellDrag(cell);
+        
+        return cell;
+    }
+    
+    /**
+     * Setup drag events for note cell.
+     */
+    private void setupNoteCellDrag(ListCell<Note> cell) {
+        // Start drag
+        cell.setOnDragDetected(event -> {
+            Note note = cell.getItem();
+            if (note != null) {
+                javafx.scene.input.Dragboard db = cell.startDragAndDrop(javafx.scene.input.TransferMode.MOVE);
+                javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+                content.putString("note:" + note.getId());
+                db.setContent(content);
+                
+                // Create drag image
+                javafx.scene.SnapshotParameters params = new javafx.scene.SnapshotParameters();
+                params.setFill(javafx.scene.paint.Color.TRANSPARENT);
+                db.setDragView(cell.snapshot(params, null));
+                
+                event.consume();
+                updateStatus("Dragging: " + note.getTitle());
+            }
+        });
+        
+        cell.setOnDragDone(event -> {
+            if (event.getTransferMode() == javafx.scene.input.TransferMode.MOVE) {
+                updateStatus("Note moved successfully");
+            }
+            event.consume();
+        });
+    }
+    
+    /**
+     * Setup folder tree view as drop target for notes.
+     */
+    private void setupFolderTreeDragAndDrop() {
+        folderTreeView.setCellFactory(tv -> {
+            TreeCell<Folder> cell = new TreeCell<>() {
+                @Override
+                protected void updateItem(Folder folder, boolean empty) {
+                    super.updateItem(folder, empty);
+                    if (empty || folder == null) {
+                        setText(null);
+                        setGraphic(null);
+                    } else {
+                        // Visual folder icon based on state
+                        String icon;
+                        String color;
+                        
+                        if (folder.getTitle().equals("All Notes")) {
+                            icon = "[=]";
+                            color = "#9f7aea";
+                        } else {
+                            TreeItem<Folder> ti = getTreeItem();
+                            boolean isExpanded = ti != null && ti.isExpanded();
+                            icon = isExpanded ? "[/]" : "[+]";
+                            color = isExpanded ? "#48bb78" : "#ed8936";
+                        }
+                        
+                        // Count notes in folder
+                        int noteCount = 0;
+                        try {
+                            if (!folder.getTitle().equals("All Notes")) {
+                                // Load notes for this folder
+                                folderDAO.loadNotes(folder);
+                                noteCount = (int) folder.getChildren().stream()
+                                    .filter(c -> c instanceof Note)
+                                    .count();
+                            } else {
+                                noteCount = noteDAO.fetchAllNotes().size();
+                            }
+                        } catch (Exception e) {
+                            // Ignore count errors
+                        }
+                        
+                        HBox container = new HBox(6);
+                        container.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                        
+                        Label iconLabel = new Label(icon);
+                        iconLabel.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: bold; -fx-font-size: 10px;");
+                        
+                        Label nameLabel = new Label(folder.getTitle());
+                        nameLabel.setStyle("-fx-text-fill: inherit;");
+                        
+                        if (noteCount > 0) {
+                            Label countLabel = new Label("(" + noteCount + ")");
+                            countLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 10px;");
+                            container.getChildren().addAll(iconLabel, nameLabel, countLabel);
+                        } else {
+                            container.getChildren().addAll(iconLabel, nameLabel);
+                        }
+                        
+                        setGraphic(container);
+                        setText(null);
+                    }
+                }
+            };
+            
+            // Drop handling
+            cell.setOnDragOver(event -> {
+                if (event.getGestureSource() != cell && 
+                    event.getDragboard().hasString() &&
+                    event.getDragboard().getString().startsWith("note:")) {
+                    
+                    Folder folder = cell.getItem();
+                    if (folder != null && !folder.getTitle().equals("All Notes")) {
+                        event.acceptTransferModes(javafx.scene.input.TransferMode.MOVE);
+                        cell.setStyle("-fx-background-color: #4a5568; -fx-background-radius: 4;");
+                    }
+                }
+                event.consume();
+            });
+            
+            cell.setOnDragExited(event -> {
+                cell.setStyle("");
+                event.consume();
+            });
+            
+            cell.setOnDragDropped(event -> {
+                javafx.scene.input.Dragboard db = event.getDragboard();
+                boolean success = false;
+                
+                if (db.hasString() && db.getString().startsWith("note:")) {
+                    Folder targetFolder = cell.getItem();
+                    if (targetFolder != null && !targetFolder.getTitle().equals("All Notes")) {
+                        try {
+                            int noteId = Integer.parseInt(db.getString().substring(5));
+                            Note note = noteDAO.getNoteById(noteId);
+                            
+                            if (note != null) {
+                                // Move note to new folder
+                                folderDAO.addNote(targetFolder, note);
+                                
+                                success = true;
+                                logger.info("Moved note '" + note.getTitle() + "' to folder '" + targetFolder.getTitle() + "'");
+                                
+                                // Refresh views
+                                Platform.runLater(() -> {
+                                    refreshNotesList();
+                                    loadFolders();
+                                });
+                            }
+                        } catch (Exception e) {
+                            logger.warning("Failed to move note: " + e.getMessage());
+                            updateStatus("Error moving note");
+                        }
+                    }
+                }
+                
+                event.setDropCompleted(success);
+                event.consume();
+            });
+            
+            return cell;
+        });
     }
     
     /**
@@ -1045,6 +1267,95 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         return pluginPanelsContainer != null && pluginPanelsContainer.isVisible();
     }
     
+    // ==================== STATUS BAR ITEMS IMPLEMENTATION ====================
+    
+    /**
+     * Registers a status bar item for a plugin.
+     */
+    @Override
+    public void registerStatusBarItem(String pluginId, String itemId, javafx.scene.Node content) {
+        Platform.runLater(() -> {
+            if (pluginStatusBarContainer == null) {
+                logger.warning("Status bar container not available for: " + itemId);
+                return;
+            }
+            
+            String fullItemId = pluginId + ":" + itemId;
+            
+            // Wrap content with separator
+            HBox wrapper = new HBox(8);
+            wrapper.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+            
+            Separator sep = new Separator();
+            sep.setOrientation(javafx.geometry.Orientation.VERTICAL);
+            sep.getStyleClass().add("status-separator");
+            
+            wrapper.getChildren().addAll(sep, content);
+            
+            // Add to container
+            pluginStatusBarContainer.getChildren().add(wrapper);
+            pluginStatusBarItems.put(fullItemId, wrapper);
+            pluginStatusBarItemIds.computeIfAbsent(pluginId, k -> new ArrayList<>()).add(fullItemId);
+            
+            logger.fine("Registered status bar item: " + itemId + " for plugin " + pluginId);
+        });
+    }
+    
+    /**
+     * Removes a status bar item.
+     */
+    @Override
+    public void removeStatusBarItem(String pluginId, String itemId) {
+        Platform.runLater(() -> {
+            String fullItemId = pluginId + ":" + itemId;
+            javafx.scene.Node item = pluginStatusBarItems.remove(fullItemId);
+            if (item != null && pluginStatusBarContainer != null) {
+                pluginStatusBarContainer.getChildren().remove(item);
+                
+                List<String> ids = pluginStatusBarItemIds.get(pluginId);
+                if (ids != null) {
+                    ids.remove(fullItemId);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Updates a status bar item's content.
+     */
+    @Override
+    public void updateStatusBarItem(String pluginId, String itemId, javafx.scene.Node content) {
+        Platform.runLater(() -> {
+            String fullItemId = pluginId + ":" + itemId;
+            javafx.scene.Node wrapper = pluginStatusBarItems.get(fullItemId);
+            if (wrapper instanceof HBox) {
+                HBox box = (HBox) wrapper;
+                if (box.getChildren().size() > 1) {
+                    box.getChildren().set(1, content);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Removes all status bar items for a plugin.
+     * Called when a plugin is disabled or unloaded.
+     */
+    @Override
+    public void removeAllStatusBarItems(String pluginId) {
+        Platform.runLater(() -> {
+            List<String> ids = pluginStatusBarItemIds.remove(pluginId);
+            if (ids != null && pluginStatusBarContainer != null) {
+                for (String fullItemId : ids) {
+                    javafx.scene.Node item = pluginStatusBarItems.remove(fullItemId);
+                    if (item != null) {
+                        pluginStatusBarContainer.getChildren().remove(item);
+                    }
+                }
+            }
+        });
+    }
+    
     /**
      * Loads plugins from the plugins/ directory.
      * All plugins (including built-in ones) must be in plugins/ as JAR files.
@@ -1161,7 +1472,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 handleToggleSidebar(null);
                 break;
             case "Toggle Info Panel":
-                handleShowNoteInfo(null);
+            case "Toggle Right Panel":
+                handleToggleRightPanel(null);
                 break;
             case "Editor Mode":
                 handleEditorOnlyMode(null);
@@ -1277,7 +1589,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
      * Initialize view mode toggle buttons (Obsidian-style).
      */
     private void initializeViewModeButtons() {
-        // Create toggle group for view modes
+        // Create toggle group for editor/preview view modes
         ToggleGroup viewModeGroup = new ToggleGroup();
         if (editorOnlyButton != null) {
             editorOnlyButton.setToggleGroup(viewModeGroup);
@@ -1290,8 +1602,235 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             previewOnlyButton.setToggleGroup(viewModeGroup);
         }
         
+        // Create toggle group for list/grid view modes
+        ToggleGroup notesViewGroup = new ToggleGroup();
+        if (listViewButton != null) {
+            listViewButton.setToggleGroup(notesViewGroup);
+            listViewButton.setSelected(true);
+        }
+        if (gridViewButton != null) {
+            gridViewButton.setToggleGroup(notesViewGroup);
+        }
+        
+        // Initialize grid view container
+        initializeGridView();
+        
         // Apply initial view mode
         applyViewMode();
+    }
+    
+    /**
+     * Initialize the grid view container.
+     */
+    private void initializeGridView() {
+        notesGridPane = new javafx.scene.layout.TilePane();
+        notesGridPane.setPrefColumns(3);
+        notesGridPane.setHgap(12);
+        notesGridPane.setVgap(12);
+        notesGridPane.setPadding(new javafx.geometry.Insets(12));
+        notesGridPane.setStyle("-fx-background-color: transparent;");
+        
+        gridScrollPane = new javafx.scene.control.ScrollPane(notesGridPane);
+        gridScrollPane.setFitToWidth(true);
+        gridScrollPane.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
+        gridScrollPane.getStyleClass().add("notes-grid-scroll");
+        
+        // Store reference to the notes panel container
+        if (notesListView != null && notesListView.getParent() instanceof VBox) {
+            notesPanelContainer = (VBox) notesListView.getParent();
+        }
+    }
+    
+    /**
+     * Handle switching to list view.
+     */
+    @FXML
+    private void handleListView(ActionEvent event) {
+        if (currentNotesViewMode != NotesViewMode.LIST) {
+            currentNotesViewMode = NotesViewMode.LIST;
+            applyNotesViewMode();
+            updateStatus("Switched to list view");
+        }
+    }
+    
+    /**
+     * Handle switching to grid view.
+     */
+    @FXML
+    private void handleGridView(ActionEvent event) {
+        if (currentNotesViewMode != NotesViewMode.GRID) {
+            currentNotesViewMode = NotesViewMode.GRID;
+            applyNotesViewMode();
+            updateStatus("Switched to grid view");
+        }
+    }
+    
+    /**
+     * Apply the current notes view mode (list/grid).
+     */
+    private void applyNotesViewMode() {
+        if (notesListView == null || gridScrollPane == null) return;
+        
+        // Get or update the panel container reference
+        if (notesPanelContainer == null) {
+            javafx.scene.Parent parent = notesListView.getParent();
+            if (parent instanceof VBox) {
+                notesPanelContainer = (VBox) parent;
+            } else {
+                // Try to get parent from gridScrollPane if list is not in scene
+                parent = gridScrollPane.getParent();
+                if (parent instanceof VBox) {
+                    notesPanelContainer = (VBox) parent;
+                }
+            }
+        }
+        
+        if (notesPanelContainer == null) {
+            logger.warning("Could not find notes panel container");
+            return;
+        }
+        
+        Platform.runLater(() -> {
+            if (currentNotesViewMode == NotesViewMode.GRID) {
+                // Switch to grid view
+                if (notesPanelContainer.getChildren().contains(notesListView)) {
+                    notesPanelContainer.getChildren().remove(notesListView);
+                }
+                if (!notesPanelContainer.getChildren().contains(gridScrollPane)) {
+                    notesPanelContainer.getChildren().add(gridScrollPane);
+                    VBox.setVgrow(gridScrollPane, Priority.ALWAYS);
+                }
+                refreshGridView();
+            } else {
+                // Switch to list view
+                if (notesPanelContainer.getChildren().contains(gridScrollPane)) {
+                    notesPanelContainer.getChildren().remove(gridScrollPane);
+                }
+                if (!notesPanelContainer.getChildren().contains(notesListView)) {
+                    notesPanelContainer.getChildren().add(notesListView);
+                    VBox.setVgrow(notesListView, Priority.ALWAYS);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Refresh the grid view with current notes.
+     */
+    private void refreshGridView() {
+        if (notesGridPane == null) return;
+        
+        notesGridPane.getChildren().clear();
+        
+        List<Note> notes = new ArrayList<>(notesListView.getItems());
+        
+        for (Note note : notes) {
+            VBox card = createNoteCard(note);
+            notesGridPane.getChildren().add(card);
+        }
+    }
+    
+    /**
+     * Create a note card for grid view.
+     */
+    private VBox createNoteCard(Note note) {
+        VBox card = new VBox(8);
+        card.setPrefWidth(180);
+        card.setPrefHeight(140);
+        card.setPadding(new javafx.geometry.Insets(12));
+        card.getStyleClass().add("note-card");
+        
+        // Determine theme colors
+        boolean isDark = "dark".equals(currentTheme) || 
+                        ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
+        
+        String bgColor = isDark ? "#2d2d2d" : "#ffffff";
+        String borderColor = isDark ? "#404040" : "#e0e0e0";
+        String titleColor = isDark ? "#e0e0e0" : "#333333";
+        String previewColor = isDark ? "#888888" : "#666666";
+        String dateColor = isDark ? "#666666" : "#999999";
+        
+        card.setStyle(String.format(
+            "-fx-background-color: %s; -fx-border-color: %s; -fx-border-radius: 8; " +
+            "-fx-background-radius: 8; -fx-cursor: hand; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 4, 0, 0, 2);",
+            bgColor, borderColor
+        ));
+        
+        // Title with favorite indicator
+        Label titleLabel = new Label((note.isFavorite() ? "★ " : "") + 
+            (note.getTitle() != null ? note.getTitle() : "Untitled"));
+        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: " + titleColor + ";");
+        titleLabel.setWrapText(true);
+        titleLabel.setMaxHeight(40);
+        
+        // Preview text
+        String preview = note.getContent() != null && !note.getContent().isEmpty()
+            ? note.getContent().replaceAll("^#+\\s*", "").replaceAll("\\n", " ").trim()
+            : "";
+        if (preview.length() > 80) {
+            preview = preview.substring(0, 77) + "...";
+        }
+        Label previewLabel = new Label(preview);
+        previewLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: " + previewColor + ";");
+        previewLabel.setWrapText(true);
+        previewLabel.setMaxHeight(60);
+        VBox.setVgrow(previewLabel, Priority.ALWAYS);
+        
+        // Date
+        String dateText = note.getModifiedDate() != null ? note.getModifiedDate() : note.getCreatedDate();
+        if (dateText != null && dateText.length() > 10) {
+            dateText = dateText.substring(0, 10);
+        }
+        Label dateLabel = new Label(dateText != null ? dateText : "");
+        dateLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: " + dateColor + ";");
+        
+        card.getChildren().addAll(titleLabel, previewLabel, dateLabel);
+        
+        // Hover effects
+        card.setOnMouseEntered(e -> {
+            String hoverBg = isDark ? "#3a3a3a" : "#f5f5f5";
+            card.setStyle(card.getStyle().replace("-fx-background-color: " + bgColor, "-fx-background-color: " + hoverBg));
+        });
+        card.setOnMouseExited(e -> {
+            card.setStyle(card.getStyle().replace("-fx-background-color: " + (isDark ? "#3a3a3a" : "#f5f5f5"), "-fx-background-color: " + bgColor));
+        });
+        
+        // Click to select and load note
+        card.setOnMouseClicked(e -> {
+            notesListView.getSelectionModel().select(note);
+            loadNoteInEditor(note);
+        });
+        
+        // Setup drag for grid cards
+        setupNoteCardDrag(card, note);
+        
+        return card;
+    }
+    
+    /**
+     * Setup drag for note card in grid view.
+     */
+    private void setupNoteCardDrag(VBox card, Note note) {
+        card.setOnDragDetected(event -> {
+            javafx.scene.input.Dragboard db = card.startDragAndDrop(javafx.scene.input.TransferMode.MOVE);
+            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+            content.putString("note:" + note.getId());
+            db.setContent(content);
+            
+            javafx.scene.SnapshotParameters params = new javafx.scene.SnapshotParameters();
+            params.setFill(javafx.scene.paint.Color.TRANSPARENT);
+            db.setDragView(card.snapshot(params, null));
+            
+            event.consume();
+            updateStatus("Dragging: " + note.getTitle());
+        });
+        
+        card.setOnDragDone(event -> {
+            if (event.getTransferMode() == javafx.scene.input.TransferMode.MOVE) {
+                updateStatus("Note moved successfully");
+            }
+            event.consume();
+        });
     }
     
     /**
@@ -1412,9 +1951,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         
         // Action buttons  
         setButtonText(favoriteButton, "★", "Add to favorites");
-        setButtonText(infoButton, "ℹ", "Note information");
         setButtonText(deleteNoteBtn, "❌", "Delete note");
-        setButtonText(closeInfoBtn, "❌", "Close panel");
+        setButtonText(infoButton, "☰", "Toggle panel");
+        setButtonText(closeRightPanelBtn, "×", "Close panel");
         
         // Format toolbar
         setButtonText(heading1Btn, "H1", "Heading 1");
@@ -1451,14 +1990,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     }
     
     /**
-     * Handle show note info panel.
+     * Toggle the right panel visibility.
      */
     @FXML
-    private void handleShowNoteInfo(ActionEvent event) {
-        if (infoPanel != null) {
-            boolean isVisible = infoPanel.isVisible();
-            infoPanel.setVisible(!isVisible);
-            infoPanel.setManaged(!isVisible);
+    private void handleToggleRightPanel(ActionEvent event) {
+        if (rightPanel != null) {
+            boolean isVisible = rightPanel.isVisible();
+            rightPanel.setVisible(!isVisible);
+            rightPanel.setManaged(!isVisible);
             
             if (!isVisible && currentNote != null) {
                 updateNoteInfoPanel();
@@ -1467,13 +2006,43 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     }
     
     /**
-     * Handle close info panel button.
+     * Handle close right panel button.
      */
     @FXML
-    private void handleCloseInfoPanel(ActionEvent event) {
-        if (infoPanel != null) {
-            infoPanel.setVisible(false);
-            infoPanel.setManaged(false);
+    private void handleCloseRightPanel(ActionEvent event) {
+        if (rightPanel != null) {
+            rightPanel.setVisible(false);
+            rightPanel.setManaged(false);
+        }
+    }
+    
+    /**
+     * Legacy method - redirect to new handler.
+     */
+    @FXML
+    private void handleShowNoteInfo(ActionEvent event) {
+        handleToggleRightPanel(event);
+    }
+    
+    /**
+     * Initialize the collapsible sections in the right panel.
+     */
+    private void initializeRightPanelSections() {
+        // Make Note Info section collapsible
+        if (noteInfoHeader != null && noteInfoContent != null && noteInfoCollapseIcon != null) {
+            noteInfoHeader.setOnMouseClicked(e -> {
+                boolean isCollapsed = !noteInfoContent.isVisible();
+                noteInfoContent.setVisible(isCollapsed);
+                noteInfoContent.setManaged(isCollapsed);
+                noteInfoCollapseIcon.setText(isCollapsed ? "▼" : "▶");
+            });
+            noteInfoHeader.setStyle("-fx-cursor: hand;");
+        }
+        
+        // Plugin panels container should always be visible (content is added dynamically)
+        if (pluginPanelsContainer != null) {
+            pluginPanelsContainer.setVisible(true);
+            pluginPanelsContainer.setManaged(true);
         }
     }
     
@@ -1578,6 +2147,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             currentFolder = null;
             currentTag = null;
             currentFilterType = "all";
+            
+            // Refresh grid view if active
+            if (currentNotesViewMode == NotesViewMode.GRID) {
+                Platform.runLater(this::refreshGridView);
+            }
+            
             updateStatus("Loaded all notes");
         } catch (Exception e) {
             logger.severe("Failed to load all notes: " + e.getMessage());
@@ -1610,6 +2185,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 noteCountLabel.setText(notes.size() + " notes");
                 currentFilterType = "folder";
                 currentTag = null;
+                
+                // Refresh grid view if active
+                if (currentNotesViewMode == NotesViewMode.GRID) {
+                    Platform.runLater(this::refreshGridView);
+                }
+                
                 updateStatus("Loaded folder: " + currentFolder.getTitle());
             }
         } catch (Exception e) {
@@ -1660,6 +2241,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         
         // Refresh favorites list to show current favorite status
         loadFavorites();
+        
+        // Publish event for plugins (Outline, etc.)
+        if (eventBus != null) {
+            eventBus.publish(new NoteEvents.NoteSelectedEvent(note));
+        }
         
         isModified = false;
         updateStatus("Loaded note: " + note.getTitle());
@@ -1953,6 +2539,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             notesListView.getItems().setAll(filteredNotes);
             noteCountLabel.setText(filteredNotes.size() + " notes found");
             currentFilterType = "search";
+            
+            // Refresh grid view if active
+            if (currentNotesViewMode == NotesViewMode.GRID) {
+                Platform.runLater(this::refreshGridView);
+            }
+            
             updateStatus("Search: " + searchText);
         } catch (Exception e) {
             logger.severe("Failed to perform search: " + e.getMessage());
@@ -2014,6 +2606,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         }
         
         notesListView.getItems().setAll(notes);
+        
+        // Refresh grid view if active
+        if (currentNotesViewMode == NotesViewMode.GRID) {
+            Platform.runLater(this::refreshGridView);
+        }
     }
     
     /**
@@ -2047,7 +2644,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     }
     
     /**
-     * Update preview.
+     * Update preview with syntax highlighting (highlight.js).
      */
     private void updatePreview() {
         if (currentNote != null && previewWebView != null) {
@@ -2063,71 +2660,112 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 // Convert markdown to HTML
                 String html = com.example.forevernote.util.MarkdownProcessor.markdownToHtml(content);
                 
-                // Create a complete HTML document with theme-aware styling
+                // highlight.js theme selection (VS Code style)
+                String highlightTheme = isDarkTheme 
+                    ? "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css"
+                    : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs.min.css";
+                
+                // Create a complete HTML document with theme-aware styling and syntax highlighting
                 String fullHtml = "<!DOCTYPE html>\n" +
                     "<html>\n" +
                     "<head>\n" +
                     "    <meta charset=\"UTF-8\">\n" +
                     "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n" +
+                    "    <link rel=\"stylesheet\" href=\"" + highlightTheme + "\">\n" +
+                    "    <script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js\"></script>\n" +
                     "    <style>\n" +
-                    "        @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&display=swap');\n" +
+                    "        @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=JetBrains+Mono:wght@400;500&display=swap');\n" +
                     "        html { " +
                     (isDarkTheme ? "background-color: #1E1E1E;" : "background-color: #FFFFFF;") +
                     " margin: 0; padding: 0; width: 100%; height: 100%; }\n" +
                     (isDarkTheme ? 
-                    // Dark theme styles (standard dark theme colors)
-                    "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; padding: 20px; line-height: 1.6; color: #FFFFFF; background-color: #1E1E1E; }\n" +
-                    "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; color: #FFFFFF; }\n" +
-                    "        h1 { font-size: 2em; border-bottom: 2px solid #404040; padding-bottom: 0.3em; }\n" +
-                    "        h2 { font-size: 1.5em; border-bottom: 1px solid #404040; padding-bottom: 0.3em; }\n" +
+                    // Dark theme styles with improved code styling
+                    "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; padding: 20px; line-height: 1.6; color: #E0E0E0; background-color: #1E1E1E; }\n" +
+                    "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; color: #FFFFFF; }\n" +
+                    "        h1 { font-size: 2em; border-bottom: 2px solid #3a3a3a; padding-bottom: 0.3em; }\n" +
+                    "        h2 { font-size: 1.5em; border-bottom: 1px solid #3a3a3a; padding-bottom: 0.3em; }\n" +
                     "        h3 { font-size: 1.25em; }\n" +
-                    "        code { background-color: #2D2D2D; color: #A5B4FC; padding: 2px 4px; border-radius: 3px; font-family: 'Courier New', monospace; }\n" +
-                    "        pre { background-color: #2D2D2D; color: #FFFFFF; padding: 10px; border-radius: 5px; overflow-x: auto; border: 1px solid #404040; }\n" +
-                    "        pre code { background-color: transparent; padding: 0; color: #A5B4FC; }\n" +
-                    "        blockquote { border-left: 4px solid #818CF8; margin: 0; padding-left: 20px; color: #B3B3B3; background-color: #2D2D2D; padding: 10px 20px; border-radius: 4px; }\n" +
-                    "        ul, ol { margin: 1em 0; padding-left: 2em; color: #FFFFFF; }\n" +
+                    "        /* Inline code */\n" +
+                    "        code:not(pre code) { background-color: #2d2d2d; color: #ce9178; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.9em; }\n" +
+                    "        /* Code blocks with syntax highlighting */\n" +
+                    "        pre { background-color: #1e1e1e; border: 1px solid #3a3a3a; border-radius: 6px; margin: 1em 0; overflow-x: auto; }\n" +
+                    "        pre code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 13px; line-height: 1.5; padding: 16px !important; display: block; background: transparent !important; color: inherit; }\n" +
+                    "        /* Language label */\n" +
+                    "        pre[class*='language-']::before { content: attr(data-lang); position: absolute; top: 0; right: 0; padding: 2px 8px; font-size: 10px; color: #888; background: #2d2d2d; border-bottom-left-radius: 4px; }\n" +
+                    "        pre { position: relative; }\n" +
+                    "        /* Additional highlight.js overrides for dark theme */\n" +
+                    "        .hljs { background: transparent !important; }\n" +
+                    "        blockquote { border-left: 4px solid #818CF8; margin: 0; padding-left: 20px; color: #B3B3B3; background-color: #252525; padding: 10px 20px; border-radius: 4px; }\n" +
+                    "        ul, ol { margin: 1em 0; padding-left: 2em; color: #E0E0E0; }\n" +
                     "        li { margin: 0.5em 0; }\n" +
+                    "        /* Task lists */\n" +
+                    "        input[type='checkbox'] { margin-right: 8px; transform: scale(1.2); }\n" +
                     "        table { border-collapse: collapse; width: 100%; margin: 1em 0; }\n" +
-                    "        table th, table td { border: 1px solid #404040; padding: 8px; text-align: left; }\n" +
-                    "        table th { background-color: #2D2D2D; font-weight: 600; color: #FFFFFF; }\n" +
-                    "        table td { background-color: #1E1E1E; color: #FFFFFF; }\n" +
+                    "        table th, table td { border: 1px solid #3a3a3a; padding: 10px; text-align: left; }\n" +
+                    "        table th { background-color: #252525; font-weight: 600; color: #FFFFFF; }\n" +
+                    "        table td { background-color: #1E1E1E; color: #E0E0E0; }\n" +
+                    "        table tr:hover td { background-color: #252525; }\n" +
                     "        a { color: #818CF8; text-decoration: none; }\n" +
                     "        a:hover { color: #A5B4FC; text-decoration: underline; }\n" +
-                    "        img { max-width: 100%; height: auto; border-radius: 4px; }\n" +
-                    "        hr { border: none; border-top: 1px solid #404040; margin: 2em 0; }\n" +
+                    "        img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }\n" +
+                    "        hr { border: none; border-top: 1px solid #3a3a3a; margin: 2em 0; }\n" +
                     "        strong { color: #FFFFFF; font-weight: 600; }\n" +
-                    "        em { color: #FFFFFF; font-style: italic; }\n" +
+                    "        em { font-style: italic; }\n" +
+                    "        mark { background-color: #564a00; color: #ffd700; padding: 1px 3px; border-radius: 2px; }\n" +
                     "        /* Emoji support */\n" +
                     "        * { font-variant-emoji: emoji; }\n" :
-                    // Light theme styles
-                    "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; padding: 20px; line-height: 1.6; color: #18181B; background-color: #FFFFFF; }\n" +
-                    "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; color: #18181B; }\n" +
-                    "        h1 { font-size: 2em; border-bottom: 2px solid #E4E4E7; padding-bottom: 0.3em; }\n" +
-                    "        h2 { font-size: 1.5em; border-bottom: 1px solid #E4E4E7; padding-bottom: 0.3em; }\n" +
+                    // Light theme styles with improved code styling
+                    "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; padding: 20px; line-height: 1.6; color: #24292e; background-color: #FFFFFF; }\n" +
+                    "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; color: #24292e; }\n" +
+                    "        h1 { font-size: 2em; border-bottom: 2px solid #eaecef; padding-bottom: 0.3em; }\n" +
+                    "        h2 { font-size: 1.5em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }\n" +
                     "        h3 { font-size: 1.25em; }\n" +
-                    "        code { background-color: #F5F5F5; color: #6366F1; padding: 2px 4px; border-radius: 3px; font-family: 'Courier New', monospace; }\n" +
-                    "        pre { background-color: #F5F5F5; color: #18181B; padding: 10px; border-radius: 5px; overflow-x: auto; border: 1px solid #E4E4E7; }\n" +
-                    "        pre code { background-color: transparent; padding: 0; color: #6366F1; }\n" +
-                    "        blockquote { border-left: 4px solid #6366F1; margin: 0; padding-left: 20px; color: #71717A; background-color: #FAFAFA; padding: 10px 20px; border-radius: 4px; }\n" +
-                    "        ul, ol { margin: 1em 0; padding-left: 2em; color: #18181B; }\n" +
+                    "        /* Inline code */\n" +
+                    "        code:not(pre code) { background-color: #f0f0f0; color: #d63384; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.9em; }\n" +
+                    "        /* Code blocks with syntax highlighting */\n" +
+                    "        pre { background-color: #f8f8f8; border: 1px solid #e1e4e8; border-radius: 6px; margin: 1em 0; overflow-x: auto; }\n" +
+                    "        pre code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 13px; line-height: 1.5; padding: 16px !important; display: block; background: transparent !important; color: inherit; }\n" +
+                    "        /* Language label */\n" +
+                    "        pre[class*='language-']::before { content: attr(data-lang); position: absolute; top: 0; right: 0; padding: 2px 8px; font-size: 10px; color: #666; background: #e8e8e8; border-bottom-left-radius: 4px; }\n" +
+                    "        pre { position: relative; }\n" +
+                    "        /* Additional highlight.js overrides for light theme */\n" +
+                    "        .hljs { background: transparent !important; }\n" +
+                    "        blockquote { border-left: 4px solid #6366F1; margin: 0; padding-left: 20px; color: #57606a; background-color: #f6f8fa; padding: 10px 20px; border-radius: 4px; }\n" +
+                    "        ul, ol { margin: 1em 0; padding-left: 2em; color: #24292e; }\n" +
                     "        li { margin: 0.5em 0; }\n" +
+                    "        /* Task lists */\n" +
+                    "        input[type='checkbox'] { margin-right: 8px; transform: scale(1.2); }\n" +
                     "        table { border-collapse: collapse; width: 100%; margin: 1em 0; }\n" +
-                    "        table th, table td { border: 1px solid #E4E4E7; padding: 8px; text-align: left; }\n" +
-                    "        table th { background-color: #F5F5F5; font-weight: 600; color: #18181B; }\n" +
-                    "        table td { background-color: #FFFFFF; color: #18181B; }\n" +
-                    "        a { color: #6366F1; text-decoration: none; }\n" +
-                    "        a:hover { color: #4F46E5; text-decoration: underline; }\n" +
-                    "        img { max-width: 100%; height: auto; border-radius: 4px; }\n" +
-                    "        hr { border: none; border-top: 1px solid #E4E4E7; margin: 2em 0; }\n" +
-                    "        strong { color: #18181B; font-weight: 600; }\n" +
-                    "        em { color: #18181B; font-style: italic; }\n" +
+                    "        table th, table td { border: 1px solid #e1e4e8; padding: 10px; text-align: left; }\n" +
+                    "        table th { background-color: #f6f8fa; font-weight: 600; color: #24292e; }\n" +
+                    "        table td { background-color: #FFFFFF; color: #24292e; }\n" +
+                    "        table tr:hover td { background-color: #f6f8fa; }\n" +
+                    "        a { color: #0969da; text-decoration: none; }\n" +
+                    "        a:hover { color: #0550ae; text-decoration: underline; }\n" +
+                    "        img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }\n" +
+                    "        hr { border: none; border-top: 1px solid #e1e4e8; margin: 2em 0; }\n" +
+                    "        strong { color: #24292e; font-weight: 600; }\n" +
+                    "        em { font-style: italic; }\n" +
+                    "        mark { background-color: #fff8c5; padding: 1px 3px; border-radius: 2px; }\n" +
                     "        /* Emoji support */\n" +
                     "        * { font-variant-emoji: emoji; }\n") +
                     "    </style>\n" +
                     "</head>\n" +
                     "<body>\n" +
                     html +
-                    "\n</body>\n" +
+                    "\n<script>\n" +
+                    "    // Initialize syntax highlighting\n" +
+                    "    document.addEventListener('DOMContentLoaded', function() {\n" +
+                    "        document.querySelectorAll('pre code').forEach(function(block) {\n" +
+                    "            hljs.highlightElement(block);\n" +
+                    "        });\n" +
+                    "    });\n" +
+                    "    // Run immediately in case DOM is already loaded\n" +
+                    "    document.querySelectorAll('pre code').forEach(function(block) {\n" +
+                    "        hljs.highlightElement(block);\n" +
+                    "    });\n" +
+                    "</script>\n" +
+                    "</body>\n" +
                     "</html>";
                 
                 previewWebView.getEngine().loadContent(fullHtml, "text/html");
@@ -2462,6 +3100,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 // Refresh favorites list in case favorite status changed
                 loadFavorites();
                 
+                // Publish NoteSavedEvent for plugins (Outline, etc.)
+                if (eventBus != null) {
+                    eventBus.publish(new NoteEvents.NoteSavedEvent(currentNote));
+                }
+                
                 updateStatus("Saved: " + currentNote.getTitle());
             } catch (Exception e) {
                 logger.severe("Failed to save note: " + e.getMessage());
@@ -2478,6 +3121,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             loadAllNotes();
         } else {
             handleFolderSelection(currentFolder);
+        }
+        
+        // Also refresh grid view if active
+        if (currentNotesViewMode == NotesViewMode.GRID) {
+            refreshGridView();
         }
     }
     

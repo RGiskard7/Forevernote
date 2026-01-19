@@ -189,11 +189,12 @@ public class CalendarPlugin implements Plugin {
         calendarGrid.getChildren().clear();
         
         // Add day headers
-        String[] dayNames = {"M", "T", "W", "T", "F", "S", "S"};
+        String[] dayNames = {"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"};
         for (int i = 0; i < 7; i++) {
             Label dayLabel = new Label(dayNames[i]);
-            dayLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: #888; -fx-font-weight: bold;");
-            dayLabel.setMinWidth(24);
+            dayLabel.setStyle("-fx-font-size: 9px; -fx-text-fill: #888888; -fx-font-weight: bold;");
+            dayLabel.setMinWidth(28);
+            dayLabel.setMaxWidth(28);
             dayLabel.setAlignment(Pos.CENTER);
             calendarGrid.add(dayLabel, i, 0);
         }
@@ -230,54 +231,63 @@ public class CalendarPlugin implements Plugin {
      */
     private Button createDayButton(LocalDate date, LocalDate today) {
         Button btn = new Button(String.valueOf(date.getDayOfMonth()));
-        btn.setMinSize(24, 24);
-        btn.setMaxSize(24, 24);
-        btn.setPadding(new Insets(2));
-        
-        // Base style
-        String baseStyle = "-fx-font-size: 10px; -fx-background-radius: 4; -fx-cursor: hand;";
+        btn.setMinSize(28, 28);
+        btn.setMaxSize(28, 28);
+        btn.setPadding(Insets.EMPTY);
         
         boolean isToday = date.equals(today);
         boolean hasNote = datesWithNotes.contains(date);
         boolean isWeekend = date.getDayOfWeek() == DayOfWeek.SATURDAY || 
                            date.getDayOfWeek() == DayOfWeek.SUNDAY;
         
-        if (isToday) {
-            // Today: highlighted
-            btn.setStyle(baseStyle + "-fx-background-color: #5c6bc0; -fx-text-fill: white; -fx-font-weight: bold;");
-        } else if (hasNote) {
-            // Has daily note: dotted/marked
-            btn.setStyle(baseStyle + "-fx-background-color: #4caf50; -fx-text-fill: white;");
-        } else if (isWeekend) {
-            // Weekend
-            btn.setStyle(baseStyle + "-fx-background-color: #2a2a2a; -fx-text-fill: #ff8a80;");
-        } else {
-            // Normal day
-            btn.setStyle(baseStyle + "-fx-background-color: #2a2a2a; -fx-text-fill: #e0e0e0;");
-        }
+        // Apply style
+        applyDayButtonStyle(btn, isToday, hasNote, isWeekend, false);
         
-        // Hover effect
-        btn.setOnMouseEntered(e -> {
-            if (!isToday && !hasNote) {
-                btn.setStyle(baseStyle + "-fx-background-color: #3a3a3a; -fx-text-fill: #ffffff;");
-            }
-        });
-        btn.setOnMouseExited(e -> {
-            if (isToday) {
-                btn.setStyle(baseStyle + "-fx-background-color: #5c6bc0; -fx-text-fill: white; -fx-font-weight: bold;");
-            } else if (hasNote) {
-                btn.setStyle(baseStyle + "-fx-background-color: #4caf50; -fx-text-fill: white;");
-            } else if (isWeekend) {
-                btn.setStyle(baseStyle + "-fx-background-color: #2a2a2a; -fx-text-fill: #ff8a80;");
-            } else {
-                btn.setStyle(baseStyle + "-fx-background-color: #2a2a2a; -fx-text-fill: #e0e0e0;");
-            }
-        });
+        // Hover effects
+        final boolean finalIsToday = isToday;
+        final boolean finalHasNote = hasNote;
+        final boolean finalIsWeekend = isWeekend;
+        
+        btn.setOnMouseEntered(e -> applyDayButtonStyle(btn, finalIsToday, finalHasNote, finalIsWeekend, true));
+        btn.setOnMouseExited(e -> applyDayButtonStyle(btn, finalIsToday, finalHasNote, finalIsWeekend, false));
         
         // Click to open/create daily note
         btn.setOnAction(e -> openDailyNote(date));
         
         return btn;
+    }
+    
+    /**
+     * Applies style to a day button.
+     */
+    private void applyDayButtonStyle(Button btn, boolean isToday, boolean hasNote, boolean isWeekend, boolean hover) {
+        String bgColor;
+        String textColor;
+        String fontWeight = "normal";
+        
+        if (isToday) {
+            bgColor = "#5c6bc0";
+            textColor = "#ffffff";
+            fontWeight = "bold";
+        } else if (hasNote) {
+            bgColor = hover ? "#66bb6a" : "#4caf50";
+            textColor = "#ffffff";
+        } else if (hover) {
+            bgColor = "#4a4a4a";
+            textColor = "#ffffff";
+        } else if (isWeekend) {
+            bgColor = "#333333";
+            textColor = "#ff8a80";
+        } else {
+            bgColor = "#333333";
+            textColor = "#e0e0e0";
+        }
+        
+        btn.setStyle(String.format(
+            "-fx-background-color: %s; -fx-text-fill: %s; -fx-font-weight: %s; " +
+            "-fx-font-size: 11px; -fx-background-radius: 4; -fx-cursor: hand; -fx-padding: 0;",
+            bgColor, textColor, fontWeight
+        ));
     }
     
     /**

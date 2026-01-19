@@ -102,9 +102,13 @@
                 
                 <Region HBox.hgrow="ALWAYS"/>
                 
-                <!-- Hidden toggle buttons for compatibility -->
-                <ToggleButton fx:id="listViewButton" visible="false" managed="false" selected="true"/>
-                <ToggleButton fx:id="gridViewButton" visible="false" managed="false"/>
+                <!-- View toggle buttons (List/Grid) -->
+                <ToggleButton fx:id="listViewButton" text="☰" onAction="#handleListView" styleClass="view-toggle-btn" selected="true">
+                    <tooltip><Tooltip text="List view"/></tooltip>
+                </ToggleButton>
+                <ToggleButton fx:id="gridViewButton" text="▦" onAction="#handleGridView" styleClass="view-toggle-btn">
+                    <tooltip><Tooltip text="Grid view"/></tooltip>
+                </ToggleButton>
             </HBox>
         </VBox>
     </top>
@@ -151,9 +155,9 @@
             </VBox>
             
             <!-- Right Content Area -->
-            <SplitPane fx:id="contentSplitPane" dividerPositions="0.30" styleClass="content-split">
+            <SplitPane fx:id="contentSplitPane" dividerPositions="0.25" styleClass="content-split">
                 <!-- Notes List Panel -->
-                <VBox styleClass="notes-panel" minWidth="200" maxWidth="360">
+                <VBox styleClass="notes-panel" minWidth="180" prefWidth="280">
                     <HBox alignment="CENTER_LEFT" spacing="8" styleClass="notes-header">
                         <padding>
                             <Insets top="12" right="12" bottom="12" left="12"/>
@@ -192,8 +196,8 @@
                         <Button fx:id="favoriteButton" text="*" onAction="#handleToggleFavorite" styleClass="action-btn">
                             <tooltip><Tooltip text="Add to favorites"/></tooltip>
                         </Button>
-                        <Button fx:id="infoButton" text="i" onAction="#handleShowNoteInfo" styleClass="action-btn">
-                            <tooltip><Tooltip text="Note information"/></tooltip>
+                        <Button fx:id="infoButton" text="☰" onAction="#handleToggleRightPanel" styleClass="action-btn">
+                            <tooltip><Tooltip text="Toggle right panel (Ctrl+.)"/></tooltip>
                         </Button>
                         <Button fx:id="deleteNoteBtn" text="x" onAction="#handleDeleteNote" styleClass="action-btn action-btn-danger">
                             <tooltip><Tooltip text="Delete note"/></tooltip>
@@ -294,74 +298,75 @@
         </SplitPane>
     </center>
     
-    <!-- Right Info Panel -->
+    <!-- Right Panel (Obsidian-style: multiple collapsible sections) -->
     <right>
-        <VBox fx:id="infoPanel" visible="false" managed="false" styleClass="info-panel" minWidth="240" prefWidth="280" maxWidth="320">
-            <padding>
-                <Insets top="16" right="16" bottom="16" left="16"/>
-            </padding>
-            
-            <HBox alignment="CENTER_LEFT" styleClass="info-header">
-                <Label text="Note Info" styleClass="info-title"/>
+        <VBox fx:id="rightPanel" visible="false" managed="false" styleClass="right-panel" minWidth="260" prefWidth="300" maxWidth="340">
+            <!-- Panel Header -->
+            <HBox alignment="CENTER_LEFT" styleClass="panel-header">
+                <padding>
+                    <Insets top="12" right="12" bottom="12" left="16"/>
+                </padding>
+                <Label text="Panel" styleClass="panel-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
-                <Button fx:id="closeInfoBtn" text="x" onAction="#handleCloseInfoPanel" styleClass="close-btn">
+                <Button fx:id="closeRightPanelBtn" text="×" onAction="#handleCloseRightPanel" styleClass="panel-close-btn">
                     <tooltip><Tooltip text="Close panel"/></tooltip>
                 </Button>
             </HBox>
             
-            <Separator styleClass="info-separator"/>
-            
-            <VBox spacing="16" VBox.vgrow="ALWAYS" styleClass="info-content">
-                <padding>
-                    <Insets top="16"/>
-                </padding>
-                
-                <VBox spacing="4" styleClass="info-section">
-                    <Label text="CREATED" styleClass="info-label"/>
-                    <Label fx:id="infoCreatedLabel" text="-" styleClass="info-value"/>
-                </VBox>
-                
-                <VBox spacing="4" styleClass="info-section">
-                    <Label text="MODIFIED" styleClass="info-label"/>
-                    <Label fx:id="infoModifiedLabel" text="-" styleClass="info-value"/>
-                </VBox>
-                
-                <Separator styleClass="info-separator"/>
-                
-                <VBox spacing="4" styleClass="info-section">
-                    <Label text="STATISTICS" styleClass="info-label"/>
-                    <HBox spacing="24">
-                        <VBox spacing="2">
-                            <Label text="Words" styleClass="info-sublabel"/>
-                            <Label fx:id="infoWordsLabel" text="0" styleClass="info-value"/>
+            <!-- Scrollable Content Area -->
+            <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="panel-scroll">
+                <VBox fx:id="rightPanelContent" spacing="0" styleClass="panel-content">
+                    <padding>
+                        <Insets top="8" right="12" bottom="16" left="12"/>
+                    </padding>
+                    
+                    <!-- Note Info Section (collapsible) -->
+                    <VBox fx:id="noteInfoSection" styleClass="panel-section">
+                        <HBox fx:id="noteInfoHeader" alignment="CENTER_LEFT" styleClass="section-header">
+                            <Label text="▼" fx:id="noteInfoCollapseIcon" styleClass="collapse-icon"/>
+                            <Label text="📄 Note Info" styleClass="section-title"/>
+                        </HBox>
+                        <VBox fx:id="noteInfoContent" spacing="12" styleClass="section-content">
+                            <padding>
+                                <Insets top="8" left="8"/>
+                            </padding>
+                            <VBox spacing="2">
+                                <Label text="CREATED" styleClass="info-label"/>
+                                <Label fx:id="infoCreatedLabel" text="-" styleClass="info-value"/>
+                            </VBox>
+                            <VBox spacing="2">
+                                <Label text="MODIFIED" styleClass="info-label"/>
+                                <Label fx:id="infoModifiedLabel" text="-" styleClass="info-value"/>
+                            </VBox>
+                            <HBox spacing="24">
+                                <VBox spacing="2">
+                                    <Label text="Words" styleClass="info-label"/>
+                                    <Label fx:id="infoWordsLabel" text="0" styleClass="info-value"/>
+                                </VBox>
+                                <VBox spacing="2">
+                                    <Label text="Chars" styleClass="info-label"/>
+                                    <Label fx:id="infoCharsLabel" text="0" styleClass="info-value"/>
+                                </VBox>
+                            </HBox>
+                            <VBox spacing="2">
+                                <Label text="LOCATION" styleClass="info-label"/>
+                                <Label fx:id="infoLatitudeLabel" text="Lat: -" styleClass="info-value-small"/>
+                                <Label fx:id="infoLongitudeLabel" text="Lon: -" styleClass="info-value-small"/>
+                            </VBox>
+                            <VBox spacing="2">
+                                <Label text="METADATA" styleClass="info-label"/>
+                                <Label fx:id="infoAuthorLabel" text="Author: -" styleClass="info-value-small"/>
+                                <Label fx:id="infoSourceUrlLabel" text="URL: -" styleClass="info-value-small" wrapText="true"/>
+                            </VBox>
                         </VBox>
-                        <VBox spacing="2">
-                            <Label text="Characters" styleClass="info-sublabel"/>
-                            <Label fx:id="infoCharsLabel" text="0" styleClass="info-value"/>
-                        </VBox>
-                    </HBox>
+                    </VBox>
+                    
+                    <!-- Plugin Panels Container (dynamic) -->
+                    <VBox fx:id="pluginPanelsContainer" spacing="0">
+                        <!-- Plugin panels are added dynamically here -->
+                    </VBox>
                 </VBox>
-                
-                <Separator styleClass="info-separator"/>
-                
-                <VBox spacing="4" styleClass="info-section">
-                    <Label text="LOCATION" styleClass="info-label"/>
-                    <Label fx:id="infoLatitudeLabel" text="Lat: -" styleClass="info-value"/>
-                    <Label fx:id="infoLongitudeLabel" text="Lon: -" styleClass="info-value"/>
-                </VBox>
-                
-                <VBox spacing="4" styleClass="info-section">
-                    <Label text="METADATA" styleClass="info-label"/>
-                    <Label fx:id="infoAuthorLabel" text="Author: -" styleClass="info-value"/>
-                    <Label fx:id="infoSourceUrlLabel" text="URL: -" styleClass="info-value" wrapText="true"/>
-                </VBox>
-                
-                <!-- Plugin Panels Container (dynamic, Obsidian-style) -->
-                <Separator styleClass="info-separator"/>
-                <VBox fx:id="pluginPanelsContainer" spacing="12" visible="false" managed="false">
-                    <!-- Plugin panels are added dynamically here -->
-                </VBox>
-            </VBox>
+            </ScrollPane>
         </VBox>
     </right>
     
@@ -373,6 +378,8 @@
             </padding>
             <Label fx:id="statusLabel" text="Ready" styleClass="status-text"/>
             <Region HBox.hgrow="ALWAYS"/>
+            <!-- Plugin status bar items container -->
+            <HBox fx:id="pluginStatusBarContainer" spacing="12" alignment="CENTER_LEFT"/>
             <Label fx:id="noteCountLabel" text="0 notes" styleClass="status-text"/>
             <Separator orientation="VERTICAL" styleClass="status-separator"/>
             <Label fx:id="syncStatusLabel" text="Local" styleClass="status-text"/>

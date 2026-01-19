@@ -250,6 +250,7 @@ public class PluginManager {
     
     /**
      * Enables a plugin.
+     * Re-initializes the plugin if it was previously disabled.
      * 
      * @param pluginId The ID of the plugin to enable
      * @return true if successful
@@ -257,9 +258,23 @@ public class PluginManager {
     public boolean enablePlugin(String pluginId) {
         PluginState state = pluginStates.get(pluginId);
         if (state == PluginState.DISABLED) {
-            pluginStates.put(pluginId, PluginState.ENABLED);
-            logger.info("Enabled plugin: " + pluginId);
-            return true;
+            // Re-initialize the plugin to restore commands, menus, and panels
+            Plugin plugin = plugins.get(pluginId);
+            if (plugin != null) {
+                try {
+                    PluginContext context = pluginContexts.get(pluginId);
+                    if (context != null) {
+                        plugin.initialize(context);
+                    }
+                    pluginStates.put(pluginId, PluginState.ENABLED);
+                    logger.info("Re-enabled plugin: " + pluginId);
+                    return true;
+                } catch (Exception e) {
+                    logger.warning("Error re-enabling plugin: " + e.getMessage());
+                    pluginStates.put(pluginId, PluginState.ERROR);
+                    return false;
+                }
+            }
         } else if (state == PluginState.REGISTERED) {
             return initializePlugin(pluginId);
         }
@@ -268,6 +283,7 @@ public class PluginManager {
     
     /**
      * Disables a plugin.
+     * Calls shutdown on the plugin and removes all registered UI elements.
      * 
      * @param pluginId The ID of the plugin to disable
      * @return true if successful
@@ -275,6 +291,27 @@ public class PluginManager {
     public boolean disablePlugin(String pluginId) {
         PluginState state = pluginStates.get(pluginId);
         if (state == PluginState.ENABLED || state == PluginState.INITIALIZED) {
+            // Call plugin shutdown to clean up commands and subscriptions
+            Plugin plugin = plugins.get(pluginId);
+            if (plugin != null) {
+                try {
+                    plugin.shutdown();
+                } catch (Exception e) {
+                    logger.warning("Error during plugin shutdown: " + e.getMessage());
+                }
+            }
+            
+            // Remove registered menu items
+            if (menuRegistry != null) {
+                menuRegistry.removePluginMenuItems(pluginId);
+            }
+            
+            // Remove registered UI elements (side panels and status bar items)
+            if (sidePanelRegistry != null) {
+                sidePanelRegistry.removeAllSidePanels(pluginId);
+                sidePanelRegistry.removeAllStatusBarItems(pluginId);
+            }
+            
             pluginStates.put(pluginId, PluginState.DISABLED);
             logger.info("Disabled plugin: " + pluginId);
             return true;

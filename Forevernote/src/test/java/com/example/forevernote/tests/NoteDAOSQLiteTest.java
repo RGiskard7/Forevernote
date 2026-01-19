@@ -63,6 +63,7 @@ class NoteDAOSQLiteTest {
     			+ "todo_completed TEXT DEFAULT NULL, "
     			+ "source TEXT DEFAULT NULL, "
     			+ "source_application TEXT DEFAULT NULL, "
+    			+ "is_favorite INTEGER NOT NULL DEFAULT 0 CHECK (is_favorite IN (0, 1)), "
     			+ "FOREIGN KEY (parent_id) REFERENCES folders(folder_id) "
     			+ "ON UPDATE CASCADE "
     			+ "ON DELETE SET NULL"

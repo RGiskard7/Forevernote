@@ -3,16 +3,21 @@ package com.example.forevernote.plugin;
 import javafx.scene.Node;
 
 /**
- * Interface for plugin side panel registration.
- * Allows plugins to add custom UI panels to the application sidebar (Obsidian-style).
+ * Interface for plugin UI registration (Obsidian-style).
+ * Allows plugins to add custom UI components to the application.
  * 
- * <p>Plugins can register custom panels that appear in the right sidebar,
- * similar to how Obsidian allows plugins to add UI components.</p>
+ * <p>Plugins can register:</p>
+ * <ul>
+ *   <li>Side panels in the right sidebar</li>
+ *   <li>Status bar items in the bottom bar</li>
+ * </ul>
  * 
  * @author Edu Díaz (RGiskard7)
  * @since 1.3.0
  */
 public interface SidePanelRegistry {
+    
+    // ==================== Side Panels (Right Sidebar) ====================
     
     /**
      * Registers a side panel for a plugin.
@@ -55,4 +60,41 @@ public interface SidePanelRegistry {
      * @return true if visible
      */
     boolean isPluginPanelsVisible();
+    
+    // ==================== Status Bar Items (Bottom Bar) ====================
+    
+    /**
+     * Registers a status bar item for a plugin.
+     * The item appears in the bottom status bar.
+     * 
+     * @param pluginId The plugin's unique ID
+     * @param itemId   A unique identifier for this item
+     * @param content  The JavaFX Node to display (typically a Label)
+     */
+    void registerStatusBarItem(String pluginId, String itemId, Node content);
+    
+    /**
+     * Removes a status bar item.
+     * 
+     * @param pluginId The plugin's unique ID
+     * @param itemId   The item's unique ID
+     */
+    void removeStatusBarItem(String pluginId, String itemId);
+    
+    /**
+     * Updates the content of a status bar item.
+     * 
+     * @param pluginId The plugin's unique ID
+     * @param itemId   The item's unique ID  
+     * @param content  The new content
+     */
+    void updateStatusBarItem(String pluginId, String itemId, Node content);
+    
+    /**
+     * Removes all status bar items for a plugin.
+     * Called when a plugin is disabled or unloaded.
+     * 
+     * @param pluginId The plugin's unique ID
+     */
+    void removeAllStatusBarItems(String pluginId);
 }

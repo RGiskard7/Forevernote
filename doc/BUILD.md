@@ -425,7 +425,12 @@ Forevernote/
 │   │   │   │   ├── ui/                         # User interface
 │   │   │   │   │   ├── controller/             # FXML controllers
 │   │   │   │   │   │   └── MainController.java
-│   │   │   │   │   └── css/                    # Stylesheets
+│   │   │   │   │   ├── css/                    # Stylesheets
+│   │   │   │   │   └── components/             # Reusable UI components
+│   │   │   │   ├── sync/                       # Sync architecture (future-ready)
+│   │   │   │   │   ├── SyncService.java        # Sync provider interface
+│   │   │   │   │   ├── SyncConfig.java         # Sync configuration
+│   │   │   │   │   └── SyncManager.java        # Sync management
 │   │   │   │   └── util/                       # Utility classes
 │   │   │   │       ├── KeyboardShortcuts.java
 │   │   │   │       ├── MarkdownProcessor.java
@@ -497,6 +502,7 @@ The project uses Maven with the following key plugins:
 
 ## Features Implemented
 
+### Core Functionality
 - ✅ Modern JavaFX UI with SplitPane layout (Obsidian-inspired)
 - ✅ TreeView for folder hierarchy with visible "All Notes" root
 - ✅ Visual folder icons with color coding (open/closed/root)
@@ -506,23 +512,51 @@ The project uses Maven with the following key plugins:
 - ✅ Professional CSS styling with light and dark theme support
 - ✅ Global search functionality across all notes
 - ✅ Tags management with full CRUD interface
-- ✅ Markdown support with live preview and emoji rendering
-- ✅ Rich text formatting toolbar (Bold, Italic, Underline, Links, Images, Headings)
-- ✅ Scrollable format toolbar (responsive design)
-- ✅ Lists support (Todo lists, Numbered lists, Bullet lists)
-- ✅ Obsidian-style view modes (Editor-only, Split, Preview-only)
-- ✅ Command Palette (Ctrl+P) for quick actions
-- ✅ Quick Switcher (Ctrl+O) for fast note navigation
-- ✅ Keyboard shortcuts for all operations
-- ✅ Auto-refresh notes list on save/delete
-- ✅ Recent notes and favorites
 - ✅ Comprehensive logging system
 - ✅ Folder hierarchy display (subfolders correctly nested)
 - ✅ Tag synchronization (tags appear in sidebar after creation)
 - ✅ Root folder creation (easy creation of folders at root level)
 - ✅ Import/Export functionality (Markdown, TXT)
-- ✅ Professional button icons and styling
 - ✅ Fully responsive interface
+
+### User Interface & UX
+- ✅ **Dual View Modes**: List view and grid view for notes (toggle with ☰/▦ buttons)
+- ✅ **Drag & Drop**: Drag notes between folders for easy organization
+- ✅ **Resizable Panels**: All panels (sidebar, notes list, editor) are fully resizable
+- ✅ **Scrollable format toolbar** (responsive design)
+- ✅ **Professional button icons and styling**
+- ✅ **Obsidian-style view modes** (Editor-only, Split, Preview-only)
+
+### Markdown & Preview
+- ✅ **Markdown support** with live preview and emoji rendering
+- ✅ **Syntax Highlighting**: Code blocks with highlight.js (VS Code themes)
+- ✅ **Rich text formatting toolbar** (Bold, Italic, Underline, Links, Images, Headings)
+- ✅ **Lists support** (Todo lists, Numbered lists, Bullet lists)
+- ✅ **Code block styling**: Professional code blocks with language detection
+- ✅ **Table support**: Markdown tables with hover effects
+
+### Productivity Features
+- ✅ **Command Palette** (Ctrl+P) for quick actions
+- ✅ **Quick Switcher** (Ctrl+O) for fast note navigation
+- ✅ **Keyboard shortcuts** for all operations
+- ✅ **Auto-refresh** notes list on save/delete
+- ✅ **Recent notes and favorites**
+
+### Plugin System
+- ✅ **External plugin support** (Obsidian-style)
+- ✅ **Dynamic plugin loading** from `plugins/` directory
+- ✅ **Dynamic menu registration** - plugins add their own menu items
+- ✅ **UI modification** - plugins can add custom panels to sidebar
+- ✅ **9 built-in plugins**: Word Count, Daily Notes, Reading Time, Templates, Table of Contents, Auto Backup, AI Assistant, Calendar, Outline
+- ✅ **Plugin Manager UI** for enabling/disabling plugins
+
+### Future-Ready Architecture
+- ✅ **Sync Architecture**: Pluggable sync system ready for cloud integration
+  - `SyncService` interface for providers (Dropbox, Google Drive, OneDrive, WebDAV, S3, Local Network)
+  - `SyncConfig` for flexible configuration
+  - `SyncManager` for centralized sync management
+  - Conflict detection and resolution framework
+  - Auto-sync scheduling support
 
 ## Next Steps (Future Enhancements)
 
@@ -530,9 +564,9 @@ The project uses Maven with the following key plugins:
 - [ ] Implement PDF export
 - [ ] Add spell checking
 - [ ] Implement advanced search with filters
-- [ ] Add note templates
 - [ ] Implement note versioning/history
-- [ ] Grid view for notes (UI toggle exists but not implemented)
+- [ ] Cloud sync implementation (using existing sync architecture)
+- [ ] Plugin marketplace/community repository
 
 ## Notes
 

@@ -38,6 +38,8 @@
 
 ## Features
 
+### Core Features
+
 - **Note Management**: Create, edit, and delete notes with titles and content
 - **Folder Organization**: Organize notes hierarchically using notebooks/folders with visible "All Notes" root
 - **Tags**: Categorize and search notes using tags with full tag management interface
@@ -45,21 +47,55 @@
 - **Rich Text Formatting**: Bold, italic, underline, links, images, todo lists, and numbered lists
 - **Search**: Global search across all notes (titles and content)
 - **Auto-refresh**: Notes list automatically updates on save/delete operations
+
+### User Interface
+
 - **Obsidian-style Interface**: Split view editor with toggle between editor-only, split, and preview-only modes
+- **Dual View Modes**: Switch between list view and grid view for notes
+- **Drag & Drop**: Drag notes between folders for easy organization
+- **Resizable Panels**: All panels (sidebar, notes list, editor) are fully resizable
 - **Theme Support**: Light, dark, and system theme options with professional styling
+- **Responsive Design**: Fully responsive interface that adapts to window resizing
+- **Scrollable Toolbar**: Professional format toolbar with horizontal scrolling
+
+### Markdown & Preview
+
+- **Syntax Highlighting**: Code blocks with syntax highlighting using highlight.js (VS Code themes)
+- **Live Preview**: Real-time Markdown preview with theme-aware styling
+- **Emoji Support**: Full emoji rendering with Noto Color Emoji font
+- **Code Blocks**: Professional code block styling with language detection
+- **Table Support**: Markdown tables with hover effects
+
+### Productivity
+
 - **Keyboard Shortcuts**: Comprehensive keyboard shortcuts for all operations
 - **Command Palette**: Quick command access (Ctrl+P) for power users
 - **Quick Switcher**: Fast note navigation (Ctrl+O)
 - **Favorites**: Mark notes as favorites for quick access
 - **Recent Notes**: Quick access to recently modified notes
-- **Plugin System**: Extensible architecture with external plugin support (Obsidian-style)
-  - Dynamic plugin loading from `plugins/` directory
-  - **Dynamic menu registration** - plugins add their own menu items
-  - Built-in plugins: Word Count, Daily Notes, Reading Time, Templates, Table of Contents, Auto Backup, AI Assistant
-  - Plugin Manager UI for enabling/disabling plugins
-  - Community plugins support - no core modifications needed
-- **Responsive Design**: Fully responsive interface that adapts to window resizing
-- **Scrollable Toolbar**: Professional format toolbar with horizontal scrolling
+- **Import/Export**: Import Markdown/TXT files and export notes to Markdown or TXT
+
+### Plugin System
+
+- **Extensible Architecture**: Obsidian-style plugin system with external plugin support
+- **Dynamic Plugin Loading**: Plugins loaded from `plugins/` directory as JAR files
+- **Dynamic Menu Registration**: Plugins register their own menu items in categorized submenus
+- **UI Modification**: Plugins can add custom UI panels to the sidebar (e.g., Calendar, Outline)
+- **Event System**: Plugins can subscribe to application events (note open, save, etc.)
+- **Built-in Plugins**: 
+  - Word Count, Daily Notes, Reading Time
+  - Templates, Table of Contents, Auto Backup
+  - AI Assistant (configurable with multiple providers)
+  - Calendar (sidebar widget)
+  - Outline (document structure viewer)
+- **Plugin Manager**: UI for enabling/disabling plugins (Tools > Plugins > Manage Plugins)
+- **Community Support**: Create custom plugins without modifying core code
+
+### Future-Ready
+
+- **Sync Architecture**: Pluggable sync system ready for cloud integration (Dropbox, Google Drive, OneDrive, WebDAV, S3, Local Network)
+- **Conflict Resolution**: Built-in conflict detection and resolution framework
+- **Auto-sync**: Configurable automatic synchronization
 
 ## Screenshots
 
@@ -218,6 +254,12 @@ Forevernote/
 │
 ├── plugins-source/                       # Plugin source code (external to core)
 │   └── com/example/forevernote/plugin/builtin/  # Built-in plugin implementations
+│
+├── Forevernote/
+│   ├── sync/                            # Sync architecture (future-ready)
+│   │   ├── SyncService.java             # Sync provider interface
+│   │   ├── SyncConfig.java              # Sync configuration
+│   │   └── SyncManager.java             # Sync management
 │
 ├── scripts/
 │   ├── build_all.ps1                    # Windows build script

@@ -198,7 +198,7 @@ context.log("Plugin action executed");
 context.logError("Something went wrong", exception);
 ```
 
-## Built-in Plugins (8 Total)
+## Built-in Plugins (9 Total)
 
 ### 1. Word Count Plugin (`word-count`)
 
@@ -351,7 +351,38 @@ This plugin demonstrates how plugins can add custom JavaFX components to the app
 
 ---
 
-### 8. AI Assistant Plugin (`ai-assistant`) - **Example/Demo**
+### 8. Outline Plugin (`outline`) - **UI Modification Demo**
+
+Shows document structure (headers) in the sidebar, similar to Obsidian's Outline view.
+
+**Commands:**
+| Command | Shortcut | Description |
+|---------|----------|-------------|
+| Outline: Refresh | - | Manually refresh the outline |
+
+**Features:**
+- Displays all Markdown headers (H1-H6) from current note
+- Hierarchical indentation based on header level
+- Real-time updates when note content changes
+- Click header to view position info
+- Color-coded by header level:
+  - H1: White, bold, large
+  - H2: Light gray, bold
+  - H3+: Gray, normal
+- Hover highlighting
+
+**UI Panel:**
+- Appears as collapsible section in right sidebar
+- Icon: 📑
+- Title: "Outline"
+- Shows "No headers found" when document has no headers
+
+**Example Use Case:**
+Perfect for long documents with multiple sections. Provides quick navigation overview without scrolling through the entire note.
+
+---
+
+### 9. AI Assistant Plugin (`ai-assistant`) - **Example/Demo**
 
 Integrates AI capabilities into Forevernote using external AI APIs.
 

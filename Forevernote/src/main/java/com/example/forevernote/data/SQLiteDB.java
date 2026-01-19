@@ -23,54 +23,6 @@ public class SQLiteDB {
     private static SQLiteDB instance = null;
 
     // SQL statements for creating tables
-    /*private static final String createTableNotes = 
-        "CREATE TABLE IF NOT EXISTS notes("
-        + "note_id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        + "parent_id INTEGER, "
-        + "title TEXT NOT NULL, "
-        + "content TEXT, "
-        + "created_date TEXT NOT NULL, "
-        + "modified_date TEXT, "
-        + "latitude NUMERIC NOT NULL DEFAULT 0, "
-        + "longitude NUMERIC NOT NULL DEFAULT 0, "
-        + "author TEXT NOT NULL DEFAULT '', "
-        + "source_url TEXT NOT NULL DEFAULT '', "
-        + "is_todo INT NOT NULL DEFAULT 0, "
-        + "todo_due INT NOT NULL DEFAULT 0, "
-        + "todo_completed INT NOT NULL DEFAULT 0, "
-        + "source TEXT NOT NULL DEFAULT '', "
-        + "source_application` TEXT NOT NULL DEFAULT '', "
-        + "FOREIGN KEY (parent_id) REFERENCES notebooks(notebook_id) "
-        + "ON UPDATE CASCADE "
-        + "ON DELETE NULL "
-        + ")";*/
-    
-    /*private static final String createTableNotes = 
-	    "CREATE TABLE IF NOT EXISTS notes ("
-		    + "note_id INTEGER PRIMARY KEY AUTOINCREMENT, "
-		    + "parent_id INTEGER, "
-		    + "title TEXT NOT NULL, "
-		    + "content TEXT de, "
-		    + "created_date TEXT NOT NULL, "
-		    + "modified_date TEXT, "
-		    + "latitude REAL NOT NULL DEFAULT 0 CHECK (latitude BETWEEN -90 AND 90), "
-		    + "longitude REAL NOT NULL DEFAULT 0 CHECK (longitude BETWEEN -180 AND 180), "
-		    + "author TEXT NOT NULL DEFAULT '', "
-		    + "source_url TEXT NOT NULL DEFAULT '', "
-		    + "is_todo INTEGER NOT NULL DEFAULT 0 CHECK (is_todo IN (0, 1)), "
-		    + "todo_due INTEGER NOT NULL DEFAULT 0, "
-		    + "todo_completed INTEGER NOT NULL DEFAULT 0, "
-		    + "source TEXT NOT NULL DEFAULT '', "
-		    + "source_application TEXT NOT NULL DEFAULT '', "
-		    + "FOREIGN KEY (parent_id) REFERENCES notebooks(notebook_id) "
-		    + "ON UPDATE CASCADE "
-		    + "ON DELETE SET NULL"
-	    + ");"
-	    + "CREATE INDEX idx_note_title ON notes (title);"
-	    + "CREATE INDEX idx_created_date ON notes (created_date);"
-	    + "CREATE INDEX idx_modified_date ON notes (modified_date);"
-	    + "CREATE INDEX idx_is_todo ON notes (is_todo);";*/
-    
     private static final String createTableNotes = 
 		"CREATE TABLE IF NOT EXISTS notes ("
 			+ "note_id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -93,24 +45,6 @@ public class SQLiteDB {
 			+ "ON UPDATE CASCADE "
 			+ "ON DELETE SET NULL"
 		+ ");";
-		/*+ "CREATE INDEX idx_note_title ON notes (title);"
-		+ "CREATE INDEX idx_created_date ON notes (created_date);"
-		+ "CREATE INDEX idx_modified_date ON notes (modified_date);"
-		+ "CREATE INDEX idx_is_todo ON notes (is_todo);";*/
-
-
-
-    /*private static final String createTableNotebooks = 
-        "CREATE TABLE IF NOT EXISTS notebooks("
-        + "notebook_id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        + "parent_id INTEGER, "
-        + "title TEXT NOT NULL UNIQUE, "
-        + "created_date TEXT NOT NULL, "
-        + "modified_date TEXT, "
-        + "FOREIGN KEY (parent_id) REFERENCES notebooks(notebook_id) "
-        + "ON UPDATE CASCADE "
-        + "ON DELETE NULL "
-        + ")";*/
     
     private static final String createTableFolders = 
 	    "CREATE TABLE IF NOT EXISTS folders ("

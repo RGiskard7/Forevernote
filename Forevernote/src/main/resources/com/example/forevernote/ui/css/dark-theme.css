@@ -133,6 +133,37 @@
     -fx-background-color: #3a3a3a;
 }
 
+/* View Toggle Buttons (List/Grid) */
+.view-toggle-btn {
+    -fx-background-color: #333333;
+    -fx-text-fill: #a0a0a0;
+    -fx-font-size: 14px;
+    -fx-padding: 6 10;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-border-color: #404040;
+    -fx-border-width: 1;
+    -fx-cursor: hand;
+    -fx-min-height: 32px;
+    -fx-min-width: 36px;
+}
+
+.view-toggle-btn:hover {
+    -fx-background-color: #404040;
+    -fx-border-color: #505050;
+}
+
+.view-toggle-btn:selected {
+    -fx-background-color: #7c3aed;
+    -fx-text-fill: #ffffff;
+    -fx-border-color: #7c3aed;
+}
+
+.view-toggle-btn:selected:hover {
+    -fx-background-color: #6d28d9;
+    -fx-border-color: #6d28d9;
+}
+
 .search-field {
     -fx-background-color: #2d2d2d;
     -fx-border-color: #404040;
@@ -398,6 +429,50 @@
     -fx-border-color: transparent transparent #333333 transparent;
     -fx-border-width: 0 0 1 0;
     -fx-background-radius: 0;
+}
+
+/* ========================================
+   GRID VIEW
+   ======================================== */
+
+.notes-grid-scroll {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.notes-grid-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.note-card {
+    -fx-background-color: #2d2d2d;
+    -fx-border-color: #404040;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 4, 0, 0, 2);
+}
+
+.note-card:hover {
+    -fx-background-color: #3a3a3a;
+    -fx-border-color: #505050;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 8, 0, 0, 4);
+}
+
+.note-card-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+    -fx-text-fill: #e0e0e0;
+}
+
+.note-card-preview {
+    -fx-font-size: 11px;
+    -fx-text-fill: #888888;
+}
+
+.note-card-date {
+    -fx-font-size: 10px;
+    -fx-text-fill: #666666;
 }
 
 /* ========================================
@@ -964,4 +1039,193 @@
 .separator:vertical .line {
     -fx-border-color: #3a3a3a;
     -fx-border-width: 0 1 0 0;
+}
+
+/* ========================================
+   RIGHT PANEL (Obsidian-style)
+   ======================================== */
+
+.right-panel {
+    -fx-background-color: #252525;
+    -fx-border-color: #3a3a3a transparent transparent transparent;
+    -fx-border-width: 0 0 0 1;
+}
+
+.panel-header {
+    -fx-background-color: #2d2d2d;
+    -fx-border-color: transparent transparent #3a3a3a transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.panel-title {
+    -fx-text-fill: #a0a0a0;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-text-transform: uppercase;
+}
+
+.panel-close-btn {
+    -fx-background-color: transparent;
+    -fx-text-fill: #888888;
+    -fx-font-size: 16px;
+    -fx-padding: 0 4;
+    -fx-cursor: hand;
+    -fx-min-width: 24px;
+    -fx-min-height: 24px;
+}
+
+.panel-close-btn:hover {
+    -fx-text-fill: #e0e0e0;
+    -fx-background-color: #404040;
+    -fx-background-radius: 4;
+}
+
+.panel-scroll {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.panel-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.panel-content {
+    -fx-background-color: transparent;
+}
+
+/* Panel Sections (Collapsible) */
+.panel-section {
+    -fx-background-color: transparent;
+    -fx-padding: 0 0 8 0;
+    -fx-border-color: transparent transparent #3a3a3a transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.section-header {
+    -fx-padding: 10 8;
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+}
+
+.section-header:hover {
+    -fx-background-color: #2d2d2d;
+    -fx-background-radius: 4;
+}
+
+.collapse-icon {
+    -fx-text-fill: #888888;
+    -fx-font-size: 10px;
+    -fx-padding: 0 6 0 0;
+}
+
+.section-title {
+    -fx-text-fill: #c0c0c0;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+.section-content {
+    -fx-background-color: transparent;
+    -fx-padding: 8 8 8 16;
+}
+
+/* Info Labels in Panels */
+.info-label {
+    -fx-text-fill: #888888;
+    -fx-font-size: 9px;
+    -fx-font-weight: bold;
+    -fx-text-transform: uppercase;
+}
+
+.info-value {
+    -fx-text-fill: #e0e0e0;
+    -fx-font-size: 12px;
+}
+
+.info-value-small {
+    -fx-text-fill: #b0b0b0;
+    -fx-font-size: 11px;
+}
+
+/* Plugin Panels */
+.plugin-panel-section {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.plugin-panel-header {
+    -fx-padding: 10 8;
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+}
+
+.plugin-panel-header:hover {
+    -fx-background-color: #2d2d2d;
+    -fx-background-radius: 4;
+}
+
+.plugin-panel-title {
+    -fx-text-fill: #c0c0c0;
+    -fx-font-size: 12px;
+}
+
+.plugin-panel-content {
+    -fx-background-color: transparent;
+    -fx-padding: 8;
+}
+
+/* Calendar Plugin Styles */
+.calendar-plugin-panel {
+    -fx-background-color: transparent;
+    -fx-padding: 8;
+}
+
+.calendar-grid {
+    -fx-padding: 8;
+}
+
+.calendar-day-name {
+    -fx-text-fill: #888888;
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+    -fx-min-width: 28px;
+    -fx-alignment: center;
+}
+
+.calendar-day {
+    -fx-text-fill: #c0c0c0;
+    -fx-font-size: 11px;
+    -fx-min-width: 28px;
+    -fx-min-height: 28px;
+    -fx-alignment: center;
+    -fx-cursor: hand;
+    -fx-background-radius: 4;
+}
+
+.calendar-day:hover {
+    -fx-background-color: #3a3a3a;
+}
+
+.calendar-today {
+    -fx-background-color: #9f7aea;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+}
+
+.calendar-today:hover {
+    -fx-background-color: #8b5cf6;
+}
+
+/* Outline Plugin Styles */
+.outline-header {
+    -fx-text-fill: #e0e0e0;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 6 8;
+    -fx-cursor: hand;
+    -fx-background-radius: 4;
+}
+
+.outline-header:hover {
+    -fx-background-color: #3a3a3a;
 }

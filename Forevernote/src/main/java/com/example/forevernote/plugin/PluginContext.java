@@ -356,4 +356,42 @@ public class PluginContext {
     public SidePanelRegistry getSidePanelRegistry() {
         return sidePanelRegistry;
     }
+    
+    // ==================== Status Bar Items ====================
+    
+    /**
+     * Registers a status bar item in the bottom bar.
+     * 
+     * @param itemId  A unique identifier for this item
+     * @param content The JavaFX Node to display (typically a Label)
+     */
+    public void registerStatusBarItem(String itemId, Node content) {
+        if (sidePanelRegistry != null) {
+            sidePanelRegistry.registerStatusBarItem(pluginId, itemId, content);
+            log("Registered status bar item: " + itemId);
+        }
+    }
+    
+    /**
+     * Removes a status bar item.
+     * 
+     * @param itemId The item's unique ID
+     */
+    public void removeStatusBarItem(String itemId) {
+        if (sidePanelRegistry != null) {
+            sidePanelRegistry.removeStatusBarItem(pluginId, itemId);
+        }
+    }
+    
+    /**
+     * Updates the content of a status bar item.
+     * 
+     * @param itemId  The item's unique ID
+     * @param content The new content
+     */
+    public void updateStatusBarItem(String itemId, Node content) {
+        if (sidePanelRegistry != null) {
+            sidePanelRegistry.updateStatusBarItem(pluginId, itemId, content);
+        }
+    }
 }

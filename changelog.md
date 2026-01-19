@@ -4,6 +4,173 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [5.0.3] - 2026-01-19
+
+### Documentation Update
+
+**Updated:**
+- **README.md** - Comprehensive update with all new features (drag & drop, grid view, syntax highlighting, sync architecture)
+- **doc/BUILD.md** - Updated feature list with all implemented capabilities, organized by category
+- **doc/PLUGINS.md** - Already up-to-date with Calendar and Outline plugins
+- All documentation now reflects v5.0.0 feature set
+
+**Documentation Structure:**
+- Clear feature categorization (Core, UI/UX, Markdown, Productivity, Plugins, Future-Ready)
+- Professional formatting and standard documentation practices
+- Complete project structure including sync architecture
+- Updated prerequisites and setup instructions
+
+---
+
+## [5.0.2] - 2026-01-19
+
+### Notes Panel Resize Fix
+
+**Fixed:**
+- Notes panel (list/grid view) is now fully resizable like other areas
+- Removed `maxWidth="360"` constraint that was blocking resize
+- Panel can now be expanded or collapsed freely using the SplitPane divider
+
+**Changed files:**
+- `MainView.fxml` - Removed maxWidth constraint, adjusted prefWidth and divider position
+
+---
+
+## [5.0.1] - 2026-01-19
+
+### Grid View Bug Fixes
+
+**Fixed:**
+- Grid view now correctly updates when switching between folders
+- Toggle between list and grid view works properly
+- Grid view updates when sorting notes
+- Grid view updates when searching notes
+- Fixed potential null reference when switching views
+- Added `Platform.runLater()` for thread-safe UI updates
+
+**Changed files:**
+- `MainController.java` - Fixed grid view logic and added refresh on folder/sort/search changes
+
+---
+
+## [5.0.0] - 2026-01-19
+
+### Major UX Improvements Release
+
+**NEW:** Comprehensive UX improvements with professional implementations.
+
+**Features:**
+
+1. **Drag & Drop Notes Between Folders**
+   - Drag notes from list to folder tree
+   - Visual feedback during drag (folder highlights on hover)
+   - Works in both list and grid view
+   - Smooth visual drag preview
+
+2. **Grid View for Notes**
+   - Toggle between list and grid view (☰/▦ buttons)
+   - Note cards with title, preview, and date
+   - Responsive tile layout (3 columns)
+   - Theme-aware card styling
+   - Drag & drop support in grid view
+   - Hover effects and smooth animations
+
+3. **Enhanced Markdown Preview (Syntax Highlighting)**
+   - highlight.js integration for code blocks
+   - VS Code-style themes (vs2015 dark, vs light)
+   - JetBrains Mono font for code
+   - Language auto-detection
+   - Improved code block styling
+   - Better table hover effects
+   - Task list checkbox styling
+
+4. **Sync Architecture (Future-Ready)**
+   - `SyncService` interface for pluggable sync providers
+   - `SyncConfig` for provider configuration
+   - `SyncManager` for centralized sync management
+   - Support for: Dropbox, Google Drive, OneDrive, WebDAV, S3, Local Network
+   - Async operations with CompletableFuture
+   - Conflict detection and resolution
+   - Auto-sync scheduling
+   - Sync-on-change queue
+
+5. **Outline Plugin Fix**
+   - Fixed event publishing for `NoteSelectedEvent`
+   - Fixed event publishing for `NoteSavedEvent`
+   - Outline now updates on note selection
+   - Outline refreshes after save
+
+**Files Added:**
+- `Forevernote/src/main/java/com/example/forevernote/sync/SyncService.java`
+- `Forevernote/src/main/java/com/example/forevernote/sync/SyncConfig.java`
+- `Forevernote/src/main/java/com/example/forevernote/sync/SyncManager.java`
+
+**Files Modified:**
+- `MainController.java` - Drag & drop, grid view, event publishing
+- `MainView.fxml` - View toggle buttons visible
+- `dark-theme.css` - Grid view, view toggle, note card styles
+- `modern-theme.css` - Grid view, view toggle, note card styles (light)
+
+**Summary:**
+Major UX release with drag & drop, grid view, enhanced markdown preview with syntax highlighting, and sync architecture ready for future cloud integration.
+
+---
+
+## [4.7.1] - 2026-01-19
+
+### Code Cleanup and Test Fixes
+
+**Fixed:**
+- Fixed `NoteDAOSQLiteTest` - Added missing `is_favorite` column to test schema
+- Removed dead code - Eliminated ~100 lines of commented SQL in `SQLiteDB.java`
+- Removed legacy test - Deleted `Test.java` (manual test with `main()` method)
+
+**Changed files:**
+- `Forevernote/src/test/java/com/example/forevernote/tests/NoteDAOSQLiteTest.java` - Fixed schema
+- `Forevernote/src/main/java/com/example/forevernote/data/SQLiteDB.java` - Removed dead code
+- `Forevernote/src/test/java/com/example/forevernote/tests/Test.java` - Deleted (legacy)
+
+**Summary:**
+Code cleanup session addressing priority issues from project analysis. All tests now pass.
+
+---
+
+## [4.7.0] - 2026-01-19
+
+### Obsidian-style Right Panel (Collapsible Sections)
+
+**NEW:** Complete redesign of the right panel to match Obsidian's sidebar architecture.
+
+**Added:**
+- New **OutlinePlugin** - Shows document structure (headers H1-H6) in sidebar
+  - Hierarchical indentation based on header level
+  - Real-time updates as you type
+  - Click to view header info
+  - Refresh command available
+- Generic right panel with collapsible sections
+- Panel toggle button (☰) replaces "Info" button
+- Note Info is now a collapsible section within the panel
+- Plugin panels appear as additional collapsible sections
+
+**Changed:**
+- Right panel header shows "Panel" instead of "Note Info"
+- Panel can contain multiple plugin sections (Calendar, Outline, etc.)
+- Each section is independently collapsible
+- CSS styles for Obsidian-style panel sections (both themes)
+
+**Files Added:**
+- `plugins-source/com/example/forevernote/plugin/builtin/OutlinePlugin.java`
+
+**Files Modified:**
+- `MainView.fxml` - Redesigned right panel structure
+- `MainController.java` - New handlers for panel toggle and sections
+- `dark-theme.css` - Added panel section styles
+- `modern-theme.css` - Added panel section styles (light theme)
+
+**Plugin Count:** 9 plugins (including Calendar and Outline)
+
+---
+
 ## [4.6.0] - 2026-01-19
 
 ### UI Modification Support (Obsidian-style)
