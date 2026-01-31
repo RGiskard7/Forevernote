@@ -3,47 +3,37 @@ package com.example.forevernote.plugin;
 import javafx.scene.Node;
 
 /**
- * Interface for plugin UI registration (Obsidian-style).
- * Allows plugins to add custom UI components to the application.
- * 
- * <p>Plugins can register:</p>
- * <ul>
- *   <li>Side panels in the right sidebar</li>
- *   <li>Status bar items in the bottom bar</li>
- * </ul>
+ * Registry for plugin side panels.
+ * Allows plugins to register custom UI panels in the right sidebar.
  * 
  * @author Edu Díaz (RGiskard7)
- * @since 1.3.0
+ * @since 1.2.0
  */
 public interface SidePanelRegistry {
     
-    // ==================== Side Panels (Right Sidebar) ====================
-    
     /**
      * Registers a side panel for a plugin.
-     * The panel will appear as a collapsible section in the right sidebar.
      * 
-     * @param pluginId  The plugin's unique ID
-     * @param panelId   A unique identifier for this panel within the plugin
-     * @param title     The display title for the panel header
-     * @param content   The JavaFX Node to display as panel content
-     * @param icon      An optional icon/emoji for the panel header (can be null)
+     * @param pluginId The plugin ID
+     * @param panelId The unique panel ID
+     * @param title The panel title
+     * @param content The panel content (JavaFX Node)
+     * @param icon The icon (emoji or text), can be null
      */
     void registerSidePanel(String pluginId, String panelId, String title, Node content, String icon);
     
     /**
      * Removes a side panel.
      * 
-     * @param pluginId The plugin's unique ID
-     * @param panelId  The panel's unique ID
+     * @param pluginId The plugin ID
+     * @param panelId The panel ID to remove
      */
     void removeSidePanel(String pluginId, String panelId);
     
     /**
      * Removes all side panels for a plugin.
-     * Called when a plugin is disabled or unloaded.
      * 
-     * @param pluginId The plugin's unique ID
+     * @param pluginId The plugin ID
      */
     void removeAllSidePanels(String pluginId);
     
@@ -57,44 +47,7 @@ public interface SidePanelRegistry {
     /**
      * Checks if the plugin panels section is visible.
      * 
-     * @return true if visible
+     * @return true if visible, false otherwise
      */
     boolean isPluginPanelsVisible();
-    
-    // ==================== Status Bar Items (Bottom Bar) ====================
-    
-    /**
-     * Registers a status bar item for a plugin.
-     * The item appears in the bottom status bar.
-     * 
-     * @param pluginId The plugin's unique ID
-     * @param itemId   A unique identifier for this item
-     * @param content  The JavaFX Node to display (typically a Label)
-     */
-    void registerStatusBarItem(String pluginId, String itemId, Node content);
-    
-    /**
-     * Removes a status bar item.
-     * 
-     * @param pluginId The plugin's unique ID
-     * @param itemId   The item's unique ID
-     */
-    void removeStatusBarItem(String pluginId, String itemId);
-    
-    /**
-     * Updates the content of a status bar item.
-     * 
-     * @param pluginId The plugin's unique ID
-     * @param itemId   The item's unique ID  
-     * @param content  The new content
-     */
-    void updateStatusBarItem(String pluginId, String itemId, Node content);
-    
-    /**
-     * Removes all status bar items for a plugin.
-     * Called when a plugin is disabled or unloaded.
-     * 
-     * @param pluginId The plugin's unique ID
-     */
-    void removeAllStatusBarItems(String pluginId);
 }

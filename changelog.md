@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [5.0.4] - 2026-01-21
+
+### Plugin System Fixes & macOS Support
+
+**Fixed:**
+- **Plugin system base classes recreated** - All core plugin framework classes were missing from source code:
+  - `Plugin.java` - Plugin interface
+  - `PluginContext.java` - Plugin API with access to services and UI registration
+  - `PluginManager.java` - Plugin lifecycle management
+  - `PluginLoader.java` - Dynamic plugin loading from JARs
+  - `PluginMenuRegistry.java` - Interface for dynamic menu registration
+  - `SidePanelRegistry.java` - Interface for side panel registration
+- **Plugin build script for macOS** - Created `scripts/build-plugins.sh` with proper JavaFX classpath handling
+- **Classpath detection** - Fixed Maven classpath extraction to correctly include JavaFX modules
+- **Platform detection** - Automatic detection of macOS architecture (mac-aarch64) for JavaFX JARs
+- **CalendarPlugin compilation** - Fixed missing methods in PluginContext (`isPluginPanelsVisible()`, `setPluginPanelsVisible()`)
+
+**Changed files:**
+- `Forevernote/src/main/java/com/example/forevernote/plugin/Plugin.java` - Created
+- `Forevernote/src/main/java/com/example/forevernote/plugin/PluginContext.java` - Created with helper methods
+- `Forevernote/src/main/java/com/example/forevernote/plugin/PluginManager.java` - Created
+- `Forevernote/src/main/java/com/example/forevernote/plugin/PluginLoader.java` - Created
+- `Forevernote/src/main/java/com/example/forevernote/plugin/PluginMenuRegistry.java` - Created
+- `Forevernote/src/main/java/com/example/forevernote/plugin/SidePanelRegistry.java` - Created
+- `scripts/build-plugins.sh` - Created for macOS/Linux plugin compilation
+- `plugins-source/com/example/forevernote/plugin/builtin/CalendarPlugin.java` - Fixed to use PluginContext methods
+
+**Result:**
+- ✅ All 9 plugins compile successfully on macOS
+- ✅ Core application compiles without errors
+- ✅ Plugin system fully functional
+
+---
+
 ## [5.0.3] - 2026-01-19
 
 ### Documentation Update

@@ -1,7 +1,6 @@
 package com.example.forevernote.plugin;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,34 +16,34 @@ import com.example.forevernote.service.TagService;
 import com.example.forevernote.ui.components.CommandPalette;
 
 /**
- * Manages the lifecycle of plugins in Forevernote.
+ * Manages the lifecycle and state of all plugins.
  * 
- * <p>The PluginManager handles:</p>
+ * <p>Responsibilities:</p>
  * <ul>
- *   <li>Plugin registration and discovery</li>
- *   <li>Plugin lifecycle (initialize, enable, disable, shutdown)</li>
- *   <li>Dependency resolution</li>
- *   <li>Plugin state management</li>
+ *   <li>Register and unregister plugins</li>
+ *   <li>Initialize and shutdown plugins</li>
+ *   <li>Enable and disable plugins</li>
+ *   <li>Track plugin states</li>
+ *   <li>Resolve plugin dependencies</li>
  * </ul>
  * 
- * <h2>Usage:</h2>
- * <pre>{@code
- * PluginManager manager = new PluginManager(noteService, folderService, tagService, eventBus, commandPalette);
- * manager.registerPlugin(new WordCountPlugin());
- * manager.registerPlugin(new DailyNotesPlugin());
- * manager.initializeAll();
- * }</pre>
- * 
  * @author Edu Díaz (RGiskard7)
- * @since 1.1.0
+ * @since 1.2.0
  */
 public class PluginManager {
     
     private static final Logger logger = LoggerConfig.getLogger(PluginManager.class);
     
-    private final Map<String, Plugin> plugins = new HashMap<>();
-    private final Map<String, PluginState> pluginStates = new HashMap<>();
-    private final Map<String, PluginContext> pluginContexts = new HashMap<>();
+    /**
+     * Plugin states.
+     */
+    public enum PluginState {
+        REGISTERED,    // Plugin is registered but not initialized
+        INITIALIZED,    // Plugin is initialized and ready
+        ENABLED,        // Plugin is enabled and active
+        DISABLED,       // Plugin is disabled
+        ERROR          // Plugin encountered an error
+    }
     
     private final NoteService noteService;
     private final FolderService folderService;
@@ -54,31 +53,30 @@ public class PluginManager {
     private final PluginMenuRegistry menuRegistry;
     private final SidePanelRegistry sidePanelRegistry;
     
-    /**
-     * Plugin state enumeration.
-     */
-    public enum PluginState {
-        REGISTERED,
-        INITIALIZED,
-        ENABLED,
-        DISABLED,
-        ERROR
-    }
+    // Plugin storage
+    private final Map<String, Plugin> plugins = new HashMap<>();
+    private final Map<String, PluginState> pluginStates = new HashMap<>();
+    private final Map<String, PluginContext> pluginContexts = new HashMap<>();
     
     /**
      * Creates a new PluginManager.
      * 
-     * @param noteService       The note service
-     * @param folderService     The folder service
-     * @param tagService        The tag service
-     * @param eventBus          The event bus
-     * @param commandPalette    The command palette
-     * @param menuRegistry      The menu registry for plugin menu items
-     * @param sidePanelRegistry The side panel registry for plugin UI panels
+     * @param noteService The note service
+     * @param folderService The folder service
+     * @param tagService The tag service
+     * @param eventBus The event bus
+     * @param commandPalette The command palette
+     * @param menuRegistry The menu registry
+     * @param sidePanelRegistry The side panel registry
      */
-    public PluginManager(NoteService noteService, FolderService folderService, 
-                        TagService tagService, EventBus eventBus, CommandPalette commandPalette,
-                        PluginMenuRegistry menuRegistry, SidePanelRegistry sidePanelRegistry) {
+    public PluginManager(
+            NoteService noteService,
+            FolderService folderService,
+            TagService tagService,
+            EventBus eventBus,
+            CommandPalette commandPalette,
+            PluginMenuRegistry menuRegistry,
+            SidePanelRegistry sidePanelRegistry) {
         this.noteService = noteService;
         this.folderService = folderService;
         this.tagService = tagService;
@@ -86,16 +84,13 @@ public class PluginManager {
         this.commandPalette = commandPalette;
         this.menuRegistry = menuRegistry;
         this.sidePanelRegistry = sidePanelRegistry;
-        logger.info("PluginManager initialized");
     }
     
-    // ==================== Plugin Registration ====================
-    
     /**
-     * Registers a plugin with the manager.
+     * Registers a plugin.
      * 
      * @param plugin The plugin to register
-     * @return true if registration was successful
+     * @return true if registered successfully, false otherwise
      */
     public boolean registerPlugin(Plugin plugin) {
         if (plugin == null) {
@@ -103,55 +98,60 @@ public class PluginManager {
             return false;
         }
         
-        String id = plugin.getId();
-        if (id == null || id.isEmpty()) {
+        String pluginId = plugin.getId();
+        if (pluginId == null || pluginId.isEmpty()) {
             logger.warning("Plugin has invalid ID");
             return false;
         }
         
-        if (plugins.containsKey(id)) {
-            logger.warning("Plugin already registered: " + id);
+        if (plugins.containsKey(pluginId)) {
+            logger.warning("Plugin already registered: " + pluginId);
             return false;
         }
         
-        plugins.put(id, plugin);
-        pluginStates.put(id, PluginState.REGISTERED);
-        logger.info("Registered plugin: " + id + " v" + plugin.getVersion());
+        plugins.put(pluginId, plugin);
+        pluginStates.put(pluginId, PluginState.REGISTERED);
+        logger.info("Registered plugin: " + plugin.getName() + " (" + pluginId + ")");
+        
         return true;
     }
     
     /**
      * Unregisters a plugin.
      * 
-     * @param pluginId The ID of the plugin to unregister
-     * @return true if unregistration was successful
+     * @param pluginId The plugin ID
+     * @return true if unregistered successfully, false otherwise
      */
     public boolean unregisterPlugin(String pluginId) {
-        Plugin plugin = plugins.get(pluginId);
-        if (plugin == null) {
+        if (pluginId == null || !plugins.containsKey(pluginId)) {
             return false;
         }
         
-        // Shutdown if initialized
-        PluginState state = pluginStates.get(pluginId);
-        if (state == PluginState.INITIALIZED || state == PluginState.ENABLED) {
-            shutdownPlugin(pluginId);
-        }
+        // Shutdown plugin first
+        shutdownPlugin(pluginId);
         
+        // Remove plugin
         plugins.remove(pluginId);
         pluginStates.remove(pluginId);
         pluginContexts.remove(pluginId);
+        
+        // Remove UI components
+        if (menuRegistry != null) {
+            menuRegistry.removePluginMenuItems(pluginId);
+        }
+        if (sidePanelRegistry != null) {
+            sidePanelRegistry.removeAllSidePanels(pluginId);
+        }
+        
         logger.info("Unregistered plugin: " + pluginId);
         return true;
     }
     
-    // ==================== Plugin Lifecycle ====================
-    
     /**
-     * Initializes a specific plugin.
+     * Initializes a plugin.
      * 
-     * @param pluginId The ID of the plugin to initialize
-     * @return true if initialization was successful
+     * @param pluginId The plugin ID
+     * @return true if initialized successfully, false otherwise
      */
     public boolean initializePlugin(String pluginId) {
         Plugin plugin = plugins.get(pluginId);
@@ -160,34 +160,50 @@ public class PluginManager {
             return false;
         }
         
-        PluginState state = pluginStates.get(pluginId);
-        if (state != PluginState.REGISTERED) {
-            logger.warning("Plugin already initialized or in error state: " + pluginId);
-            return false;
+        PluginState currentState = pluginStates.get(pluginId);
+        if (currentState == PluginState.INITIALIZED || currentState == PluginState.ENABLED) {
+            logger.fine("Plugin already initialized: " + pluginId);
+            return true;
         }
         
         // Check dependencies
-        if (!checkDependencies(plugin)) {
-            logger.warning("Plugin dependencies not met: " + pluginId);
-            pluginStates.put(pluginId, PluginState.ERROR);
-            return false;
+        String[] dependencies = plugin.getDependencies();
+        for (String depId : dependencies) {
+            if (!plugins.containsKey(depId)) {
+                logger.warning("Plugin " + pluginId + " depends on missing plugin: " + depId);
+                pluginStates.put(pluginId, PluginState.ERROR);
+                return false;
+            }
+            if (!isPluginEnabled(depId)) {
+                logger.warning("Plugin " + pluginId + " depends on disabled plugin: " + depId);
+                pluginStates.put(pluginId, PluginState.ERROR);
+                return false;
+            }
         }
         
         try {
             // Create context
             PluginContext context = new PluginContext(
-                pluginId, noteService, folderService, tagService, eventBus, commandPalette, menuRegistry, sidePanelRegistry
+                pluginId,
+                noteService,
+                folderService,
+                tagService,
+                eventBus,
+                commandPalette,
+                menuRegistry,
+                sidePanelRegistry
             );
             pluginContexts.put(pluginId, context);
             
-            // Initialize
+            // Initialize plugin
             plugin.initialize(context);
-            pluginStates.put(pluginId, PluginState.INITIALIZED);
-            logger.info("Initialized plugin: " + pluginId);
             
-            // Auto-enable if plugin is enabled
+            pluginStates.put(pluginId, PluginState.INITIALIZED);
+            logger.info("Initialized plugin: " + plugin.getName() + " (" + pluginId + ")");
+            
+            // Enable if plugin is enabled by default
             if (plugin.isEnabled()) {
-                pluginStates.put(pluginId, PluginState.ENABLED);
+                enablePlugin(pluginId);
             }
             
             return true;
@@ -202,20 +218,22 @@ public class PluginManager {
      * Initializes all registered plugins in priority order.
      */
     public void initializeAll() {
+        // Sort by priority
         List<Plugin> sortedPlugins = new ArrayList<>(plugins.values());
-        sortedPlugins.sort((a, b) -> a.getPriority() - b.getPriority());
+        sortedPlugins.sort((a, b) -> Integer.compare(a.getPriority(), b.getPriority()));
         
+        // Initialize in order
         for (Plugin plugin : sortedPlugins) {
             initializePlugin(plugin.getId());
         }
         
-        logger.info("Initialized " + getEnabledPlugins().size() + " plugins");
+        logger.info("Initialized " + plugins.size() + " plugin(s)");
     }
     
     /**
-     * Shuts down a specific plugin.
+     * Shuts down a plugin.
      * 
-     * @param pluginId The ID of the plugin to shutdown
+     * @param pluginId The plugin ID
      */
     public void shutdownPlugin(String pluginId) {
         Plugin plugin = plugins.get(pluginId);
@@ -223,18 +241,12 @@ public class PluginManager {
             return;
         }
         
-        PluginState state = pluginStates.get(pluginId);
-        if (state != PluginState.INITIALIZED && state != PluginState.ENABLED) {
-            return;
-        }
-        
         try {
             plugin.shutdown();
             pluginStates.put(pluginId, PluginState.DISABLED);
-            logger.info("Shutdown plugin: " + pluginId);
+            logger.info("Shut down plugin: " + pluginId);
         } catch (Exception e) {
-            logger.severe("Error shutting down plugin " + pluginId + ": " + e.getMessage());
-            pluginStates.put(pluginId, PluginState.ERROR);
+            logger.warning("Error shutting down plugin " + pluginId + ": " + e.getMessage());
         }
     }
     
@@ -245,119 +257,102 @@ public class PluginManager {
         for (String pluginId : new ArrayList<>(plugins.keySet())) {
             shutdownPlugin(pluginId);
         }
-        logger.info("All plugins shutdown");
+        logger.info("Shut down all plugins");
     }
     
     /**
      * Enables a plugin.
-     * Re-initializes the plugin if it was previously disabled.
      * 
-     * @param pluginId The ID of the plugin to enable
-     * @return true if successful
+     * @param pluginId The plugin ID
+     * @return true if enabled successfully, false otherwise
      */
     public boolean enablePlugin(String pluginId) {
-        PluginState state = pluginStates.get(pluginId);
-        if (state == PluginState.DISABLED) {
-            // Re-initialize the plugin to restore commands, menus, and panels
-            Plugin plugin = plugins.get(pluginId);
-            if (plugin != null) {
-                try {
-                    PluginContext context = pluginContexts.get(pluginId);
-                    if (context != null) {
-                        plugin.initialize(context);
-                    }
-                    pluginStates.put(pluginId, PluginState.ENABLED);
-                    logger.info("Re-enabled plugin: " + pluginId);
-                    return true;
-                } catch (Exception e) {
-                    logger.warning("Error re-enabling plugin: " + e.getMessage());
-                    pluginStates.put(pluginId, PluginState.ERROR);
-                    return false;
-                }
-            }
-        } else if (state == PluginState.REGISTERED) {
-            return initializePlugin(pluginId);
+        Plugin plugin = plugins.get(pluginId);
+        if (plugin == null) {
+            return false;
         }
-        return false;
+        
+        PluginState currentState = pluginStates.get(pluginId);
+        if (currentState == PluginState.ENABLED) {
+            return true;
+        }
+        
+        // Initialize if not already initialized
+        if (currentState == PluginState.REGISTERED) {
+            if (!initializePlugin(pluginId)) {
+                return false;
+            }
+        }
+        
+        pluginStates.put(pluginId, PluginState.ENABLED);
+        logger.info("Enabled plugin: " + pluginId);
+        return true;
     }
     
     /**
      * Disables a plugin.
-     * Calls shutdown on the plugin and removes all registered UI elements.
-     * 
-     * @param pluginId The ID of the plugin to disable
-     * @return true if successful
-     */
-    public boolean disablePlugin(String pluginId) {
-        PluginState state = pluginStates.get(pluginId);
-        if (state == PluginState.ENABLED || state == PluginState.INITIALIZED) {
-            // Call plugin shutdown to clean up commands and subscriptions
-            Plugin plugin = plugins.get(pluginId);
-            if (plugin != null) {
-                try {
-                    plugin.shutdown();
-                } catch (Exception e) {
-                    logger.warning("Error during plugin shutdown: " + e.getMessage());
-                }
-            }
-            
-            // Remove registered menu items
-            if (menuRegistry != null) {
-                menuRegistry.removePluginMenuItems(pluginId);
-            }
-            
-            // Remove registered UI elements (side panels and status bar items)
-            if (sidePanelRegistry != null) {
-                sidePanelRegistry.removeAllSidePanels(pluginId);
-                sidePanelRegistry.removeAllStatusBarItems(pluginId);
-            }
-            
-            pluginStates.put(pluginId, PluginState.DISABLED);
-            logger.info("Disabled plugin: " + pluginId);
-            return true;
-        }
-        return false;
-    }
-    
-    // ==================== Plugin Queries ====================
-    
-    /**
-     * Gets a plugin by ID.
      * 
      * @param pluginId The plugin ID
-     * @return Optional containing the plugin if found
+     * @return true if disabled successfully, false otherwise
      */
-    public Optional<Plugin> getPlugin(String pluginId) {
-        return Optional.ofNullable(plugins.get(pluginId));
+    public boolean disablePlugin(String pluginId) {
+        Plugin plugin = plugins.get(pluginId);
+        if (plugin == null) {
+            return false;
+        }
+        
+        pluginStates.put(pluginId, PluginState.DISABLED);
+        
+        // Remove UI components
+        if (menuRegistry != null) {
+            menuRegistry.removePluginMenuItems(pluginId);
+        }
+        if (sidePanelRegistry != null) {
+            sidePanelRegistry.removeAllSidePanels(pluginId);
+        }
+        
+        logger.info("Disabled plugin: " + pluginId);
+        return true;
+    }
+    
+    /**
+     * Checks if a plugin is enabled.
+     * 
+     * @param pluginId The plugin ID
+     * @return true if enabled, false otherwise
+     */
+    public boolean isPluginEnabled(String pluginId) {
+        PluginState state = pluginStates.get(pluginId);
+        return state == PluginState.ENABLED || state == PluginState.INITIALIZED;
     }
     
     /**
      * Gets the state of a plugin.
      * 
      * @param pluginId The plugin ID
-     * @return The plugin state, or null if not found
+     * @return The plugin state, or null if plugin not found
      */
     public PluginState getPluginState(String pluginId) {
         return pluginStates.get(pluginId);
     }
     
     /**
-     * Gets the context of a plugin.
+     * Gets a plugin by ID.
      * 
      * @param pluginId The plugin ID
-     * @return Optional containing the plugin context if initialized
+     * @return The plugin, or empty if not found
      */
-    public Optional<PluginContext> getPluginContext(String pluginId) {
-        return Optional.ofNullable(pluginContexts.get(pluginId));
+    public Optional<Plugin> getPlugin(String pluginId) {
+        return Optional.ofNullable(plugins.get(pluginId));
     }
     
     /**
      * Gets all registered plugins.
      * 
-     * @return Unmodifiable list of all plugins
+     * @return List of all plugins
      */
     public List<Plugin> getAllPlugins() {
-        return Collections.unmodifiableList(new ArrayList<>(plugins.values()));
+        return new ArrayList<>(plugins.values());
     }
     
     /**
@@ -367,7 +362,7 @@ public class PluginManager {
      */
     public List<Plugin> getEnabledPlugins() {
         return plugins.values().stream()
-            .filter(p -> pluginStates.get(p.getId()) == PluginState.ENABLED)
+            .filter(p -> isPluginEnabled(p.getId()))
             .collect(Collectors.toList());
     }
     
@@ -378,59 +373,24 @@ public class PluginManager {
      */
     public List<Plugin> getDisabledPlugins() {
         return plugins.values().stream()
-            .filter(p -> pluginStates.get(p.getId()) == PluginState.DISABLED)
+            .filter(p -> !isPluginEnabled(p.getId()))
             .collect(Collectors.toList());
     }
     
     /**
-     * Gets the count of plugins.
+     * Gets the number of registered plugins.
      * 
-     * @return Total plugin count
+     * @return The plugin count
      */
     public int getPluginCount() {
         return plugins.size();
     }
     
     /**
-     * Checks if a plugin is enabled.
-     * 
-     * @param pluginId The plugin ID to check
-     * @return true if the plugin exists and is enabled
-     */
-    public boolean isPluginEnabled(String pluginId) {
-        PluginState state = pluginStates.get(pluginId);
-        return state == PluginState.ENABLED;
-    }
-    
-    // ==================== Helper Methods ====================
-    
-    /**
-     * Checks if a plugin's dependencies are met.
-     * 
-     * @param plugin The plugin to check
-     * @return true if all dependencies are available and initialized
-     */
-    private boolean checkDependencies(Plugin plugin) {
-        for (String depId : plugin.getDependencies()) {
-            if (!plugins.containsKey(depId)) {
-                logger.warning("Missing dependency: " + depId + " for plugin " + plugin.getId());
-                return false;
-            }
-            
-            PluginState depState = pluginStates.get(depId);
-            if (depState != PluginState.INITIALIZED && depState != PluginState.ENABLED) {
-                logger.warning("Dependency not initialized: " + depId + " for plugin " + plugin.getId());
-                return false;
-            }
-        }
-        return true;
-    }
-    
-    /**
-     * Gets plugin info as a formatted string.
+     * Gets plugin information as a string.
      * 
      * @param pluginId The plugin ID
-     * @return Plugin info string
+     * @return Plugin information string
      */
     public String getPluginInfo(String pluginId) {
         Plugin plugin = plugins.get(pluginId);
@@ -438,18 +398,19 @@ public class PluginManager {
             return "Plugin not found: " + pluginId;
         }
         
-        return String.format(
-            "Plugin: %s v%s\n" +
-            "ID: %s\n" +
-            "Author: %s\n" +
-            "Description: %s\n" +
-            "State: %s",
-            plugin.getName(),
-            plugin.getVersion(),
-            plugin.getId(),
-            plugin.getAuthor().isEmpty() ? "Unknown" : plugin.getAuthor(),
-            plugin.getDescription().isEmpty() ? "No description" : plugin.getDescription(),
-            pluginStates.get(pluginId)
-        );
+        PluginState state = pluginStates.get(pluginId);
+        StringBuilder info = new StringBuilder();
+        info.append("Name: ").append(plugin.getName()).append("\n");
+        info.append("ID: ").append(plugin.getId()).append("\n");
+        info.append("Version: ").append(plugin.getVersion()).append("\n");
+        info.append("State: ").append(state).append("\n");
+        if (!plugin.getAuthor().isEmpty()) {
+            info.append("Author: ").append(plugin.getAuthor()).append("\n");
+        }
+        if (!plugin.getDescription().isEmpty()) {
+            info.append("Description: ").append(plugin.getDescription()).append("\n");
+        }
+        
+        return info.toString();
     }
 }

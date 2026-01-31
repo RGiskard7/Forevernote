@@ -1272,7 +1272,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     /**
      * Registers a status bar item for a plugin.
      */
-    @Override
     public void registerStatusBarItem(String pluginId, String itemId, javafx.scene.Node content) {
         Platform.runLater(() -> {
             if (pluginStatusBarContainer == null) {
@@ -1304,7 +1303,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     /**
      * Removes a status bar item.
      */
-    @Override
     public void removeStatusBarItem(String pluginId, String itemId) {
         Platform.runLater(() -> {
             String fullItemId = pluginId + ":" + itemId;
@@ -1323,7 +1321,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     /**
      * Updates a status bar item's content.
      */
-    @Override
     public void updateStatusBarItem(String pluginId, String itemId, javafx.scene.Node content) {
         Platform.runLater(() -> {
             String fullItemId = pluginId + ":" + itemId;
@@ -1341,7 +1338,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
      * Removes all status bar items for a plugin.
      * Called when a plugin is disabled or unloaded.
      */
-    @Override
     public void removeAllStatusBarItems(String pluginId) {
         Platform.runLater(() -> {
             List<String> ids = pluginStatusBarItemIds.remove(pluginId);

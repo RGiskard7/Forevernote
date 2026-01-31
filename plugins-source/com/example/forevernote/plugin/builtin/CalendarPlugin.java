@@ -395,9 +395,7 @@ public class CalendarPlugin implements Plugin {
      * Toggles calendar panel visibility.
      */
     private void toggleCalendarPanel() {
-        if (context.getSidePanelRegistry() != null) {
-            boolean isVisible = context.getSidePanelRegistry().isPluginPanelsVisible();
-            context.getSidePanelRegistry().setPluginPanelsVisible(!isVisible);
-        }
+        boolean isVisible = context.isPluginPanelsVisible();
+        context.setPluginPanelsVisible(!isVisible);
     }
 }

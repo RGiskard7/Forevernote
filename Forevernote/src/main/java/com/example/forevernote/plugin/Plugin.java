@@ -1,59 +1,25 @@
 package com.example.forevernote.plugin;
 
 /**
- * Interface for Forevernote plugins.
+ * Interface that all Forevernote plugins must implement.
  * 
- * <p>Plugins extend the functionality of Forevernote. They can:</p>
+ * <p>Plugins extend the functionality of Forevernote by:</p>
  * <ul>
- *   <li>Register new commands in the Command Palette</li>
- *   <li>Add menu items</li>
- *   <li>Subscribe to application events</li>
- *   <li>Add sidebar panels</li>
- *   <li>Process note content</li>
+ *   <li>Registering commands in the Command Palette</li>
+ *   <li>Registering menu items dynamically</li>
+ *   <li>Subscribing to application events</li>
+ *   <li>Accessing notes, folders, and tags through services</li>
+ *   <li>Creating custom UI dialogs and side panels</li>
  * </ul>
  * 
- * <h2>Plugin Lifecycle:</h2>
- * <ol>
- *   <li>{@link #initialize(PluginContext)} - Called when the plugin is loaded</li>
- *   <li>Plugin is now active and can respond to events</li>
- *   <li>{@link #shutdown()} - Called when the plugin is unloaded</li>
- * </ol>
- * 
- * <h2>Example Implementation:</h2>
- * <pre>{@code
- * public class WordCountPlugin implements Plugin {
- *     private PluginContext context;
- *     
- *     @Override
- *     public String getId() { return "word-count"; }
- *     
- *     @Override
- *     public String getName() { return "Word Count"; }
- *     
- *     @Override
- *     public String getVersion() { return "1.0.0"; }
- *     
- *     @Override
- *     public void initialize(PluginContext context) {
- *         this.context = context;
- *         context.registerCommand(new Command("Count Words", () -> countWords()));
- *     }
- *     
- *     @Override
- *     public void shutdown() {
- *         // Cleanup resources
- *     }
- * }
- * }</pre>
- * 
  * @author Edu Díaz (RGiskard7)
- * @since 1.1.0
+ * @since 1.2.0
  */
 public interface Plugin {
     
     /**
      * Gets the unique identifier for this plugin.
-     * Should be lowercase with hyphens (e.g., "word-count", "daily-notes").
+     * Should be lowercase with hyphens (e.g., "word-count").
      * 
      * @return The plugin ID
      */
@@ -67,16 +33,32 @@ public interface Plugin {
     String getName();
     
     /**
-     * Gets the version of this plugin (semantic versioning recommended).
+     * Gets the version of this plugin.
+     * Should follow semantic versioning (e.g., "1.0.0").
      * 
-     * @return The plugin version (e.g., "1.0.0")
+     * @return The plugin version
      */
     String getVersion();
     
     /**
-     * Gets a description of what this plugin does.
+     * Initializes the plugin with the given context.
+     * This is called when the plugin is loaded and enabled.
      * 
-     * @return The plugin description
+     * @param context The plugin context providing access to services and UI registration
+     */
+    void initialize(PluginContext context);
+    
+    /**
+     * Shuts down the plugin.
+     * This is called when the plugin is disabled or the application is closing.
+     * Plugins should clean up resources, unregister commands, and remove UI components.
+     */
+    void shutdown();
+    
+    /**
+     * Gets the description of this plugin.
+     * 
+     * @return The plugin description, or empty string if not provided
      */
     default String getDescription() {
         return "";
@@ -85,7 +67,7 @@ public interface Plugin {
     /**
      * Gets the author of this plugin.
      * 
-     * @return The plugin author
+     * @return The plugin author, or empty string if not provided
      */
     default String getAuthor() {
         return "";
@@ -94,42 +76,26 @@ public interface Plugin {
     /**
      * Checks if this plugin is enabled.
      * 
-     * @return true if enabled
+     * @return true if enabled, false otherwise
      */
     default boolean isEnabled() {
         return true;
     }
     
     /**
-     * Initializes the plugin with the given context.
-     * This is called when the plugin is loaded and should register
-     * commands, menu items, event handlers, etc.
+     * Gets the priority for loading this plugin.
+     * Lower values are loaded first. Default is 100.
      * 
-     * @param context The plugin context providing access to application services
-     */
-    void initialize(PluginContext context);
-    
-    /**
-     * Shuts down the plugin.
-     * This is called when the plugin is unloaded and should clean up
-     * any resources, unsubscribe from events, etc.
-     */
-    void shutdown();
-    
-    /**
-     * Gets the priority of this plugin (higher = loaded later).
-     * Plugins with lower priority are loaded first.
-     * 
-     * @return The plugin priority (default: 100)
+     * @return The priority value
      */
     default int getPriority() {
         return 100;
     }
     
     /**
-     * Gets the list of plugin IDs this plugin depends on.
+     * Gets the list of plugin IDs that this plugin depends on.
      * 
-     * @return List of dependency plugin IDs
+     * @return Array of plugin IDs, or empty array if no dependencies
      */
     default String[] getDependencies() {
         return new String[0];
