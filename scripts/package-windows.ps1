@@ -144,6 +144,25 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+# Build plugins (required for packaged app to have plugins available)
+$buildPluginsScript = Join-Path $root "scripts\build-plugins.ps1"
+if (Test-Path $buildPluginsScript) {
+    Write-Host ""
+    Write-Host "Building plugins..." -ForegroundColor Cyan
+    & $buildPluginsScript
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Warning: Plugin build failed. Packaged app will run without plugins." -ForegroundColor Yellow
+    } else {
+        $pluginsDir = Join-Path (Get-Location) "plugins"
+        if (Test-Path $pluginsDir) {
+            $pluginCount = (Get-ChildItem -Path $pluginsDir -Filter "*.jar" -ErrorAction SilentlyContinue).Count
+            Write-Host "Plugins built: $pluginCount JAR(s) in plugins/" -ForegroundColor Green
+        }
+    }
+} else {
+    Write-Host "Warning: build-plugins.ps1 not found. Packaged app will run without plugins." -ForegroundColor Yellow
+}
+
 Write-Host ""
 Write-Host "Creating Windows installer..." -ForegroundColor Cyan
 Write-Host ""
@@ -230,6 +249,24 @@ try {
     } else {
         Write-Host "Icon not found at $iconPath, skipping icon..." -ForegroundColor Yellow
     }
+
+    # Include plugins: --app-content (JDK 18+) includes them in both app-image and MSI
+    # For JDK 17 app-image only, we copy plugins after jpackage (see below)
+    $sourcePluginsDir = Join-Path (Get-Location) "plugins"
+    $pluginsIncludedViaAppContent = $false
+    $jpackageSupportsAppContent = $false
+    try {
+        $helpOut = & $jpackagePath --help 2>&1
+        if ($helpOut -match "app-content") { $jpackageSupportsAppContent = $true }
+    } catch { }
+    if ($jpackageSupportsAppContent -and (Test-Path $sourcePluginsDir)) {
+        $pluginJars = Get-ChildItem -Path $sourcePluginsDir -Filter "*.jar" -ErrorAction SilentlyContinue
+        if ($pluginJars.Count -gt 0) {
+            $jpackageArgs += @("--app-content", $sourcePluginsDir)
+            $pluginsIncludedViaAppContent = $true
+            Write-Host "Including plugins via --app-content ($($pluginJars.Count) JAR(s))" -ForegroundColor Green
+        }
+    }
     
     Write-Host "Using Launcher class for JavaFX compatibility..." -ForegroundColor Green
 
@@ -268,6 +305,20 @@ try {
         if ($installerType -eq "app-image") {
             $appImagePath = Join-Path $outputDir $installerName
             Write-Host "Application image location: $appImagePath" -ForegroundColor Cyan
+
+            # Copy plugins to app image if not already included via --app-content (JDK 17 fallback)
+            if (-not $pluginsIncludedViaAppContent) {
+                $destPluginsDir = Join-Path $appImagePath "plugins"
+                if (Test-Path $sourcePluginsDir) {
+                    $pluginJars = Get-ChildItem -Path $sourcePluginsDir -Filter "*.jar" -ErrorAction SilentlyContinue
+                    if ($pluginJars.Count -gt 0) {
+                        New-Item -ItemType Directory -Force -Path $destPluginsDir | Out-Null
+                        Copy-Item -Path $pluginJars.FullName -Destination $destPluginsDir -Force
+                        Write-Host "Plugins included: $($pluginJars.Count) JAR(s) copied to app image" -ForegroundColor Green
+                    }
+                }
+            }
+
             Write-Host ""
             if ($outputDir -eq $shortOutputDir) {
                 Write-Host "Note: Using temporary directory due to Windows path length limit." -ForegroundColor Yellow

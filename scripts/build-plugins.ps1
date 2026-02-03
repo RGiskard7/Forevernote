@@ -286,8 +286,8 @@ Created-By: Forevernote Plugin Builder
     $PluginClassDir = Join-Path $TempDir "com\example\forevernote\plugin\builtin"
     $AllClassFiles = Get-ChildItem -Path $PluginClassDir -Filter "*.class" -ErrorAction SilentlyContinue
     if ($AllClassFiles) {
-        $InnerClasses = $AllClassFiles | Where-Object { $_.Name -match '\$' }
-        if ($InnerClasses) {
+        $InnerClasses = @($AllClassFiles | Where-Object { $_.Name -match '\$' })
+        if ($InnerClasses.Count -gt 0) {
             Write-Host "  Found inner classes: $($InnerClasses.Count)" -ForegroundColor Gray
         }
     }
@@ -310,8 +310,9 @@ Created-By: Forevernote Plugin Builder
             
             if ($hasMainClass) {
                 Write-Host "  [OK] Created: $JarName" -ForegroundColor Green
-                if ($hasInnerClasses) {
-                    Write-Host "    (includes $($hasInnerClasses.Count) inner class(es))" -ForegroundColor Gray
+                $innerCount = @($hasInnerClasses).Count
+                if ($innerCount -gt 0) {
+                    Write-Host "    (includes $innerCount inner class(es))" -ForegroundColor Gray
                 }
                 $CompiledPlugins += $pluginName
             } else {

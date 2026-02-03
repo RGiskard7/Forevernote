@@ -8,6 +8,8 @@ This directory contains cross-platform scripts for building and running the Fore
 |--------|----------|---------|
 | `build_all.ps1` | Windows (PowerShell) | Builds and packages the project |
 | `build_all.sh` | macOS/Linux (Bash) | Builds and packages the project |
+| `build-plugins.ps1` | Windows (PowerShell) | Compiles plugins to `Forevernote/plugins/` |
+| `package-windows.ps1` | Windows (PowerShell) | Creates Windows executable (app-image or MSI) with plugins |
 | `run_all.ps1` | Windows (PowerShell) | Runs the compiled application |
 | `run_all.sh` | macOS/Linux (Bash) | Runs the compiled application |
 | `schema.txt` | All | Example SQLite database schema |
@@ -73,6 +75,19 @@ chmod +x scripts/*.sh
 3. Constructs appropriate module-path for your system
 4. Launches JAR with: `java --module-path <path> --add-modules javafx.controls,javafx.fxml,javafx.graphics,javafx.media -jar <jar>`
 5. If that fails, attempts: `mvn exec:java -Dexec.mainClass="com.example.forevernote.Main"`
+
+### Package Script (Windows)
+
+`package-windows.ps1` creates a distributable Windows executable:
+
+1. Builds the main JAR with Maven
+2. **Builds plugins** via `build-plugins.ps1` (compiles to `Forevernote/plugins/`)
+3. Runs jpackage to create app-image (portable folder) or MSI installer
+4. **Includes plugins** in the package:
+   - JDK 18+: Uses `--app-content` (works for both app-image and MSI)
+   - JDK 17: Copies `plugins/` into the app-image folder after jpackage
+
+The packaged app looks for `plugins/` next to the executable. Ensure plugins are built before packaging, or run `.\scripts\build-plugins.ps1` first.
 
 ## Database Schema
 
