@@ -109,19 +109,23 @@ public class AppDataDirectory {
     }
     
     /**
-     * Ensures data and logs directories exist.
+     * Ensures data, logs, and plugins directories exist.
      * Called by Main at startup before logger initialization.
      */
     public static boolean ensureDirectoriesExist() {
         try {
             File dataDir = new File(getDataDirectory());
             File logsDir = new File(getLogsDirectory());
+            File pluginsDir = new File(getBaseDirectory(), "plugins");
             
             if (!dataDir.exists()) {
                 dataDir.mkdirs();
             }
             if (!logsDir.exists()) {
                 logsDir.mkdirs();
+            }
+            if (!pluginsDir.exists()) {
+                pluginsDir.mkdirs();
             }
             
             return dataDir.exists() && dataDir.canWrite() && 

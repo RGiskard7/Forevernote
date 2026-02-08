@@ -2,6 +2,7 @@ package com.example.forevernote.plugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
@@ -9,11 +10,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.logging.Logger;
 
+import com.example.forevernote.AppDataDirectory;
 import com.example.forevernote.config.LoggerConfig;
 
 /**
@@ -43,44 +47,46 @@ public class PluginLoader {
     
     /**
      * Scans the plugins directory and loads all available plugins.
+     * Checks multiple locations: app bundle (jpackage), AppData, and relative path.
+     * On first run of a packaged app, copies bundled plugins to AppData so they are found.
      * 
      * @return List of loaded plugin instances
      */
     public static List<Plugin> loadExternalPlugins() {
+        // Copy bundled plugins to AppData on first run (packaged apps: DMG, MSI, etc.)
+        copyBundledPluginsToAppDataIfNeeded();
+        
         List<Plugin> plugins = new ArrayList<>();
-        Path pluginsPath = getPluginsDirectory();
+        Set<Path> scannedDirs = new HashSet<>();
         
-        if (!Files.exists(pluginsPath)) {
-            try {
-                Files.createDirectories(pluginsPath);
-                logger.info("Created plugins directory: " + pluginsPath);
-            } catch (IOException e) {
-                logger.warning("Failed to create plugins directory: " + e.getMessage());
-                return plugins;
+        for (Path pluginsPath : getPluginSearchPaths()) {
+            if (pluginsPath == null || !Files.exists(pluginsPath) || !Files.isDirectory(pluginsPath)) {
+                continue;
             }
-        }
-        
-        if (!Files.isDirectory(pluginsPath)) {
-            logger.warning("Plugins path is not a directory: " + pluginsPath);
-            return plugins;
-        }
-        
-        try {
-            Files.list(pluginsPath)
-                .filter(path -> path.toString().toLowerCase().endsWith(".jar"))
-                .forEach(jarPath -> {
-                    try {
-                        Plugin plugin = loadPluginFromJar(jarPath);
-                        if (plugin != null) {
-                            plugins.add(plugin);
-                            logger.info("Loaded external plugin: " + plugin.getName() + " v" + plugin.getVersion());
+            if (scannedDirs.contains(pluginsPath.normalize())) {
+                continue;
+            }
+            scannedDirs.add(pluginsPath.normalize());
+            
+            try {
+                Files.list(pluginsPath)
+                    .filter(path -> path.toString().toLowerCase().endsWith(".jar"))
+                    .filter(path -> !path.getFileName().toString().contains("forevernote")
+                        && !path.getFileName().toString().contains("uber"))
+                    .forEach(jarPath -> {
+                        try {
+                            Plugin plugin = loadPluginFromJar(jarPath);
+                            if (plugin != null) {
+                                plugins.add(plugin);
+                                logger.info("Loaded external plugin: " + plugin.getName() + " v" + plugin.getVersion());
+                            }
+                        } catch (Exception e) {
+                            logger.warning("Failed to load plugin from " + jarPath.getFileName() + ": " + e.getMessage());
                         }
-                    } catch (Exception e) {
-                        logger.warning("Failed to load plugin from " + jarPath.getFileName() + ": " + e.getMessage());
-                    }
-                });
-        } catch (IOException e) {
-            logger.warning("Failed to scan plugins directory: " + e.getMessage());
+                    });
+            } catch (IOException e) {
+                logger.warning("Failed to scan plugins directory " + pluginsPath + ": " + e.getMessage());
+            }
         }
         
         logger.info("Loaded " + plugins.size() + " external plugin(s)");
@@ -88,20 +94,123 @@ public class PluginLoader {
     }
     
     /**
-     * Gets the plugins directory path.
-     * Uses the application's data directory if available, otherwise uses a relative path.
+     * Gets all paths where plugins may be located.
+     * Order: 1) explicit property, 2) app bundle (jpackage), 3) AppData, 4) relative.
      * 
-     * @return The plugins directory path
+     * @return List of plugin directory paths to search
+     */
+    private static List<Path> getPluginSearchPaths() {
+        List<Path> paths = new ArrayList<>();
+        
+        // 1. Explicit system property (highest priority)
+        String dataDir = System.getProperty("forevernote.data.dir");
+        if (dataDir != null && !dataDir.isEmpty()) {
+            paths.add(Paths.get(dataDir, PLUGINS_DIR));
+        }
+        
+        // 2. App bundle directory (jpackage) - plugins alongside main JAR or in plugins/ subdir
+        Path appDir = getApplicationDirectory();
+        if (appDir != null) {
+            paths.add(appDir); // Same dir as JAR (--app-content puts plugins here)
+            paths.add(appDir.resolve(PLUGINS_DIR)); // app/plugins/ subdirectory
+            // Installation folder plugins/ (Windows: next to .exe; next to app/ folder)
+            Path installDir = appDir.getParent();
+            if (installDir != null) {
+                paths.add(installDir.resolve(PLUGINS_DIR));
+            }
+        }
+        
+        // 3. AppData directory (user data, works for packaged apps)
+        paths.add(Paths.get(AppDataDirectory.getBaseDirectory(), PLUGINS_DIR));
+        
+        // 4. Relative to CWD (development)
+        paths.add(Paths.get(PLUGINS_DIR));
+        
+        return paths;
+    }
+    
+    /**
+     * Gets the directory containing the application JAR (for jpackage/bundled apps).
+     * Returns null if not running from a JAR.
+     */
+    private static Path getApplicationDirectory() {
+        try {
+            URL location = PluginLoader.class.getProtectionDomain().getCodeSource().getLocation();
+            if (location == null) {
+                return null;
+            }
+            Path path = Paths.get(location.toURI());
+            if (Files.isRegularFile(path)) {
+                return path.getParent();
+            }
+            if (Files.isDirectory(path)) {
+                return path;
+            }
+        } catch (URISyntaxException | IllegalArgumentException e) {
+            logger.fine("Could not determine application directory: " + e.getMessage());
+        }
+        return null;
+    }
+    
+    /**
+     * Gets the primary plugins directory (for UI display, creating dirs, etc.).
+     * Uses AppData so users can add plugins in a known location.
      */
     private static Path getPluginsDirectory() {
-        // Try to use the application's data directory
         String dataDir = System.getProperty("forevernote.data.dir");
         if (dataDir != null && !dataDir.isEmpty()) {
             return Paths.get(dataDir, PLUGINS_DIR);
         }
-        
-        // Fallback to relative path from current working directory
-        return Paths.get(PLUGINS_DIR);
+        return Paths.get(AppDataDirectory.getBaseDirectory(), PLUGINS_DIR);
+    }
+    
+    /**
+     * Copies bundled plugins to AppData on first run.
+     * When installing from DMG/MSI/DEB, plugins are packed via --app-content but
+     * may not be in a location the classloader finds. Copying to AppData ensures
+     * they are found on all platforms.
+     */
+    private static void copyBundledPluginsToAppDataIfNeeded() {
+        Path appDataPlugins = Paths.get(AppDataDirectory.getBaseDirectory(), PLUGINS_DIR);
+        try {
+            if (!Files.exists(appDataPlugins)) {
+                Files.createDirectories(appDataPlugins);
+            }
+            long existingCount = Files.list(appDataPlugins)
+                .filter(p -> p.toString().toLowerCase().endsWith(".jar"))
+                .count();
+            if (existingCount > 0) {
+                return;
+            }
+            Path appDir = getApplicationDirectory();
+            if (appDir == null) {
+                return;
+            }
+            Path bundleSource = null;
+            if (Files.exists(appDir.resolve(PLUGINS_DIR))) {
+                bundleSource = appDir.resolve(PLUGINS_DIR);
+            } else {
+                bundleSource = appDir;
+            }
+            List<Path> jars = new ArrayList<>();
+            Files.list(bundleSource)
+                .filter(p -> p.toString().toLowerCase().endsWith(".jar"))
+                .filter(p -> !p.getFileName().toString().contains("forevernote")
+                    && !p.getFileName().toString().contains("uber"))
+                .forEach(jars::add);
+            if (jars.isEmpty()) {
+                return;
+            }
+            for (Path jar : jars) {
+                Path dest = appDataPlugins.resolve(jar.getFileName());
+                if (!Files.exists(dest)) {
+                    Files.copy(jar, dest);
+                    logger.info("Copied bundled plugin to AppData: " + jar.getFileName());
+                }
+            }
+        } catch (IOException e) {
+            logger.fine("Could not copy bundled plugins: " + e.getMessage());
+        }
     }
     
     /**

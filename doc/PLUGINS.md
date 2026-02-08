@@ -843,26 +843,40 @@ If your plugin uses external libraries, you have two options:
 
 #### Step 4: Deploy Your Plugin
 
-1. Copy your JAR file to the `plugins/` directory:
-   ```
-   Forevernote/
-   └── plugins/
-       └── my-custom-plugin.jar
-   ```
+1. Copy your JAR file to the plugins directory for your OS:
+   - **Windows**: `%APPDATA%\Forevernote\plugins\` or `[InstallFolder]\plugins\` (next to Forevernote.exe)
+   - **macOS**: `~/Library/Application Support/Forevernote/plugins/`
+   - **Linux**: `~/.config/Forevernote/plugins/`
+   - **Development**: `Forevernote/plugins/` (next to the JAR)
 
-2. Restart Forevernote (or reload plugins if supported)
+2. Restart Forevernote
 
 3. Your plugin will appear in the Plugin Manager automatically!
 
 ### Plugin Directory Location
 
-The `plugins/` directory is created in:
-- **Relative to application**: `plugins/` (same directory as the JAR)
-- **Or**: Set `forevernote.data.dir` system property to specify a custom data directory
+The application looks for plugins in multiple locations (in order):
+
+1. **AppData directory** (works on all platforms):
+   - **Windows**: `%APPDATA%\Forevernote\plugins\`
+   - **macOS**: `~/Library/Application Support/Forevernote/plugins/`
+   - **Linux**: `~/.config/Forevernote/plugins/` (or `$XDG_CONFIG_HOME/Forevernote/plugins/`)
+
+2. **Installation folder** (Windows/MSI, app-image): `plugins/` next to the `.exe`
+   - e.g. `C:\Program Files\Forevernote\plugins\` or `Forevernote\plugins\` for portable app-image
+
+3. **Application bundle** (inside the app): `app/plugins/` or alongside the main JAR
+
+4. **Relative to JAR** (development): `plugins/` in the same directory as the application JAR
+
+5. **Custom**: Set `forevernote.data.dir` system property to specify a custom base directory (plugins go in `{data.dir}/plugins/`)
+
+**To add plugins manually:** Copy your `.jar` files to any of the locations above. On Windows, the folder next to the `.exe` is a common choice for portable installations.
 
 ### Plugin Loading Process
 
-1. **Scan**: Application scans `plugins/` directory for `.jar` files
+1. **First run (packaged app)**: Bundled plugins are copied from the app bundle to AppData
+2. **Scan**: Application scans plugin directories for `.jar` files
 2. **Load**: Each JAR is loaded using `URLClassLoader`
 3. **Detect**: Plugin class is detected from manifest or auto-scanned
 4. **Validate**: Class must implement `Plugin` interface

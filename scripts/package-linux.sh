@@ -85,6 +85,24 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+# Build plugins (required for packaged app to have plugins available)
+BUILD_PLUGINS_SCRIPT="$ROOT_DIR/scripts/build-plugins.sh"
+if [ -f "$BUILD_PLUGINS_SCRIPT" ]; then
+    echo ""
+    echo "Building plugins..."
+    if "$BUILD_PLUGINS_SCRIPT"; then
+        PLUGINS_DIR="$FORVERNOTE_DIR/plugins"
+        if [ -d "$PLUGINS_DIR" ]; then
+            PLUGIN_COUNT=$(find "$PLUGINS_DIR" -maxdepth 1 -name "*.jar" 2>/dev/null | wc -l | tr -d ' ')
+            echo "Plugins built: $PLUGIN_COUNT JAR(s) in plugins/"
+        fi
+    else
+        echo "Warning: Plugin build failed. Packaged app will run without plugins."
+    fi
+else
+    echo "Warning: build-plugins.sh not found. Packaged app will run without plugins."
+fi
+
 echo ""
 echo "Creating Linux $PACKAGE_TYPE installer..."
 echo ""
@@ -94,10 +112,14 @@ echo ""
 OUTPUT_DIR="target/installers"
 mkdir -p "$OUTPUT_DIR"
 
-# Create a temporary input directory with only the JAR to avoid recursive copying
+# Create a temporary input directory with JAR and optionally plugins
 TEMP_INPUT_DIR=$(mktemp -d -t Forevernote-jpackage-input-XXXXXX)
 JAR_PATH="target/forevernote-1.0.0-uber.jar"
 cp "$JAR_PATH" "$TEMP_INPUT_DIR/"
+
+# Include plugins if available (for --app-content)
+SOURCE_PLUGINS_DIR="$FORVERNOTE_DIR/plugins"
+PLUGINS_INCLUDED=false
 
 # Cleanup function
 cleanup() {
@@ -133,6 +155,20 @@ else
     echo "Icon not found at $ICON_PATH, skipping icon..."
 fi
 
+# Include plugins via --app-content if jpackage supports it and we have plugins
+if [ -d "$SOURCE_PLUGINS_DIR" ]; then
+    PLUGIN_JARS=$(find "$SOURCE_PLUGINS_DIR" -maxdepth 1 -name "*.jar" 2>/dev/null)
+    if [ -n "$PLUGIN_JARS" ]; then
+        JPACKAGE_HELP=$(jpackage --help 2>&1 || true)
+        if echo "$JPACKAGE_HELP" | grep -q "app-content"; then
+            JPACKAGE_CMD="$JPACKAGE_CMD --app-content \"$SOURCE_PLUGINS_DIR\""
+            PLUGINS_INCLUDED=true
+            PLUGIN_COUNT=$(echo "$PLUGIN_JARS" | wc -l | tr -d ' ')
+            echo "Including plugins via --app-content ($PLUGIN_COUNT JAR(s))"
+        fi
+    fi
+fi
+
 # Use jpackage to create installer
 eval $JPACKAGE_CMD
 
@@ -142,6 +178,14 @@ if [ $? -eq 0 ]; then
     echo "  Package created successfully!"
     echo "========================================"
     echo ""
+    
+    if [ "$PLUGINS_INCLUDED" = false ] && [ -d "$SOURCE_PLUGINS_DIR" ]; then
+        PLUGIN_JARS=$(find "$SOURCE_PLUGINS_DIR" -maxdepth 1 -name "*.jar" 2>/dev/null)
+        if [ -n "$PLUGIN_JARS" ]; then
+            echo "Note: Plugins could not be included via --app-content (JDK may be < 18)."
+            echo "  Users can add plugins to: ~/.local/share/$APP_NAME/plugins/ or equivalent."
+        fi
+    fi
     
     if [ "$PACKAGE_TYPE" = "deb" ]; then
         echo "Installer location: $OUTPUT_DIR/${PACKAGE_NAME}_${APP_VERSION}-1_amd64.deb"
