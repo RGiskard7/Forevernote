@@ -17,28 +17,31 @@ import com.example.forevernote.data.models.Tag;
 
 /**
  * Service layer for note-related business logic.
- * Provides a clean API for note operations, separating business logic from UI controllers.
+ * Provides a clean API for note operations, separating business logic from UI
+ * controllers.
  * 
- * <p>This service handles:</p>
+ * <p>
+ * This service handles:
+ * </p>
  * <ul>
- *   <li>CRUD operations for notes</li>
- *   <li>Search and filtering</li>
- *   <li>Sorting and ordering</li>
- *   <li>Tag management for notes</li>
- *   <li>Favorites management</li>
+ * <li>CRUD operations for notes</li>
+ * <li>Search and filtering</li>
+ * <li>Sorting and ordering</li>
+ * <li>Tag management for notes</li>
+ * <li>Favorites management</li>
  * </ul>
  * 
  * @author Edu Díaz (RGiskard7)
  * @since 1.1.0
  */
 public class NoteService {
-    
+
     private static final Logger logger = LoggerConfig.getLogger(NoteService.class);
-    
+
     private final NoteDAO noteDAO;
     private final FolderDAO folderDAO;
     private final TagDAO tagDAO;
-    
+
     /**
      * Sorting options for notes list.
      */
@@ -49,17 +52,17 @@ public class NoteService {
         CREATED_OLDEST("Created (Oldest)"),
         MODIFIED_NEWEST("Modified (Newest)"),
         MODIFIED_OLDEST("Modified (Oldest)");
-        
+
         private final String displayName;
-        
+
         SortOption(String displayName) {
             this.displayName = displayName;
         }
-        
+
         public String getDisplayName() {
             return displayName;
         }
-        
+
         public static SortOption fromDisplayName(String name) {
             for (SortOption option : values()) {
                 if (option.displayName.equals(name)) {
@@ -69,7 +72,7 @@ public class NoteService {
             return MODIFIED_NEWEST; // Default
         }
     }
-    
+
     /**
      * Creates a new NoteService with the required DAOs.
      * 
@@ -83,9 +86,9 @@ public class NoteService {
         this.tagDAO = tagDAO;
         logger.info("NoteService initialized");
     }
-    
+
     // ==================== CRUD Operations ====================
-    
+
     /**
      * Creates a new note with the given title and content.
      * 
@@ -100,7 +103,7 @@ public class NoteService {
         logger.info("Created note: " + title + " (ID: " + noteId + ")");
         return note;
     }
-    
+
     /**
      * Creates a new note in a specific folder.
      * 
@@ -117,7 +120,7 @@ public class NoteService {
         }
         return note;
     }
-    
+
     /**
      * Retrieves a note by its ID.
      * 
@@ -128,7 +131,7 @@ public class NoteService {
         Note note = noteDAO.getNoteById(id);
         return Optional.ofNullable(note);
     }
-    
+
     /**
      * Updates an existing note.
      * 
@@ -141,19 +144,70 @@ public class NoteService {
         noteDAO.updateNote(note);
         logger.info("Updated note: " + note.getTitle());
     }
-    
+
     /**
-     * Deletes a note by its ID.
+     * Moves a note to the trash (soft delete).
      * 
-     * @param noteId The ID of the note to delete
+     * @param noteId The ID of the note to move to trash
      */
-    public void deleteNote(int noteId) {
+    public void moveToTrash(int noteId) {
         noteDAO.deleteNote(noteId);
-        logger.info("Deleted note ID: " + noteId);
+        logger.info("Moved note to trash, ID: " + noteId);
     }
-    
+
+    /**
+     * Deletes a note permanently from the database.
+     * 
+     * @param noteId The ID of the note to delete permanently
+     */
+    public void permanentlyDeleteNote(int noteId) {
+        noteDAO.permanentlyDeleteNote(noteId);
+        logger.info("Permanently deleted note ID: " + noteId);
+    }
+
+    /**
+     * Restores a note from the trash.
+     * 
+     * @param noteId The ID of the note to restore
+     */
+    public void restoreNote(int noteId) {
+        noteDAO.restoreNote(noteId);
+        logger.info("Restored note from trash, ID: " + noteId);
+    }
+
+    /**
+     * Fetches all notes currently in the trash.
+     * 
+     * @return List of notes in trash
+     */
+    public List<Note> getTrashNotes() {
+        return noteDAO.fetchTrashNotes();
+    }
+
+    /**
+     * Empties the trash by permanently deleting all notes in it.
+     */
+    public void emptyTrash() {
+        List<Note> trash = getTrashNotes();
+        for (Note note : trash) {
+            permanentlyDeleteNote(note.getId());
+        }
+        logger.info("Trash emptied: " + trash.size() + " notes deleted permanently");
+    }
+
+    /**
+     * Legacy delete method, now acts as moveToTrash.
+     * 
+     * @deprecated Use {@link #moveToTrash(int)} or
+     *             {@link #permanentlyDeleteNote(int)}
+     */
+    @Deprecated
+    public void deleteNote(int noteId) {
+        moveToTrash(noteId);
+    }
+
     // ==================== Retrieval Methods ====================
-    
+
     /**
      * Fetches all notes from the database.
      * 
@@ -162,7 +216,7 @@ public class NoteService {
     public List<Note> getAllNotes() {
         return noteDAO.fetchAllNotes();
     }
-    
+
     /**
      * Fetches notes for a specific folder.
      * 
@@ -175,7 +229,7 @@ public class NoteService {
         }
         return noteDAO.fetchNotesByFolderId(folder.getId());
     }
-    
+
     /**
      * Fetches notes that have a specific tag.
      * 
@@ -188,7 +242,7 @@ public class NoteService {
         }
         return noteDAO.fetchNotesByTagId(tag.getId());
     }
-    
+
     /**
      * Fetches all favorite notes.
      * 
@@ -196,10 +250,10 @@ public class NoteService {
      */
     public List<Note> getFavoriteNotes() {
         return getAllNotes().stream()
-            .filter(Note::isFavorite)
-            .collect(Collectors.toList());
+                .filter(Note::isFavorite)
+                .collect(Collectors.toList());
     }
-    
+
     /**
      * Fetches recent notes, sorted by modification date.
      * 
@@ -209,12 +263,12 @@ public class NoteService {
     public List<Note> getRecentNotes(int limit) {
         List<Note> notes = getAllNotes();
         return sortNotes(notes, SortOption.MODIFIED_NEWEST).stream()
-            .limit(limit)
-            .collect(Collectors.toList());
+                .limit(limit)
+                .collect(Collectors.toList());
     }
-    
+
     // ==================== Search Methods ====================
-    
+
     /**
      * Searches notes by title and content.
      * 
@@ -225,13 +279,13 @@ public class NoteService {
         if (query == null || query.trim().isEmpty()) {
             return getAllNotes();
         }
-        
+
         String searchLower = query.toLowerCase().trim();
         return getAllNotes().stream()
-            .filter(note -> matchesSearch(note, searchLower))
-            .collect(Collectors.toList());
+                .filter(note -> matchesSearch(note, searchLower))
+                .collect(Collectors.toList());
     }
-    
+
     /**
      * Searches notes within a specific folder.
      * 
@@ -241,17 +295,17 @@ public class NoteService {
      */
     public List<Note> searchNotesInFolder(String query, Folder folder) {
         List<Note> notes = folder != null ? getNotesByFolder(folder) : getAllNotes();
-        
+
         if (query == null || query.trim().isEmpty()) {
             return notes;
         }
-        
+
         String searchLower = query.toLowerCase().trim();
         return notes.stream()
-            .filter(note -> matchesSearch(note, searchLower))
-            .collect(Collectors.toList());
+                .filter(note -> matchesSearch(note, searchLower))
+                .collect(Collectors.toList());
     }
-    
+
     /**
      * Checks if a note matches a search query.
      * 
@@ -264,9 +318,9 @@ public class NoteService {
         String content = note.getContent() != null ? note.getContent().toLowerCase() : "";
         return title.contains(searchLower) || content.contains(searchLower);
     }
-    
+
     // ==================== Sorting Methods ====================
-    
+
     /**
      * Sorts a list of notes according to the specified option.
      * 
@@ -278,13 +332,13 @@ public class NoteService {
         if (notes == null || notes.isEmpty()) {
             return new ArrayList<>();
         }
-        
+
         List<Note> sorted = new ArrayList<>(notes);
         Comparator<Note> comparator = getComparator(option);
         sorted.sort(comparator);
         return sorted;
     }
-    
+
     /**
      * Gets the comparator for a sort option.
      * 
@@ -295,42 +349,35 @@ public class NoteService {
         switch (option) {
             case TITLE_ASC:
                 return Comparator.comparing(
-                    n -> n.getTitle() != null ? n.getTitle().toLowerCase() : "",
-                    Comparator.nullsLast(String::compareTo)
-                );
+                        n -> n.getTitle() != null ? n.getTitle().toLowerCase() : "",
+                        Comparator.nullsLast(String::compareTo));
             case TITLE_DESC:
                 return Comparator.comparing(
-                    (Note n) -> n.getTitle() != null ? n.getTitle().toLowerCase() : "",
-                    Comparator.nullsLast(String::compareTo)
-                ).reversed();
+                        (Note n) -> n.getTitle() != null ? n.getTitle().toLowerCase() : "",
+                        Comparator.nullsLast(String::compareTo)).reversed();
             case CREATED_NEWEST:
                 return Comparator.comparing(
-                    (Note n) -> n.getCreatedDate() != null ? n.getCreatedDate() : "",
-                    Comparator.nullsLast(String::compareTo)
-                ).reversed();
+                        (Note n) -> n.getCreatedDate() != null ? n.getCreatedDate() : "",
+                        Comparator.nullsLast(String::compareTo)).reversed();
             case CREATED_OLDEST:
                 return Comparator.comparing(
-                    n -> n.getCreatedDate() != null ? n.getCreatedDate() : "",
-                    Comparator.nullsLast(String::compareTo)
-                );
+                        n -> n.getCreatedDate() != null ? n.getCreatedDate() : "",
+                        Comparator.nullsLast(String::compareTo));
             case MODIFIED_NEWEST:
                 return Comparator.comparing(
-                    (Note n) -> getEffectiveModifiedDate(n),
-                    Comparator.nullsLast(String::compareTo)
-                ).reversed();
+                        (Note n) -> getEffectiveModifiedDate(n),
+                        Comparator.nullsLast(String::compareTo)).reversed();
             case MODIFIED_OLDEST:
                 return Comparator.comparing(
-                    n -> getEffectiveModifiedDate(n),
-                    Comparator.nullsLast(String::compareTo)
-                );
+                        n -> getEffectiveModifiedDate(n),
+                        Comparator.nullsLast(String::compareTo));
             default:
                 return Comparator.comparing(
-                    (Note n) -> getEffectiveModifiedDate(n),
-                    Comparator.nullsLast(String::compareTo)
-                ).reversed();
+                        (Note n) -> getEffectiveModifiedDate(n),
+                        Comparator.nullsLast(String::compareTo)).reversed();
         }
     }
-    
+
     /**
      * Gets the effective modified date (falls back to created date if null).
      * 
@@ -343,9 +390,9 @@ public class NoteService {
         }
         return note.getCreatedDate() != null ? note.getCreatedDate() : "";
     }
-    
+
     // ==================== Tag Management ====================
-    
+
     /**
      * Gets all tags assigned to a note.
      * 
@@ -358,7 +405,7 @@ public class NoteService {
         }
         return noteDAO.fetchTags(note.getId());
     }
-    
+
     /**
      * Adds a tag to a note.
      * 
@@ -369,18 +416,18 @@ public class NoteService {
         if (note == null || tag == null) {
             throw new IllegalArgumentException("Note and tag cannot be null");
         }
-        
+
         // Check if tag already exists on note
         List<Tag> currentTags = getNoteTags(note);
         boolean alreadyHasTag = currentTags.stream()
-            .anyMatch(t -> t.getId().equals(tag.getId()));
-        
+                .anyMatch(t -> t.getId().equals(tag.getId()));
+
         if (!alreadyHasTag) {
             noteDAO.addTag(note, tag);
             logger.info("Added tag '" + tag.getTitle() + "' to note: " + note.getTitle());
         }
     }
-    
+
     /**
      * Removes a tag from a note.
      * 
@@ -394,9 +441,9 @@ public class NoteService {
         noteDAO.removeTag(note, tag);
         logger.info("Removed tag '" + tag.getTitle() + "' from note: " + note.getTitle());
     }
-    
+
     // ==================== Favorites Management ====================
-    
+
     /**
      * Toggles the favorite status of a note.
      * 
@@ -407,16 +454,16 @@ public class NoteService {
         if (note == null) {
             throw new IllegalArgumentException("Note cannot be null");
         }
-        
+
         boolean newStatus = !note.isFavorite();
         note.setFavorite(newStatus);
         updateNote(note);
         logger.info("Note '" + note.getTitle() + "' favorite status: " + newStatus);
         return newStatus;
     }
-    
+
     // ==================== Utility Methods ====================
-    
+
     /**
      * Counts words in text content.
      * 
@@ -429,7 +476,7 @@ public class NoteService {
         }
         return text.trim().split("\\s+").length;
     }
-    
+
     /**
      * Counts characters in text content.
      * 

@@ -13,7 +13,8 @@ import com.example.forevernote.config.LoggerConfig;
 
 /**
  * SQLiteDB is a singleton class that manages the SQLite database connection and
- * initialization. It includes methods for opening and closing connections, as well
+ * initialization. It includes methods for opening and closing connections, as
+ * well
  * as initializing the database schema.
  */
 public class SQLiteDB {
@@ -23,74 +24,73 @@ public class SQLiteDB {
     private static SQLiteDB instance = null;
 
     // SQL statements for creating tables
-    private static final String createTableNotes = 
-		"CREATE TABLE IF NOT EXISTS notes ("
-			+ "note_id INTEGER PRIMARY KEY AUTOINCREMENT, "
-			+ "parent_id INTEGER, "
-			+ "title TEXT NOT NULL, "
-			+ "content TEXT DEFAULT NULL, "
-			+ "created_date TEXT NOT NULL, "
-			+ "modified_date TEXT DEFAULT NULL, "
-			+ "latitude REAL NOT NULL DEFAULT 0 CHECK (latitude BETWEEN -90 AND 90), "
-			+ "longitude REAL NOT NULL DEFAULT 0 CHECK (longitude BETWEEN -180 AND 180), "
-			+ "author TEXT DEFAULT NULL, "
-			+ "source_url TEXT DEFAULT NULL, "
-			+ "is_todo INTEGER NOT NULL DEFAULT 0 CHECK (is_todo IN (0, 1)), "
-			+ "todo_due TEXT DEFAULT NULL, "
-			+ "todo_completed TEXT DEFAULT NULL, "
-			+ "source TEXT DEFAULT NULL, "
-			+ "source_application TEXT DEFAULT NULL, "
-			+ "is_favorite INTEGER NOT NULL DEFAULT 0 CHECK (is_favorite IN (0, 1)), "
-			+ "FOREIGN KEY (parent_id) REFERENCES folders(folder_id) "
-			+ "ON UPDATE CASCADE "
-			+ "ON DELETE SET NULL"
-		+ ");";
-    
-    private static final String createTableFolders = 
-	    "CREATE TABLE IF NOT EXISTS folders ("
-		    + "folder_id INTEGER PRIMARY KEY AUTOINCREMENT, "
-		    + "parent_id INTEGER, "
-		    + "title TEXT NOT NULL, "
-		    + "created_date TEXT NOT NULL, "
-		    + "modified_date TEXT DEFAULT NULL, "
-		    + "FOREIGN KEY (parent_id) REFERENCES folders(folder_id) "
-		    + "ON UPDATE CASCADE "
-		    + "ON DELETE SET NULL"
-	    + ");";
-	    /*+ "CREATE INDEX idx_notebooks_title ON notebooks (title);";*/
+    private static final String createTableNotes = "CREATE TABLE IF NOT EXISTS notes ("
+            + "note_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            + "parent_id INTEGER, "
+            + "title TEXT NOT NULL, "
+            + "content TEXT DEFAULT NULL, "
+            + "created_date TEXT NOT NULL, "
+            + "modified_date TEXT DEFAULT NULL, "
+            + "latitude REAL NOT NULL DEFAULT 0 CHECK (latitude BETWEEN -90 AND 90), "
+            + "longitude REAL NOT NULL DEFAULT 0 CHECK (longitude BETWEEN -180 AND 180), "
+            + "author TEXT DEFAULT NULL, "
+            + "source_url TEXT DEFAULT NULL, "
+            + "is_todo INTEGER NOT NULL DEFAULT 0 CHECK (is_todo IN (0, 1)), "
+            + "todo_due TEXT DEFAULT NULL, "
+            + "todo_completed TEXT DEFAULT NULL, "
+            + "source TEXT DEFAULT NULL, "
+            + "source_application TEXT DEFAULT NULL, "
+            + "is_favorite INTEGER NOT NULL DEFAULT 0 CHECK (is_favorite IN (0, 1)), "
+            + "is_deleted INTEGER NOT NULL DEFAULT 0 CHECK (is_deleted IN (0, 1)), "
+            + "deleted_date TEXT DEFAULT NULL, "
+            + "FOREIGN KEY (parent_id) REFERENCES folders(folder_id) "
+            + "ON UPDATE CASCADE "
+            + "ON DELETE SET NULL"
+            + ");";
 
+    private static final String createTableFolders = "CREATE TABLE IF NOT EXISTS folders ("
+            + "folder_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            + "parent_id INTEGER, "
+            + "title TEXT NOT NULL, "
+            + "created_date TEXT NOT NULL, "
+            + "modified_date TEXT DEFAULT NULL, "
+            + "FOREIGN KEY (parent_id) REFERENCES folders(folder_id) "
+            + "ON UPDATE CASCADE "
+            + "ON DELETE SET NULL"
+            + ");";
+    /* + "CREATE INDEX idx_notebooks_title ON notebooks (title);"; */
 
-    private static final String createTableTags = 
-        "CREATE TABLE IF NOT EXISTS tags("
-	        + "tag_id INTEGER PRIMARY KEY AUTOINCREMENT, "
-	        + "title TEXT NOT NULL UNIQUE, "
-	        + "created_date TEXT NOT NULL, "
-	        + "modified_date TEXT DEFAULT NULL"
-	        + ")";
+    private static final String createTableTags = "CREATE TABLE IF NOT EXISTS tags("
+            + "tag_id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            + "title TEXT NOT NULL UNIQUE, "
+            + "created_date TEXT NOT NULL, "
+            + "modified_date TEXT DEFAULT NULL"
+            + ")";
 
-    /*private static final String createTableNotebooksNotes = 
-        "CREATE TABLE IF NOT EXISTS notebooksNotes("
-        + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        + "notebook_id INTEGER, "
-        + "note_id INTEGER, "
-        + "added_date TEXT, "
-        + "FOREIGN KEY (notebook_id) REFERENCES notebooks(notebook_id) "
-        + "MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE, "
-        + "FOREIGN KEY (note_id) REFERENCES notes(note_id) "
-        + "MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE"
-        + ")";*/
+    /*
+     * private static final String createTableNotebooksNotes =
+     * "CREATE TABLE IF NOT EXISTS notebooksNotes("
+     * + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+     * + "notebook_id INTEGER, "
+     * + "note_id INTEGER, "
+     * + "added_date TEXT, "
+     * + "FOREIGN KEY (notebook_id) REFERENCES notebooks(notebook_id) "
+     * + "MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE, "
+     * + "FOREIGN KEY (note_id) REFERENCES notes(note_id) "
+     * + "MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE"
+     * + ")";
+     */
 
-    private static final String createTableTagsNotes = 
-        "CREATE TABLE IF NOT EXISTS tagsNotes("
-        + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-        + "tag_id INTEGER, "
-        + "note_id INTEGER, "
-        + "added_date TEXT NOT NULL, "
-        + "FOREIGN KEY (tag_id) REFERENCES tags(tag_id) "
-        + "MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE, "
-        + "FOREIGN KEY (note_id) REFERENCES notes(note_id) "
-        + "MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE"
-        + ")";
+    private static final String createTableTagsNotes = "CREATE TABLE IF NOT EXISTS tagsNotes("
+            + "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            + "tag_id INTEGER, "
+            + "note_id INTEGER, "
+            + "added_date TEXT NOT NULL, "
+            + "FOREIGN KEY (tag_id) REFERENCES tags(tag_id) "
+            + "MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE, "
+            + "FOREIGN KEY (note_id) REFERENCES notes(note_id) "
+            + "MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE"
+            + ")";
 
     /**
      * Private constructor to prevent instantiation from other classes.
@@ -169,7 +169,7 @@ public class SQLiteDB {
         try {
             connection = openConnection();
             Statement stmt = connection.createStatement();
-            
+
             // Check if folders table exists and has UNIQUE constraint on title
             // If so, recreate it without the constraint
             try {
@@ -193,7 +193,7 @@ public class SQLiteDB {
                                 }
                             }
                         }
-                        
+
                         // If we suspect there's a UNIQUE constraint, recreate the table
                         if (hasUniqueIndex) {
                             logger.info("Detected UNIQUE constraint on folders.title, recreating table...");
@@ -210,7 +210,8 @@ public class SQLiteDB {
                         }
                     } catch (SQLException e) {
                         // If checking fails, try to recreate anyway (safer approach)
-                        logger.warning("Could not check for UNIQUE constraint, recreating folders table: " + e.getMessage());
+                        logger.warning(
+                                "Could not check for UNIQUE constraint, recreating folders table: " + e.getMessage());
                         stmt.executeUpdate("CREATE TABLE IF NOT EXISTS folders_backup AS SELECT * FROM folders");
                         stmt.executeUpdate("DROP TABLE IF EXISTS folders");
                         stmt.executeUpdate(createTableFolders);
@@ -225,29 +226,46 @@ public class SQLiteDB {
                 // Table doesn't exist, create it
                 stmt.executeUpdate(createTableFolders);
             }
-        	
+
             stmt.executeUpdate(createTableNotes);
             stmt.executeUpdate(createTableTags);
             stmt.executeUpdate(createTableTagsNotes);
-            
-            // Migrate existing databases: add is_favorite column if it doesn't exist
+
+            // Migrate existing databases: add necessary columns if they don't exist
             try {
                 ResultSet rs = stmt.executeQuery("PRAGMA table_info(notes)");
                 boolean hasIsFavorite = false;
+                boolean hasIsDeleted = false;
+                boolean hasDeletedDate = false;
+
                 while (rs.next()) {
-                    if ("is_favorite".equals(rs.getString("name"))) {
+                    String columnName = rs.getString("name");
+                    if ("is_favorite".equals(columnName))
                         hasIsFavorite = true;
-                        break;
-                    }
+                    if ("is_deleted".equals(columnName))
+                        hasIsDeleted = true;
+                    if ("deleted_date".equals(columnName))
+                        hasDeletedDate = true;
                 }
+
                 if (!hasIsFavorite) {
                     logger.info("Adding is_favorite column to notes table...");
-                    stmt.executeUpdate("ALTER TABLE notes ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0 CHECK (is_favorite IN (0, 1))");
+                    stmt.executeUpdate(
+                            "ALTER TABLE notes ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0 CHECK (is_favorite IN (0, 1))");
+                }
+                if (!hasIsDeleted) {
+                    logger.info("Adding is_deleted column to notes table...");
+                    stmt.executeUpdate(
+                            "ALTER TABLE notes ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0 CHECK (is_deleted IN (0, 1))");
+                }
+                if (!hasDeletedDate) {
+                    logger.info("Adding deleted_date column to notes table...");
+                    stmt.executeUpdate("ALTER TABLE notes ADD COLUMN deleted_date TEXT DEFAULT NULL");
                 }
             } catch (SQLException e) {
-                logger.warning("Could not check/add is_favorite column: " + e.getMessage());
+                logger.warning("Could not check/add columns to notes table: " + e.getMessage());
             }
-            
+
             connection.commit();
             stmt.close();
         } catch (SQLException e) {
@@ -256,7 +274,8 @@ public class SQLiteDB {
                 try {
                     connection.rollback();
                 } catch (SQLException rollbackEx) {
-                    logger.log(Level.SEVERE, "Error rolling back database initialization: " + rollbackEx.getMessage(), rollbackEx);
+                    logger.log(Level.SEVERE, "Error rolling back database initialization: " + rollbackEx.getMessage(),
+                            rollbackEx);
                 }
             }
         } finally {

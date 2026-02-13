@@ -10,16 +10,17 @@ import com.example.forevernote.data.models.abstractLayers.LeafModel;
 
 /**
  * Represents a note in the application.
- * A note has a title, content, optional metadata such as location, author, and source information,
+ * A note has a title, content, optional metadata such as location, author, and
+ * source information,
  * and can be associated with multiple tags.
  */
-public class Note extends LeafModel implements Serializable {    
+public class Note extends LeafModel implements Serializable {
 	private static final long serialVersionUID = 1L;
 	private String content;
-	//private List<Tag> tags = new ArrayList<>();
-	
+	// private List<Tag> tags = new ArrayList<>();
+
 	private Set<Tag> tags = new HashSet<>();
-	
+
 	private Double latitude = 0.0;
 	private Double longitude = 0.0;
 	private String author = null;
@@ -27,68 +28,73 @@ public class Note extends LeafModel implements Serializable {
 	private String source = null;
 	private String sourceApplication = null;
 	private boolean isFavorite = false;
-	
-    public Note(String title, String content) {
-    	super(title, null, null);
-        this.content = content;
-    }
-    
-    public Note(Integer id, String title, String content) {
-    	super(id, title, null, null);
-        this.content = content;
-    }
-	
-    public Note(String title, String content, String createdDate, String modifiedDate) {
-    	super(title, createdDate, modifiedDate);
-        this.content = content;
-    }
-    
-    
-    public Note(Integer id, String title, String content, String createdDate, String modifiedDate) {
-    	super(id, title, createdDate, modifiedDate);
-        this.content = content;
-    }
-    
-    public Note(String title, String content, String createdDate, String modifiedDate, Double latitude, Double longitude,
-    		String author, String source_url, String source, String source_application) {
-    	super(title, createdDate, modifiedDate);
-    	
-        this.content = content;
-        this.latitude = latitude;
-        this.longitude = longitude;
-        this.author = author;
-        this.sourceUrl = source_url;
-        this.source = source;
-        this.sourceApplication = source_application;
-    }
-    
-    public Note(Integer id, String title, String content, String createdDate, String modifiedDate, Double latitude, Double longitude,
-    		String author, String source_url, String source, String source_application) {
-    	this(title, content, createdDate, modifiedDate, latitude, longitude, author, source_url, source, source_application);
-    	setId(id);
-    }
+	private boolean isDeleted = false;
+	private String deletedDate = null;
 
-    public String getContent() {
-        return content;
-    }
+	public Note(String title, String content) {
+		super(title, null, null);
+		this.content = content;
+	}
 
-    public void setContent(String content) {
-        this.content = content;
-    }
+	public Note(Integer id, String title, String content) {
+		super(id, title, null, null);
+		this.content = content;
+	}
 
-    /*public List<Tag> getTags() {
-        return tags;
-    }
+	public Note(String title, String content, String createdDate, String modifiedDate) {
+		super(title, createdDate, modifiedDate);
+		this.content = content;
+	}
 
-    public void setTags(List<Tag> tags) {
-        this.tags = tags;
-    }*/
-    
+	public Note(Integer id, String title, String content, String createdDate, String modifiedDate) {
+		super(id, title, createdDate, modifiedDate);
+		this.content = content;
+	}
+
+	public Note(String title, String content, String createdDate, String modifiedDate, Double latitude,
+			Double longitude,
+			String author, String source_url, String source, String source_application) {
+		super(title, createdDate, modifiedDate);
+
+		this.content = content;
+		this.latitude = latitude;
+		this.longitude = longitude;
+		this.author = author;
+		this.sourceUrl = source_url;
+		this.source = source;
+		this.sourceApplication = source_application;
+	}
+
+	public Note(Integer id, String title, String content, String createdDate, String modifiedDate, Double latitude,
+			Double longitude,
+			String author, String source_url, String source, String source_application) {
+		this(title, content, createdDate, modifiedDate, latitude, longitude, author, source_url, source,
+				source_application);
+		setId(id);
+	}
+
+	public String getContent() {
+		return content;
+	}
+
+	public void setContent(String content) {
+		this.content = content;
+	}
+
+	/*
+	 * public List<Tag> getTags() {
+	 * return tags;
+	 * }
+	 * 
+	 * public void setTags(List<Tag> tags) {
+	 * this.tags = tags;
+	 * }
+	 */
 
 	public void addTag(Tag tag) {
-    	if (tag != null) {
-    		tags.add(tag);
-    	}
+		if (tag != null) {
+			tags.add(tag);
+		}
 	}
 
 	public void addAllTags(List<Tag> tags) {
@@ -108,11 +114,11 @@ public class Note extends LeafModel implements Serializable {
 			tags.remove(tag);
 		}
 	}
-	
-    public List<Tag> getTags() {
-        return new ArrayList<>(tags);
-    }
-        
+
+	public List<Tag> getTags() {
+		return new ArrayList<>(tags);
+	}
+
 	public Double getLatitude() {
 		return latitude;
 	}
@@ -160,40 +166,58 @@ public class Note extends LeafModel implements Serializable {
 	public void setSourceApplication(String sourceApplication) {
 		this.sourceApplication = sourceApplication;
 	}
-	
+
 	public boolean isFavorite() {
 		return isFavorite;
 	}
-	
+
 	public void setFavorite(boolean isFavorite) {
 		this.isFavorite = isFavorite;
 	}
-    
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Note note = (Note) o;
-        if (getId() != null && note.getId() != null) {
-            return getId().equals(note.getId());
-        }
-        return getTitle().equals(note.getTitle());
-    }
-    
-    @Override
-    public int hashCode() {
-        if (getId() != null) {
-            return getId().hashCode();
-        }
-        return getTitle().hashCode();
-    }
 
-    @Override
-    public String toString() {
-    	return "Note{"
-    			+ "id='" + getId() + '\'' +
-			        "title='" + getTitle() + '\'' +
-			        "content='" + content + '\'' +
-		        '}';
-    }
+	public boolean isDeleted() {
+		return isDeleted;
+	}
+
+	public void setDeleted(boolean isDeleted) {
+		this.isDeleted = isDeleted;
+	}
+
+	public String getDeletedDate() {
+		return deletedDate;
+	}
+
+	public void setDeletedDate(String deletedDate) {
+		this.deletedDate = deletedDate;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (this == o)
+			return true;
+		if (o == null || getClass() != o.getClass())
+			return false;
+		Note note = (Note) o;
+		if (getId() != null && note.getId() != null) {
+			return getId().equals(note.getId());
+		}
+		return getTitle().equals(note.getTitle());
+	}
+
+	@Override
+	public int hashCode() {
+		if (getId() != null) {
+			return getId().hashCode();
+		}
+		return getTitle().hashCode();
+	}
+
+	@Override
+	public String toString() {
+		return "Note{"
+				+ "id='" + getId() + '\'' +
+				"title='" + getTitle() + '\'' +
+				"content='" + content + '\'' +
+				'}';
+	}
 }

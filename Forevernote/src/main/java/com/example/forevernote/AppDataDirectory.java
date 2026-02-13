@@ -6,18 +6,20 @@ import java.io.File;
  * Utility class to determine the application data directory.
  * 
  * Strategy:
- * 1. First, try to use relative paths (data/, logs/) - works for development and portable apps
- * 2. If that fails (read-only directory), use platform-specific user data directory
+ * 1. First, try to use relative paths (data/, logs/) - works for development
+ * and portable apps
+ * 2. If that fails (read-only directory), use platform-specific user data
+ * directory
  * 
  * Standard directories by platform (fallback):
  * - Windows: %APPDATA%\Forevernote
- * - macOS:   ~/Library/Application Support/Forevernote
- * - Linux:   ~/.config/Forevernote
+ * - macOS: ~/Library/Application Support/Forevernote
+ * - Linux: ~/.config/Forevernote
  */
 public class AppDataDirectory {
-    
+
     private static String baseDir = null;
-    
+
     /**
      * Gets the base directory for application data.
      * First tries relative path, falls back to platform-specific directory.
@@ -26,23 +28,25 @@ public class AppDataDirectory {
         if (baseDir != null) {
             return baseDir;
         }
-        
+
         // Strategy 1: Try relative path (works for development and portable apps)
         String userDir = System.getProperty("user.dir", ".");
         File testDir = new File(userDir, "data");
-        
+
         if (canWriteToDirectory(testDir)) {
             baseDir = userDir;
             return baseDir;
         }
-        
-        // Strategy 2: Use platform-specific directory (for packaged apps in read-only locations)
+
+        // Strategy 2: Use platform-specific directory (for packaged apps in read-only
+        // locations)
         baseDir = getPlatformAppDataDirectory();
         return baseDir;
     }
-    
+
     /**
-     * Checks if we can write to a directory (exists and writable, or can be created).
+     * Checks if we can write to a directory (exists and writable, or can be
+     * created).
      */
     private static boolean canWriteToDirectory(File dir) {
         try {
@@ -59,7 +63,7 @@ public class AppDataDirectory {
             return false;
         }
     }
-    
+
     /**
      * Gets the platform-specific application data directory.
      */
@@ -67,9 +71,9 @@ public class AppDataDirectory {
         String osName = System.getProperty("os.name", "").toLowerCase();
         String home = System.getProperty("user.home");
         File appDataDir;
-        
+
         String appName = AppConfig.getAppName();
-        
+
         if (osName.contains("win")) {
             // Windows: %APPDATA%\AppName
             String appData = System.getenv("APPDATA");
@@ -90,24 +94,31 @@ public class AppDataDirectory {
                 appDataDir = new File(home, ".config/" + appName);
             }
         }
-        
+
         return appDataDir.getAbsolutePath();
     }
-    
+
     /**
      * Gets the data directory path (baseDir/data).
      */
     public static String getDataDirectory() {
         return new File(getBaseDirectory(), "data").getAbsolutePath();
     }
-    
+
     /**
      * Gets the logs directory path (baseDir/logs).
      */
     public static String getLogsDirectory() {
         return new File(getBaseDirectory(), "logs").getAbsolutePath();
     }
-    
+
+    /**
+     * Gets the backups directory path (baseDir/backups).
+     */
+    public static String getBackupsDirectory() {
+        return new File(getBaseDirectory(), "backups").getAbsolutePath();
+    }
+
     /**
      * Ensures data, logs, and plugins directories exist.
      * Called by Main at startup before logger initialization.
@@ -117,7 +128,8 @@ public class AppDataDirectory {
             File dataDir = new File(getDataDirectory());
             File logsDir = new File(getLogsDirectory());
             File pluginsDir = new File(getBaseDirectory(), "plugins");
-            
+            File backupsDir = new File(getBackupsDirectory());
+
             if (!dataDir.exists()) {
                 dataDir.mkdirs();
             }
@@ -127,9 +139,13 @@ public class AppDataDirectory {
             if (!pluginsDir.exists()) {
                 pluginsDir.mkdirs();
             }
-            
-            return dataDir.exists() && dataDir.canWrite() && 
-                   logsDir.exists() && logsDir.canWrite();
+            if (!backupsDir.exists()) {
+                backupsDir.mkdirs();
+            }
+
+            return dataDir.exists() && dataDir.canWrite() &&
+                    logsDir.exists() && logsDir.canWrite() &&
+                    backupsDir.exists() && backupsDir.canWrite();
         } catch (Exception e) {
             return false;
         }
