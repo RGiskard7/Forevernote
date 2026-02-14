@@ -10,7 +10,8 @@
    BASE STYLES
    ======================================== */
 
-.root, .root-container {
+.root,
+.root-container {
     -fx-font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", -apple-system, sans-serif;
     -fx-font-size: 13px;
     -fx-background-color: #1e1e1e;
@@ -54,7 +55,7 @@
     -fx-border-radius: 8;
     -fx-background-radius: 8;
     -fx-padding: 6;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 16, 0, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.4), 16, 0, 0, 4);
 }
 
 .menu-item {
@@ -63,7 +64,8 @@
     -fx-background-radius: 4;
 }
 
-.menu-item:hover, .menu-item:focused {
+.menu-item:hover,
+.menu-item:focused {
     -fx-background-color: #3a3a3a;
 }
 
@@ -194,16 +196,16 @@
     -fx-background-color: #252525;
 }
 
-.tab-pane > .tab-header-area {
+.tab-pane>.tab-header-area {
     -fx-background-color: #252525;
     -fx-padding: 4 4 0 4;
 }
 
-.tab-pane > .tab-header-area > .tab-header-background {
+.tab-pane>.tab-header-area>.tab-header-background {
     -fx-background-color: #252525;
 }
 
-.tab-pane > .tab-header-area > .headers-region > .tab {
+.tab-pane>.tab-header-area>.headers-region>.tab {
     -fx-background-color: #333333;
     -fx-background-radius: 6 6 0 0;
     -fx-padding: 6 12;
@@ -212,33 +214,33 @@
     -fx-faint-focus-color: transparent;
 }
 
-.tab-pane > .tab-header-area > .headers-region > .tab:selected {
+.tab-pane>.tab-header-area>.headers-region>.tab:selected {
     -fx-background-color: #9f7aea;
 }
 
-.tab-pane > .tab-header-area > .headers-region > .tab:hover {
+.tab-pane>.tab-header-area>.headers-region>.tab:hover {
     -fx-background-color: #444444;
 }
 
-.tab-pane > .tab-header-area > .headers-region > .tab:selected:hover {
+.tab-pane>.tab-header-area>.headers-region>.tab:selected:hover {
     -fx-background-color: #a78bfa;
 }
 
-.tab-pane > .tab-header-area > .headers-region > .tab .tab-label {
+.tab-pane>.tab-header-area>.headers-region>.tab .tab-label {
     -fx-text-fill: #a0a0a0;
     -fx-font-size: 11px;
 }
 
-.tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label {
+.tab-pane>.tab-header-area>.headers-region>.tab:selected .tab-label {
     -fx-text-fill: #ffffff;
     -fx-font-weight: 600;
 }
 
-.tab-pane > .tab-header-area > .headers-region > .tab:hover .tab-label {
+.tab-pane>.tab-header-area>.headers-region>.tab:hover .tab-label {
     -fx-text-fill: #e0e0e0;
 }
 
-.tab-pane > .tab-content-area {
+.tab-pane>.tab-content-area {
     -fx-background-color: #1e1e1e;
 }
 
@@ -247,15 +249,16 @@
     -fx-background-color: #252525;
 }
 
-.sidebar-tabs > .tab-header-area > .tab-header-background {
+.sidebar-tabs>.tab-header-area>.tab-header-background {
     -fx-background-color: #252525;
 }
 
-.sidebar-tabs > .tab-content-area {
+.sidebar-tabs>.tab-content-area {
     -fx-background-color: #1e1e1e;
 }
 
-.sidebar-tree, .sidebar-list {
+.sidebar-tree,
+.sidebar-list {
     -fx-background-color: transparent;
     -fx-padding: 4;
 }
@@ -290,12 +293,14 @@
    TREE VIEW & LIST VIEW
    ======================================== */
 
-.tree-view, .list-view {
+.tree-view,
+.list-view {
     -fx-background-color: transparent;
     -fx-padding: 4;
 }
 
-.tree-cell, .list-cell {
+.tree-cell,
+.list-cell {
     -fx-background-color: transparent;
     -fx-text-fill: #d0d0d0;
     -fx-font-size: 13px;
@@ -303,20 +308,22 @@
     -fx-background-radius: 4;
 }
 
-.tree-cell:selected, .list-cell:selected {
+.tree-cell:selected,
+.list-cell:selected {
     -fx-background-color: #9f7aea;
     -fx-text-fill: #ffffff;
 }
 
-.tree-cell:hover:!selected, .list-cell:hover:!selected {
+.tree-cell:hover: !selected,
+.list-cell:hover: !selected {
     -fx-background-color: #333333;
 }
 
-.tree-cell > .tree-disclosure-node > .arrow {
+.tree-cell>.tree-disclosure-node>.arrow {
     -fx-background-color: #888888;
 }
 
-.tree-cell:selected > .tree-disclosure-node > .arrow {
+.tree-cell:selected>.tree-disclosure-node>.arrow {
     -fx-background-color: #ffffff;
 }
 
@@ -359,15 +366,15 @@
 .tree-cell:selected .folder-icon-all,
 .tree-cell:selected .folder-icon-open,
 .tree-cell:selected .folder-icon-closed {
-    -fx-text-fill: #ffffff;
+    -fx-text-fill: #ffffff !important;
 }
 
 .tree-cell:selected .folder-name {
-    -fx-text-fill: #ffffff;
+    -fx-text-fill: #ffffff !important;
 }
 
 .tree-cell:selected .folder-count {
-    -fx-text-fill: #ffffff;
+    -fx-text-fill: #ffffff !important;
     -fx-background-color: rgba(255, 255, 255, 0.2);
 }
 
@@ -440,7 +447,7 @@
     -fx-border-color: transparent;
 }
 
-.notes-grid-scroll > .viewport {
+.notes-grid-scroll>.viewport {
     -fx-background-color: transparent;
 }
 
@@ -450,13 +457,13 @@
     -fx-border-radius: 8;
     -fx-background-radius: 8;
     -fx-cursor: hand;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 4, 0, 0, 2);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.2), 4, 0, 0, 2);
 }
 
 .note-card:hover {
     -fx-background-color: #3a3a3a;
     -fx-border-color: #505050;
-    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 8, 0, 0, 4);
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.3), 8, 0, 0, 4);
 }
 
 .note-card-title {
@@ -662,7 +669,7 @@
     -fx-padding: 0;
 }
 
-.format-toolbar-scroll > .viewport {
+.format-toolbar-scroll>.viewport {
     -fx-background-color: transparent;
 }
 
@@ -884,11 +891,13 @@
    SPLIT PANES
    ======================================== */
 
-.main-split, .content-split, .editor-split {
+.main-split,
+.content-split,
+.editor-split {
     -fx-background-color: transparent;
 }
 
-.split-pane > .split-pane-divider {
+.split-pane>.split-pane-divider {
     -fx-background-color: #3a3a3a;
     -fx-padding: 0 2 0 0;
 }
@@ -922,12 +931,14 @@
     -fx-pref-height: 10px;
 }
 
-.scroll-bar .increment-button, .scroll-bar .decrement-button {
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
     -fx-background-color: transparent;
     -fx-padding: 0;
 }
 
-.scroll-bar .increment-arrow, .scroll-bar .decrement-arrow {
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
     -fx-shape: "";
     -fx-padding: 0;
 }
@@ -1085,7 +1096,7 @@
     -fx-border-color: transparent;
 }
 
-.panel-scroll > .viewport {
+.panel-scroll>.viewport {
     -fx-background-color: transparent;
 }
 
@@ -1228,4 +1239,54 @@
 
 .outline-header:hover {
     -fx-background-color: #3a3a3a;
+}
+
+/* ========================================
+   FEATHER ICON STYLING (Ikonli FontIcon)
+   ======================================== */
+
+.feather-icon {
+    -fx-icon-color: -fx-text-fill;
+    -fx-fill: -fx-text-fill;
+}
+
+.button:hover .feather-icon {
+    -fx-icon-color: -fx-text-fill;
+    -fx-fill: -fx-text-fill;
+}
+
+/* Specific color overrides for toolbar buttons vs primary */
+.toolbar-btn .feather-icon {
+    -fx-icon-color: #e0e0e0;
+    -fx-fill: #e0e0e0;
+}
+
+.toolbar-btn:hover .feather-icon {
+    -fx-icon-color: #ffffff;
+    -fx-fill: #ffffff;
+}
+
+.toolbar-btn-primary .feather-icon {
+    -fx-icon-color: white;
+    -fx-fill: white;
+}
+
+.feather-icon-white {
+    -fx-icon-color: white;
+    -fx-fill: white;
+}
+
+.toolbar-btn-danger .feather-icon {
+    -fx-icon-color: #fc8181;
+    -fx-fill: #fc8181;
+}
+
+.feather-icon-danger {
+    -fx-icon-color: #fc8181;
+    -fx-fill: #fc8181;
+}
+
+.toolbar-btn-danger:hover .feather-icon {
+    -fx-icon-color: #feb2b2;
+    -fx-fill: #feb2b2;
 }

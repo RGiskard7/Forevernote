@@ -4,6 +4,7 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.web.WebView?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" 
             fx:controller="com.example.forevernote.ui.controller.MainController"
@@ -40,6 +41,7 @@
                 
                 <Menu text="View">
                     <MenuItem text="Toggle Sidebar" onAction="#handleToggleSidebar" accelerator="F9"/>
+                    <MenuItem text="Toggle Notes Panel" onAction="#handleToggleNotesPanel" accelerator="F8"/>
                     <SeparatorMenuItem/>
                     <MenuItem text="Zoom In" onAction="#handleZoomIn" accelerator="Shortcut+Plus"/>
                     <MenuItem text="Zoom Out" onAction="#handleZoomOut" accelerator="Shortcut+Minus"/>
@@ -82,18 +84,61 @@
                     <Insets top="8" right="16" bottom="8" left="16"/>
                 </padding>
                 
-                <Button fx:id="newNoteBtn" text="&#x1F4D3;" onAction="#handleNewNote" styleClass="toolbar-btn toolbar-btn-primary">
-                    <tooltip><Tooltip text="New Note (Ctrl+N)"/></tooltip>
+                <!-- Layout Toggles -->
+                <ToggleButton fx:id="sidebarToggleBtn" onAction="#handleToggleSidebar" styleClass="toolbar-btn">
+                   <tooltip><Tooltip text="Toggle Sidebar (F9)"/></tooltip>
+                   <graphic>
+                       <FontIcon iconLiteral="fth-sidebar" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
+                   </graphic>
+                </ToggleButton>
+                <ToggleButton fx:id="notesPanelToggleBtn" onAction="#handleToggleNotesPanel" styleClass="toolbar-btn">
+                   <tooltip><Tooltip text="Toggle Notes List (F8)"/></tooltip>
+                    <graphic>
+                       <FontIcon iconLiteral="fth-list" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
+                   </graphic>
+                </ToggleButton>
+                <Button fx:id="layoutSwitchBtn" onAction="#handleViewLayoutSwitch" styleClass="toolbar-btn">
+                   <tooltip><Tooltip text="Switch Layout Columns"/></tooltip>
+                    <graphic>
+                       <FontIcon iconLiteral="fth-columns" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
+                   </graphic>
                 </Button>
-                <Button fx:id="newFolderBtn" text="&#x1F4C1;" onAction="#handleNewFolder" styleClass="toolbar-btn">
-                    <tooltip><Tooltip text="New Folder"/></tooltip>
-                </Button>
+                
                 <Separator orientation="VERTICAL" styleClass="toolbar-separator"/>
-                <Button fx:id="saveBtn" text="Save" onAction="#handleSave" styleClass="toolbar-btn">
-                    <tooltip><Tooltip text="Save (Ctrl+S)"/></tooltip>
+
+                <!-- File Actions -->
+                <Button fx:id="newNoteBtn" onAction="#handleNewNote" styleClass="toolbar-btn toolbar-btn-primary">
+                    <tooltip><Tooltip text="New Note (Ctrl+N)"/></tooltip>
+                    <graphic>
+                        <FontIcon iconLiteral="fth-file-plus" iconSize="18" iconColor="white" styleClass="feather-icon-white"/>
+                    </graphic>
                 </Button>
-                <Button fx:id="deleteBtn" text="Del" onAction="#handleDelete" styleClass="toolbar-btn toolbar-btn-danger">
+                <Button fx:id="newFolderBtn" onAction="#handleNewFolder" styleClass="toolbar-btn">
+                    <tooltip><Tooltip text="New Folder"/></tooltip>
+                    <graphic>
+                        <FontIcon iconLiteral="fth-folder-plus" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
+                    </graphic>
+                </Button>
+                <Button fx:id="newTagBtn" onAction="#handleNewTag" styleClass="toolbar-btn">
+                    <tooltip><Tooltip text="New Tag"/></tooltip>
+                    <graphic>
+                       <FontIcon iconLiteral="fth-hash" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
+                   </graphic>
+                </Button>
+                
+                <Separator orientation="VERTICAL" styleClass="toolbar-separator"/>
+                
+                <Button fx:id="saveBtn" onAction="#handleSave" styleClass="toolbar-btn">
+                    <tooltip><Tooltip text="Save (Ctrl+S)"/></tooltip>
+                    <graphic>
+                        <FontIcon iconLiteral="fth-save" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
+                    </graphic>
+                </Button>
+                <Button fx:id="deleteBtn" onAction="#handleDelete" styleClass="toolbar-btn toolbar-btn-danger">
                     <tooltip><Tooltip text="Delete"/></tooltip>
+                    <graphic>
+                        <FontIcon iconLiteral="fth-trash-2" iconSize="18" iconColor="#c53030" styleClass="feather-icon-danger"/>
+                    </graphic>
                 </Button>
                 <Separator orientation="VERTICAL" styleClass="toolbar-separator"/>
                 
@@ -103,11 +148,17 @@
                 <Region HBox.hgrow="ALWAYS"/>
                 
                 <!-- View toggle buttons (List/Grid) -->
-                <ToggleButton fx:id="listViewButton" text="☰" onAction="#handleListView" styleClass="view-toggle-btn" selected="true">
+                <ToggleButton fx:id="listViewButton" onAction="#handleListView" styleClass="view-toggle-btn" selected="true">
                     <tooltip><Tooltip text="List view"/></tooltip>
+                    <graphic>
+                        <FontIcon iconLiteral="fth-align-justify" iconSize="16" iconColor="#555555" styleClass="feather-icon"/>
+                    </graphic>
                 </ToggleButton>
-                <ToggleButton fx:id="gridViewButton" text="▦" onAction="#handleGridView" styleClass="view-toggle-btn">
+                <ToggleButton fx:id="gridViewButton" onAction="#handleGridView" styleClass="view-toggle-btn">
                     <tooltip><Tooltip text="Grid view"/></tooltip>
+                    <graphic>
+                        <FontIcon iconLiteral="fth-grid" iconSize="16" iconColor="#555555" styleClass="feather-icon"/>
+                    </graphic>
                 </ToggleButton>
             </HBox>
         </VBox>
@@ -137,27 +188,23 @@
                     </Tab>
                 </TabPane>
                 
-                <!-- Quick Actions -->
-                <HBox spacing="6" alignment="CENTER" styleClass="sidebar-actions">
-                    <padding>
-                        <Insets top="10" right="10" bottom="10" left="10"/>
-                    </padding>
-                    <Button fx:id="sidebarNewNoteBtn" text="&#x1F4D3;" onAction="#handleNewNote" styleClass="sidebar-btn" HBox.hgrow="ALWAYS" maxWidth="Infinity">
-                        <tooltip><Tooltip text="New Note"/></tooltip>
-                    </Button>
-                    <Button fx:id="sidebarNewFolderBtn" text="&#x1F4C1;" onAction="#handleNewFolder" styleClass="sidebar-btn" HBox.hgrow="ALWAYS" maxWidth="Infinity">
-                        <tooltip><Tooltip text="New Folder"/></tooltip>
-                    </Button>
-                    <Button fx:id="sidebarNewTagBtn" text="#" onAction="#handleNewTag" styleClass="sidebar-btn" HBox.hgrow="ALWAYS" maxWidth="Infinity">
-                        <tooltip><Tooltip text="New Tag"/></tooltip>
-                    </Button>
-                </HBox>
+                <!-- Use Spacer instead of buttons -->
+                <Region VBox.vgrow="NEVER" minHeight="10"/>
             </VBox>
             
             <!-- Right Content Area -->
             <SplitPane fx:id="contentSplitPane" dividerPositions="0.25" styleClass="content-split">
                 <!-- Notes List Panel -->
-                <VBox styleClass="notes-panel" minWidth="180" prefWidth="280">
+                <VBox fx:id="notesPanel" styleClass="notes-panel" minWidth="0" prefWidth="280">
+                   <!-- Stacked mode close button (hidden by default) -->
+                   <HBox fx:id="stackedModeHeader" managed="false" visible="false" alignment="CENTER_RIGHT" styleClass="stacked-header">
+                       <Button onAction="#handleToggleNotesPanel" styleClass="icon-btn-small">
+                           <graphic>
+                               <FontIcon iconLiteral="fth-x" iconSize="14"/>
+                           </graphic>
+                       </Button>
+                   </HBox>
+
                     <HBox alignment="CENTER_LEFT" spacing="8" styleClass="notes-header">
                         <padding>
                             <Insets top="12" right="12" bottom="12" left="12"/>
@@ -165,8 +212,11 @@
                         <Label text="Notes" styleClass="panel-title"/>
                         <Region HBox.hgrow="ALWAYS"/>
                         <ComboBox fx:id="sortComboBox" prefWidth="120" styleClass="sort-combo"/>
-                        <Button fx:id="refreshBtn" text="Refresh" onAction="#handleRefresh" styleClass="icon-btn">
+                        <Button fx:id="refreshBtn" onAction="#handleRefresh" styleClass="icon-btn">
                             <tooltip><Tooltip text="Refresh list"/></tooltip>
+                            <graphic>
+                                <FontIcon iconLiteral="fth-refresh-cw" iconSize="16" iconColor="#555555" styleClass="feather-icon"/>
+                            </graphic>
                         </Button>
                     </HBox>
                     
@@ -182,6 +232,17 @@
                         </padding>
                         <TextField fx:id="noteTitleField" promptText="Note title..." HBox.hgrow="ALWAYS" styleClass="title-field"/>
                         <Separator orientation="VERTICAL" styleClass="header-separator"/>
+                         
+                        <!-- Tags Toggle UI -->
+                         <ToggleButton fx:id="toggleTagsBtn" onAction="#handleToggleTags" styleClass="icon-btn" selected="true">
+                            <tooltip><Tooltip text="Toggle Tags Bar"/></tooltip>
+                            <graphic>
+                                <FontIcon iconLiteral="fth-hash" iconSize="16" iconColor="#555555" styleClass="feather-icon"/>
+                            </graphic>
+                        </ToggleButton>
+                        
+                        <Separator orientation="VERTICAL" styleClass="header-separator"/>
+                        
                         <!-- View Mode Toggle -->
                         <ToggleButton fx:id="editorOnlyButton" text="Edit" onAction="#handleEditorOnlyMode" styleClass="view-btn">
                             <tooltip><Tooltip text="Editor only (Alt+1)"/></tooltip>
@@ -204,15 +265,17 @@
                         </Button>
                     </HBox>
                     
-                    <!-- Tags Bar -->
-                    <HBox alignment="CENTER_LEFT" spacing="8" styleClass="tags-bar">
-                        <padding>
-                            <Insets top="6" right="16" bottom="6" left="16"/>
-                        </padding>
-                        <FlowPane fx:id="tagsFlowPane" hgap="6" vgap="6" styleClass="tags-flow"/>
-                        <Region HBox.hgrow="ALWAYS"/>
-                        <Label fx:id="modifiedDateLabel" text="" styleClass="meta-label"/>
-                    </HBox>
+                    <!-- Tags Bar (Collapsible) -->
+                    <VBox fx:id="tagsContainer">
+                        <HBox alignment="CENTER_LEFT" spacing="8" styleClass="tags-bar">
+                            <padding>
+                                <Insets top="6" right="16" bottom="6" left="16"/>
+                            </padding>
+                            <FlowPane fx:id="tagsFlowPane" hgap="6" vgap="6" styleClass="tags-flow"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Label fx:id="modifiedDateLabel" text="" styleClass="meta-label"/>
+                        </HBox>
+                    </VBox>
                     
                     <!-- Editor/Preview Split -->
                     <SplitPane fx:id="editorPreviewSplitPane" orientation="HORIZONTAL" dividerPositions="0.5" VBox.vgrow="ALWAYS" styleClass="editor-split">
@@ -241,7 +304,7 @@
                                             <tooltip><Tooltip text="Bold (Ctrl+B)"/></tooltip>
                                         </Button>
                                         <Button fx:id="italicBtn" text="I" onAction="#handleItalic" styleClass="format-btn format-italic">
-                                            <tooltip><Tooltip text="Italic (Ctrl+I)"/></tooltip>
+                                             <tooltip><Tooltip text="Italic (Ctrl+I)"/></tooltip>
                                         </Button>
                                         <Button fx:id="strikeBtn" text="S" onAction="#handleUnderline" styleClass="format-btn format-strike">
                                             <tooltip><Tooltip text="Strikethrough"/></tooltip>

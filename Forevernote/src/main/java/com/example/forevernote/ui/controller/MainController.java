@@ -82,164 +82,265 @@ import javafx.stage.FileChooser;
 /**
  * Main controller for the Forevernote application.
  * Handles all UI interactions and manages the application state.
- * Implements PluginMenuRegistry and SidePanelRegistry to allow plugins to register 
+ * Implements PluginMenuRegistry and SidePanelRegistry to allow plugins to
+ * register
  * menu items and UI panels dynamically (Obsidian-style).
  */
 public class MainController implements PluginMenuRegistry, SidePanelRegistry {
-    
+
     private static final Logger logger = LoggerConfig.getLogger(MainController.class);
-    
+
     // Database and DAOs
     private Connection connection;
     private FactoryDAO factoryDAO;
     private FolderDAO folderDAO;
     private NoteDAO noteDAO;
     private TagDAO tagDAO;
-    
+
     // Current state
     private Folder currentFolder;
     private Note currentNote;
     private boolean isModified = false;
     private String currentFilterType = "all"; // "all", "folder", "tag", "favorites", "search"
     private Tag currentTag = null;
-    
+
     // Cached data to avoid recreating listeners
     private List<Note> cachedAllNotes = new ArrayList<>();
     private List<Note> cachedFavoriteNotes = new ArrayList<>();
     private boolean recentListenerAdded = false;
     private boolean favoritesListenerAdded = false;
-    
+
     // FXML UI Components
-    @FXML private MenuBar menuBar;
-    @FXML private SplitPane mainSplitPane;
-    @FXML private SplitPane contentSplitPane;
-    @FXML private SplitPane editorPreviewSplitPane;
-    @FXML private TabPane navigationTabPane;
-    
+    @FXML
+    private MenuBar menuBar;
+    @FXML
+    private SplitPane mainSplitPane;
+    @FXML
+    private SplitPane contentSplitPane;
+    @FXML
+    private SplitPane editorPreviewSplitPane;
+    @FXML
+    private TabPane navigationTabPane;
+
+    // Collapsible Panels
+    @FXML
+    private VBox sidebarPane;
+    @FXML
+    private VBox notesPanel;
+
     // Navigation components
-    @FXML private TreeView<Folder> folderTreeView;
-    @FXML private ListView<String> tagListView;
-    @FXML private ListView<String> recentNotesListView;
-    @FXML private ListView<String> favoritesListView;
-    
+    @FXML
+    private TreeView<Folder> folderTreeView;
+    @FXML
+    private ListView<String> tagListView;
+    @FXML
+    private ListView<String> recentNotesListView;
+    @FXML
+    private ListView<String> favoritesListView;
+
+    // Layout State
+    private boolean isStackedLayout = false;
+    private SplitPane navSplitPane;
+
     // Search and toolbar
-    @FXML private TextField searchField;
-    @FXML private ComboBox<String> sortComboBox;
-    @FXML private ToggleButton listViewButton;
-    @FXML private ToggleButton gridViewButton;
-    
+    // Search and toolbar
+    @FXML
+    private TextField searchField;
+    @FXML
+    private ComboBox<String> sortComboBox;
+    @FXML
+    private ToggleButton listViewButton;
+    @FXML
+    private ToggleButton gridViewButton;
+    @FXML
+    private ToggleButton sidebarToggleBtn;
+    @FXML
+    private ToggleButton notesPanelToggleBtn;
+    @FXML
+    private Button layoutSwitchBtn;
+    @FXML
+    private Button newTagBtn;
+
     // Notes list
-    @FXML private ListView<Note> notesListView;
-    
+    @FXML
+    private ListView<Note> notesListView;
+
     // Editor components
-    @FXML private TextField noteTitleField;
-    @FXML private TextArea noteContentArea;
-    @FXML private FlowPane tagsFlowPane;
-    @FXML private Label modifiedDateLabel;
-    @FXML private Label wordCountLabel;
-    
+    @FXML
+    private TextField noteTitleField;
+    @FXML
+    private TextArea noteContentArea;
+    @FXML
+    private FlowPane tagsFlowPane;
+    @FXML
+    private VBox tagsContainer;
+    @FXML
+    private ToggleButton toggleTagsBtn;
+    @FXML
+    private Label modifiedDateLabel;
+    @FXML
+    private Label wordCountLabel;
+
     // Editor/Preview panes (Obsidian-style)
-    @FXML private VBox editorPane;
-    @FXML private VBox previewPane;
-    @FXML private ToggleButton editorOnlyButton;
-    @FXML private ToggleButton splitViewButton;
-    @FXML private ToggleButton previewOnlyButton;
-    @FXML private Button favoriteButton;
-    @FXML private Button infoButton;
-    @FXML private Button deleteNoteBtn;
-    
+    @FXML
+    private VBox editorPane;
+    @FXML
+    private VBox previewPane;
+    @FXML
+    private ToggleButton editorOnlyButton;
+    @FXML
+    private ToggleButton splitViewButton;
+    @FXML
+    private ToggleButton previewOnlyButton;
+    @FXML
+    private Button favoriteButton;
+    @FXML
+    private Button infoButton;
+    @FXML
+    private Button deleteNoteBtn;
+
+    // Sidebar buttons removed
+
     // Toolbar buttons
-    @FXML private Button newNoteBtn;
-    @FXML private Button newFolderBtn;
-    @FXML private Button saveBtn;
-    @FXML private Button deleteBtn;
-    @FXML private Button refreshBtn;
-    
-    // Sidebar buttons
-    @FXML private Button sidebarNewNoteBtn;
-    @FXML private Button sidebarNewFolderBtn;
-    @FXML private Button sidebarNewTagBtn;
-    
+    @FXML
+    private Button newNoteBtn;
+    @FXML
+    private Button newFolderBtn;
+    @FXML
+    private Button saveBtn;
+    @FXML
+    private Button deleteBtn;
+    @FXML
+    private Button refreshBtn;
+    @FXML
+    private HBox stackedModeHeader;
+
     // Format toolbar buttons
-    @FXML private Button heading1Btn;
-    @FXML private Button heading2Btn;
-    @FXML private Button heading3Btn;
-    @FXML private Button boldBtn;
-    @FXML private Button italicBtn;
-    @FXML private Button strikeBtn;
-    @FXML private Button underlineBtn;
-    @FXML private Button highlightBtn;
-    @FXML private Button linkBtn;
-    @FXML private Button imageBtn;
-    @FXML private Button todoBtn;
-    @FXML private Button bulletBtn;
-    @FXML private Button numberBtn;
-    @FXML private Button quoteBtn;
-    @FXML private Button codeBtn;
-    @FXML private Button closeRightPanelBtn;
-    
+    @FXML
+    private Button heading1Btn;
+    @FXML
+    private Button heading2Btn;
+    @FXML
+    private Button heading3Btn;
+    @FXML
+    private Button boldBtn;
+    @FXML
+    private Button italicBtn;
+    @FXML
+    private Button strikeBtn;
+    @FXML
+    private Button underlineBtn;
+    @FXML
+    private Button highlightBtn;
+    @FXML
+    private Button linkBtn;
+    @FXML
+    private Button imageBtn;
+    @FXML
+    private Button todoBtn;
+    @FXML
+    private Button bulletBtn;
+    @FXML
+    private Button numberBtn;
+    @FXML
+    private Button quoteBtn;
+    @FXML
+    private Button codeBtn;
+    @FXML
+    private Button closeRightPanelBtn;
+
     // Right panel (Obsidian-style with collapsible sections)
-    @FXML private VBox rightPanel;
-    @FXML private VBox rightPanelContent;
-    @FXML private VBox noteInfoSection;
-    @FXML private HBox noteInfoHeader;
-    @FXML private Label noteInfoCollapseIcon;
-    @FXML private VBox noteInfoContent;
-    
+    @FXML
+    private VBox rightPanel;
+    @FXML
+    private VBox rightPanelContent;
+    @FXML
+    private VBox noteInfoSection;
+    @FXML
+    private HBox noteInfoHeader;
+    @FXML
+    private Label noteInfoCollapseIcon;
+    @FXML
+    private VBox noteInfoContent;
+
     // Preview and info labels
-    @FXML private javafx.scene.web.WebView previewWebView;
-    @FXML private Label infoCreatedLabel;
-    @FXML private Label infoModifiedLabel;
-    @FXML private Label infoWordsLabel;
-    @FXML private Label infoCharsLabel;
-    @FXML private Label infoLatitudeLabel;
-    @FXML private Label infoLongitudeLabel;
-    @FXML private Label infoAuthorLabel;
-    @FXML private Label infoSourceUrlLabel;
-    
+    @FXML
+    private javafx.scene.web.WebView previewWebView;
+    @FXML
+    private Label infoCreatedLabel;
+    @FXML
+    private Label infoModifiedLabel;
+    @FXML
+    private Label infoWordsLabel;
+    @FXML
+    private Label infoCharsLabel;
+    @FXML
+    private Label infoLatitudeLabel;
+    @FXML
+    private Label infoLongitudeLabel;
+    @FXML
+    private Label infoAuthorLabel;
+    @FXML
+    private Label infoSourceUrlLabel;
+
     // Status bar
-    @FXML private Label statusLabel;
-    @FXML private Label noteCountLabel;
-    @FXML private Label syncStatusLabel;
-    
+    @FXML
+    private Label statusLabel;
+    @FXML
+    private Label noteCountLabel;
+    @FXML
+    private Label syncStatusLabel;
+
     // Theme menu items
-    @FXML private RadioMenuItem lightThemeMenuItem;
-    @FXML private RadioMenuItem darkThemeMenuItem;
-    @FXML private RadioMenuItem systemThemeMenuItem;
+    @FXML
+    private RadioMenuItem lightThemeMenuItem;
+    @FXML
+    private RadioMenuItem darkThemeMenuItem;
+    @FXML
+    private RadioMenuItem systemThemeMenuItem;
     private ToggleGroup themeToggleGroup;
-    
+
     // Plugin menu (dynamic)
-    @FXML private Menu pluginsMenu;
+    @FXML
+    private Menu pluginsMenu;
     private final Map<String, Menu> pluginCategoryMenus = new HashMap<>();
     private final Map<String, List<MenuItem>> pluginMenuItems = new HashMap<>();
-    
+
     // Plugin side panels (dynamic UI)
-    @FXML private VBox pluginPanelsContainer;
+    @FXML
+    private VBox pluginPanelsContainer;
     private final Map<String, VBox> pluginPanels = new HashMap<>();
     private final Map<String, List<String>> pluginPanelIds = new HashMap<>();
-    
+
     // Plugin status bar items (dynamic UI)
-    @FXML private HBox pluginStatusBarContainer;
+    @FXML
+    private HBox pluginStatusBarContainer;
     private final Map<String, javafx.scene.Node> pluginStatusBarItems = new HashMap<>();
     private final Map<String, List<String>> pluginStatusBarItemIds = new HashMap<>();
-    
+
     // View mode state (editor/preview)
-    private enum ViewMode { EDITOR_ONLY, SPLIT, PREVIEW_ONLY }
+    private enum ViewMode {
+        EDITOR_ONLY, SPLIT, PREVIEW_ONLY
+    }
+
     private ViewMode currentViewMode = ViewMode.SPLIT;
-    
+
     // Notes list view mode (list/grid)
-    private enum NotesViewMode { LIST, GRID }
+    private enum NotesViewMode {
+        LIST, GRID
+    }
+
     private NotesViewMode currentNotesViewMode = NotesViewMode.LIST;
-    
+
     // Grid view container (dynamically created)
     private javafx.scene.layout.TilePane notesGridPane;
     private javafx.scene.control.ScrollPane gridScrollPane;
     private VBox notesPanelContainer; // Reference to the notes panel container
-    
+
     // UI Components for quick access
     private CommandPalette commandPalette;
     private QuickSwitcher quickSwitcher;
-    
+
     // Services and Plugin System
     private NoteService noteService;
     private FolderService folderService;
@@ -247,19 +348,23 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private EventBus eventBus;
     private PluginManager pluginManager;
     private PluginManagerDialog pluginManagerDialog;
-    
+
     /**
      * Initialize the controller after FXML loading.
      */
     @FXML
     public void initialize() {
         try {
+            // Ensure navSplitPane for layout switching
+            navSplitPane = new SplitPane();
+            navSplitPane.setOrientation(javafx.geometry.Orientation.VERTICAL);
+
             // Initialize database connections
             initializeDatabase();
-            
+
             // Initialize theme toggle group
             initializeThemeMenu();
-            
+
             // Initialize UI components
             initializeFolderTree();
             initializeNotesList();
@@ -269,28 +374,28 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             initializeViewModeButtons();
             initializeIcons();
             initializeRightPanelSections();
-            
+
             // Load initial data
             loadFolders();
             loadRecentNotes();
             loadTags();
             loadFavorites();
-            
+
             // Initialize keyboard shortcuts after scene is ready
             Platform.runLater(this::initializeKeyboardShortcuts);
-            
+
             // Initialize plugin system after scene is ready
             Platform.runLater(this::initializePluginSystem);
-            
+
             updateStatus("Ready");
             logger.info("MainController initialized successfully");
-            
+
         } catch (Exception e) {
             logger.severe("Failed to initialize MainController: " + e.getMessage());
             updateStatus("Error: " + e.getMessage());
         }
     }
-    
+
     /**
      * Initialize database connections and DAOs.
      */
@@ -302,20 +407,20 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             folderDAO = factoryDAO.getFolderDAO();
             noteDAO = factoryDAO.getNoteDAO();
             tagDAO = factoryDAO.getLabelDAO();
-            
+
             // Initialize services
             noteService = new NoteService(noteDAO, folderDAO, tagDAO);
             folderService = new FolderService(folderDAO, noteDAO);
             tagService = new TagService(tagDAO, noteDAO);
             eventBus = EventBus.getInstance();
-            
+
             logger.info("Database connections and services initialized");
         } catch (Exception e) {
             logger.severe("Failed to initialize database: " + e.getMessage());
             throw new RuntimeException("Database initialization failed", e);
         }
     }
-    
+
     /**
      * Initialize the folder tree view.
      */
@@ -326,25 +431,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         rootItem.setExpanded(true);
         folderTreeView.setRoot(rootItem);
         folderTreeView.setShowRoot(true);
-        
+
         // Handle folder selection
         folderTreeView.getSelectionModel().selectedItemProperty().addListener(
-            (observable, oldValue, newValue) -> {
-                if (newValue != null && newValue.getValue() != null) {
-                    Folder selectedFolder = newValue.getValue();
-                    if (selectedFolder.getTitle().equals("All Notes")) {
+                (observable, oldValue, newValue) -> {
+                    if (newValue != null && newValue.getValue() != null) {
+                        Folder selectedFolder = newValue.getValue();
+                        if (selectedFolder.getTitle().equals("All Notes")) {
+                            currentFolder = null;
+                            loadAllNotes();
+                        } else {
+                            handleFolderSelection(selectedFolder);
+                        }
+                    } else {
                         currentFolder = null;
                         loadAllNotes();
-                    } else {
-                        handleFolderSelection(selectedFolder);
                     }
-                } else {
-                    currentFolder = null;
-                    loadAllNotes();
-                }
-            }
-        );
-        
+                });
+
         // Enable context menu with note count display (Obsidian-style)
         folderTreeView.setCellFactory(tv -> {
             TreeCell<Folder> cell = new TreeCell<Folder>() {
@@ -353,7 +457,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 private final Label nameLabel = new Label();
                 private final Label countLabel = new Label();
                 private final Region spacer = new Region();
-                
+
                 {
                     container.setAlignment(Pos.CENTER_LEFT);
                     HBox.setHgrow(spacer, Priority.ALWAYS);
@@ -362,7 +466,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     countLabel.getStyleClass().add("folder-count");
                     container.getChildren().addAll(iconLabel, nameLabel, spacer, countLabel);
                 }
-                
+
                 @Override
                 protected void updateItem(Folder folder, boolean empty) {
                     super.updateItem(folder, empty);
@@ -373,7 +477,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         // Folder icons that render correctly
                         TreeItem<Folder> treeItem = getTreeItem();
                         boolean isExpanded = treeItem != null && treeItem.isExpanded();
-                        
+
                         if (folder.getTitle().equals("All Notes")) {
                             iconLabel.setText("[=]"); // All notes icon
                             iconLabel.getStyleClass().removeAll("folder-icon-open", "folder-icon-closed");
@@ -387,7 +491,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                             iconLabel.getStyleClass().removeAll("folder-icon-all", "folder-icon-open");
                             iconLabel.getStyleClass().add("folder-icon-closed");
                         }
-                        
+
                         nameLabel.setText(folder.getTitle());
                         int noteCount = getNoteCountForFolder(folder);
                         if (noteCount > 0) {
@@ -402,7 +506,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     }
                 }
             };
-            
+
             cell.setOnContextMenuRequested(event -> {
                 if (!cell.isEmpty() && cell.getItem() != null) {
                     Folder folder = cell.getItem();
@@ -412,24 +516,25 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     }
                 }
             });
-            
+
             return cell;
         });
     }
-    
+
     /**
      * Get the count of notes in a folder (including subfolders recursively).
      */
     private int getNoteCountForFolder(Folder folder) {
         try {
-            if (folder == null) return 0;
-            
+            if (folder == null)
+                return 0;
+
             // "All Notes" shows total count
             if (folder.getTitle().equals("All Notes")) {
                 List<Note> allNotes = noteDAO.fetchAllNotes();
                 return allNotes != null ? allNotes.size() : 0;
             }
-            
+
             // Get notes directly in this folder
             folderDAO.loadNotes(folder);
             int count = 0;
@@ -438,7 +543,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     count++;
                 }
             }
-            
+
             // Add notes from subfolders recursively
             folderDAO.loadSubFolders(folder);
             for (Component child : folder.getChildren()) {
@@ -446,33 +551,32 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     count += getNoteCountForFolder((Folder) child);
                 }
             }
-            
+
             return count;
         } catch (Exception e) {
             logger.warning("Error counting notes for folder " + folder.getTitle() + ": " + e.getMessage());
             return 0;
         }
     }
-    
+
     /**
      * Initialize the notes list view with drag & drop support.
      */
     private void initializeNotesList() {
         notesListView.setCellFactory(lv -> createNoteListCell());
-        
+
         // Handle note selection
         notesListView.getSelectionModel().selectedItemProperty().addListener(
-            (observable, oldValue, newValue) -> {
-                if (newValue != null) {
-                    loadNoteInEditor(newValue);
-                }
-            }
-        );
-        
+                (observable, oldValue, newValue) -> {
+                    if (newValue != null) {
+                        loadNoteInEditor(newValue);
+                    }
+                });
+
         // Setup folder tree for drop target
         setupFolderTreeDragAndDrop();
     }
-    
+
     /**
      * Creates a ListCell for notes with drag support.
      */
@@ -489,21 +593,21 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     // Create rich cell content
                     VBox container = new VBox(2);
                     container.setPadding(new javafx.geometry.Insets(4, 8, 4, 8));
-                    
+
                     // Title with favorite indicator
                     Label titleLabel = new Label((note.isFavorite() ? "★ " : "") + note.getTitle());
                     titleLabel.setStyle("-fx-font-weight: 500;");
-                    
+
                     // Preview text (first 60 chars of content)
                     String preview = note.getContent() != null && !note.getContent().isEmpty()
-                        ? note.getContent().replaceAll("^#+\\s*", "").replaceAll("\\n", " ").trim()
-                        : "";
+                            ? note.getContent().replaceAll("^#+\\s*", "").replaceAll("\\n", " ").trim()
+                            : "";
                     if (preview.length() > 60) {
                         preview = preview.substring(0, 57) + "...";
                     }
                     Label previewLabel = new Label(preview);
                     previewLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 11px;");
-                    
+
                     // Date
                     String dateText = note.getModifiedDate() != null ? note.getModifiedDate() : note.getCreatedDate();
                     if (dateText != null && dateText.length() > 10) {
@@ -511,21 +615,21 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     }
                     Label dateLabel = new Label(dateText != null ? dateText : "");
                     dateLabel.setStyle("-fx-text-fill: #666666; -fx-font-size: 10px;");
-                    
+
                     container.getChildren().addAll(titleLabel, previewLabel, dateLabel);
-                    
+
                     setText(null);
                     setGraphic(container);
                 }
             }
         };
-        
+
         // Setup drag for this cell
         setupNoteCellDrag(cell);
-        
+
         return cell;
     }
-    
+
     /**
      * Setup drag events for note cell.
      */
@@ -538,17 +642,17 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
                 content.putString("note:" + note.getId());
                 db.setContent(content);
-                
+
                 // Create drag image
                 javafx.scene.SnapshotParameters params = new javafx.scene.SnapshotParameters();
                 params.setFill(javafx.scene.paint.Color.TRANSPARENT);
                 db.setDragView(cell.snapshot(params, null));
-                
+
                 event.consume();
                 updateStatus("Dragging: " + note.getTitle());
             }
         });
-        
+
         cell.setOnDragDone(event -> {
             if (event.getTransferMode() == javafx.scene.input.TransferMode.MOVE) {
                 updateStatus("Note moved successfully");
@@ -556,7 +660,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             event.consume();
         });
     }
-    
+
     /**
      * Setup folder tree view as drop target for notes.
      */
@@ -573,7 +677,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         // Visual folder icon based on state
                         String icon;
                         String color;
-                        
+
                         if (folder.getTitle().equals("All Notes")) {
                             icon = "[=]";
                             color = "#9f7aea";
@@ -583,7 +687,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                             icon = isExpanded ? "[/]" : "[+]";
                             color = isExpanded ? "#48bb78" : "#ed8936";
                         }
-                        
+
                         // Count notes in folder
                         int noteCount = 0;
                         try {
@@ -591,24 +695,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                                 // Load notes for this folder
                                 folderDAO.loadNotes(folder);
                                 noteCount = (int) folder.getChildren().stream()
-                                    .filter(c -> c instanceof Note)
-                                    .count();
+                                        .filter(c -> c instanceof Note)
+                                        .count();
                             } else {
                                 noteCount = noteDAO.fetchAllNotes().size();
                             }
                         } catch (Exception e) {
                             // Ignore count errors
                         }
-                        
+
                         HBox container = new HBox(6);
                         container.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-                        
+
                         Label iconLabel = new Label(icon);
                         iconLabel.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: bold; -fx-font-size: 10px;");
-                        
+
                         Label nameLabel = new Label(folder.getTitle());
                         nameLabel.setStyle("-fx-text-fill: inherit;");
-                        
+
                         if (noteCount > 0) {
                             Label countLabel = new Label("(" + noteCount + ")");
                             countLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 10px;");
@@ -616,19 +720,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         } else {
                             container.getChildren().addAll(iconLabel, nameLabel);
                         }
-                        
+
                         setGraphic(container);
                         setText(null);
                     }
                 }
             };
-            
+
             // Drop handling
             cell.setOnDragOver(event -> {
-                if (event.getGestureSource() != cell && 
-                    event.getDragboard().hasString() &&
-                    event.getDragboard().getString().startsWith("note:")) {
-                    
+                if (event.getGestureSource() != cell &&
+                        event.getDragboard().hasString() &&
+                        event.getDragboard().getString().startsWith("note:")) {
+
                     Folder folder = cell.getItem();
                     if (folder != null && !folder.getTitle().equals("All Notes")) {
                         event.acceptTransferModes(javafx.scene.input.TransferMode.MOVE);
@@ -637,30 +741,31 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 }
                 event.consume();
             });
-            
+
             cell.setOnDragExited(event -> {
                 cell.setStyle("");
                 event.consume();
             });
-            
+
             cell.setOnDragDropped(event -> {
                 javafx.scene.input.Dragboard db = event.getDragboard();
                 boolean success = false;
-                
+
                 if (db.hasString() && db.getString().startsWith("note:")) {
                     Folder targetFolder = cell.getItem();
                     if (targetFolder != null && !targetFolder.getTitle().equals("All Notes")) {
                         try {
                             int noteId = Integer.parseInt(db.getString().substring(5));
                             Note note = noteDAO.getNoteById(noteId);
-                            
+
                             if (note != null) {
                                 // Move note to new folder
                                 folderDAO.addNote(targetFolder, note);
-                                
+
                                 success = true;
-                                logger.info("Moved note '" + note.getTitle() + "' to folder '" + targetFolder.getTitle() + "'");
-                                
+                                logger.info("Moved note '" + note.getTitle() + "' to folder '" + targetFolder.getTitle()
+                                        + "'");
+
                                 // Refresh views
                                 Platform.runLater(() -> {
                                     refreshNotesList();
@@ -673,15 +778,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         }
                     }
                 }
-                
+
                 event.setDropCompleted(success);
                 event.consume();
             });
-            
+
             return cell;
         });
     }
-    
+
     /**
      * Initialize the note editor.
      */
@@ -695,17 +800,17 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 updatePreview();
             }
         });
-        
+
         noteTitleField.textProperty().addListener((observable, oldValue, newValue) -> {
             if (currentNote != null) {
                 currentNote.setTitle(newValue);
                 isModified = true;
             }
         });
-        
+
         // Keyboard shortcuts
         noteContentArea.setOnKeyPressed(this::handleEditorKeyPress);
-        
+
         // Setup WebView to ensure dark background
         if (previewWebView != null) {
             previewWebView.getEngine().getLoadWorker().stateProperty().addListener((obs, oldState, newState) -> {
@@ -717,20 +822,18 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     }
                     if ("dark".equals(actualTheme)) {
                         previewWebView.getEngine().executeScript(
-                            "document.body.style.backgroundColor = '#1E1E1E'; " +
-                            "if (document.documentElement) document.documentElement.style.backgroundColor = '#1E1E1E';"
-                        );
+                                "document.body.style.backgroundColor = '#1E1E1E'; " +
+                                        "if (document.documentElement) document.documentElement.style.backgroundColor = '#1E1E1E';");
                     } else {
                         previewWebView.getEngine().executeScript(
-                            "document.body.style.backgroundColor = '#FFFFFF'; " +
-                            "if (document.documentElement) document.documentElement.style.backgroundColor = '#FFFFFF';"
-                        );
+                                "document.body.style.backgroundColor = '#FFFFFF'; " +
+                                        "if (document.documentElement) document.documentElement.style.backgroundColor = '#FFFFFF';");
                     }
                 }
             });
         }
     }
-    
+
     /**
      * Initialize search functionality.
      */
@@ -739,7 +842,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             performSearch(newValue);
         });
     }
-    
+
     /**
      * Initialize theme menu with toggle group.
      */
@@ -756,7 +859,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         }
         // Set initial selection based on current theme
         updateThemeMenuSelection();
-        
+
         // Apply saved theme after scene is ready
         Platform.runLater(() -> {
             if ("system".equals(currentTheme)) {
@@ -771,13 +874,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         });
     }
-    
+
     /**
      * Update theme menu selection based on current theme.
      */
     private void updateThemeMenuSelection() {
-        if (themeToggleGroup == null) return;
-        
+        if (themeToggleGroup == null)
+            return;
+
         if ("dark".equals(currentTheme)) {
             if (darkThemeMenuItem != null) {
                 darkThemeMenuItem.setSelected(true);
@@ -792,7 +896,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         }
     }
-    
+
     /**
      * Initialize global keyboard shortcuts.
      * Sets up Command Palette (Ctrl+P) and Quick Switcher (Ctrl+O).
@@ -806,30 +910,30 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             } else if (mainSplitPane != null && mainSplitPane.getScene() != null) {
                 scene = mainSplitPane.getScene();
             }
-            
+
             if (scene == null) {
                 logger.warning("Scene not available for keyboard shortcuts");
                 return;
             }
-            
+
             Stage stage = (Stage) scene.getWindow();
             if (stage == null) {
                 logger.warning("Stage not available for keyboard shortcuts");
                 return;
             }
-            
+
             // Initialize Command Palette
             commandPalette = new CommandPalette(stage);
-            boolean isDark = "dark".equals(currentTheme) || 
-                             ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
+            boolean isDark = "dark".equals(currentTheme) ||
+                    ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
             commandPalette.setDarkTheme(isDark);
             commandPalette.setCommandHandler(this::executeCommand);
-            
+
             // Initialize Quick Switcher
             quickSwitcher = new QuickSwitcher(stage);
             quickSwitcher.setDarkTheme(isDark);
             quickSwitcher.setOnNoteSelected(this::loadNoteInEditor);
-            
+
             // Set up global key handler
             scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
                 if (event.isControlDown()) {
@@ -851,20 +955,20 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     }
                 }
             });
-            
+
             logger.info("Keyboard shortcuts initialized (Ctrl+P: Command Palette, Ctrl+O: Quick Switcher)");
         } catch (Exception e) {
             logger.warning("Failed to initialize keyboard shortcuts: " + e.getMessage());
         }
     }
-    
+
     /**
      * Shows the Command Palette (Ctrl+P).
      */
     public void showCommandPalette() {
         if (commandPalette != null) {
-            boolean isDark = "dark".equals(currentTheme) || 
-                             ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
+            boolean isDark = "dark".equals(currentTheme) ||
+                    ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
             commandPalette.setDarkTheme(isDark);
             commandPalette.show();
             logger.info("Command Palette opened");
@@ -873,25 +977,26 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus("Command Palette not ready. Please wait...");
         }
     }
-    
+
     /**
      * Shows the Quick Switcher (Ctrl+O).
      */
     public void showQuickSwitcher() {
         if (quickSwitcher != null) {
-            boolean isDark = "dark".equals(currentTheme) || 
-                             ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
+            boolean isDark = "dark".equals(currentTheme) ||
+                    ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
             quickSwitcher.setDarkTheme(isDark);
             // Update notes list before showing
             quickSwitcher.setNotes(noteDAO.fetchAllNotes());
             quickSwitcher.show();
         }
     }
-    
+
     /**
      * Initialize the plugin system.
      * Creates PluginManager, loads external plugins, and initializes them.
-     * The core is completely decoupled - plugins register their own menu items dynamically.
+     * The core is completely decoupled - plugins register their own menu items
+     * dynamically.
      */
     private void initializePluginSystem() {
         try {
@@ -899,40 +1004,43 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 logger.warning("CommandPalette not available, delaying plugin initialization");
                 return;
             }
-            
+
             // Create the plugin manager with all required services
-            // Pass 'this' as both PluginMenuRegistry and SidePanelRegistry so plugins can register UI components
-            pluginManager = new PluginManager(noteService, folderService, tagService, eventBus, commandPalette, this, this);
-            
-            // Load plugins from plugins/ directory (completely decoupled - no hardcoded plugins)
+            // Pass 'this' as both PluginMenuRegistry and SidePanelRegistry so plugins can
+            // register UI components
+            pluginManager = new PluginManager(noteService, folderService, tagService, eventBus, commandPalette, this,
+                    this);
+
+            // Load plugins from plugins/ directory (completely decoupled - no hardcoded
+            // plugins)
             loadExternalPlugins();
-            
-            // Initialize all registered plugins (they will register their menu items during init)
+
+            // Initialize all registered plugins (they will register their menu items during
+            // init)
             pluginManager.initializeAll();
-            
+
             // Create the plugin manager dialog
             Stage stage = (Stage) menuBar.getScene().getWindow();
             pluginManagerDialog = new PluginManagerDialog(stage, pluginManager);
-            
+
             // Register plugin manager command in Command Palette
             commandPalette.addCommand(new CommandPalette.Command(
-                "Plugins: Manage Plugins",
-                "Open plugin manager to enable/disable plugins",
-                "Ctrl+Shift+P",
-                "=",
-                "Tools",
-                this::showPluginManager
-            ));
-            
+                    "Plugins: Manage Plugins",
+                    "Open plugin manager to enable/disable plugins",
+                    "Ctrl+Shift+P",
+                    "=",
+                    "Tools",
+                    this::showPluginManager));
+
             // Subscribe to plugin events
             subscribeToPluginEvents();
-            
+
             logger.info("Plugin system initialized with " + pluginManager.getPluginCount() + " plugins");
         } catch (Exception e) {
             logger.warning("Failed to initialize plugin system: " + e.getMessage());
         }
     }
-    
+
     /**
      * Subscribe to events from plugins.
      */
@@ -950,7 +1058,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 }
             });
         });
-        
+
         // Listen for notes refresh requests from plugins
         eventBus.subscribe(NoteEvents.NotesRefreshRequestedEvent.class, event -> {
             Platform.runLater(() -> {
@@ -963,14 +1071,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             });
         });
     }
-    
+
     /**
      * Shows the Plugin Manager dialog (Obsidian-style).
      */
     public void showPluginManager() {
         if (pluginManagerDialog != null) {
-            boolean isDark = "dark".equals(currentTheme) || 
-                             ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
+            boolean isDark = "dark".equals(currentTheme) ||
+                    ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
             pluginManagerDialog.setDarkTheme(isDark);
             pluginManagerDialog.show();
         } else {
@@ -981,9 +1089,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             alert.showAndWait();
         }
     }
-    
+
     // ==================== MENU HANDLERS ====================
-    
+
     /**
      * Menu handler: Opens Command Palette (Tools > Command Palette).
      */
@@ -991,7 +1099,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private void handleCommandPalette(ActionEvent event) {
         showCommandPalette();
     }
-    
+
     /**
      * Menu handler: Opens Quick Switcher (Tools > Quick Switcher).
      */
@@ -999,7 +1107,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private void handleQuickSwitcher(ActionEvent event) {
         showQuickSwitcher();
     }
-    
+
     /**
      * Menu handler: Opens Plugin Manager (Tools > Plugins > Manage Plugins).
      */
@@ -1007,9 +1115,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private void handlePluginManager(ActionEvent event) {
         showPluginManager();
     }
-    
+
     // ==================== PLUGIN MENU REGISTRY IMPLEMENTATION ====================
-    
+
     /**
      * Registers a menu item for a plugin.
      * Called by plugins during initialization to add their commands to the UI.
@@ -1018,7 +1126,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     public void registerMenuItem(String pluginId, String category, String itemName, Runnable action) {
         registerMenuItem(pluginId, category, itemName, null, action);
     }
-    
+
     /**
      * Registers a menu item with a keyboard shortcut.
      */
@@ -1029,18 +1137,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 logger.warning("Plugins menu not available for registration: " + itemName);
                 return;
             }
-            
+
             // Get or create the category submenu
             Menu categoryMenu = pluginCategoryMenus.get(category);
             if (categoryMenu == null) {
                 categoryMenu = new Menu(category);
                 pluginCategoryMenus.put(category, categoryMenu);
-                
-                // Add category menu after the separator (index 1 is after "Manage Plugins" and separator)
+
+                // Add category menu after the separator (index 1 is after "Manage Plugins" and
+                // separator)
                 int insertIndex = Math.min(pluginsMenu.getItems().size(), 2);
                 pluginsMenu.getItems().add(insertIndex, categoryMenu);
             }
-            
+
             // Create the menu item
             MenuItem menuItem = new MenuItem(itemName);
             menuItem.setOnAction(e -> {
@@ -1050,7 +1159,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     updateStatus("Plugin '" + pluginId + "' is not enabled");
                 }
             });
-            
+
             // Set shortcut if provided
             if (shortcut != null && !shortcut.isEmpty()) {
                 try {
@@ -1059,17 +1168,17 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     logger.warning("Invalid shortcut for menu item: " + shortcut);
                 }
             }
-            
+
             // Add to category menu
             categoryMenu.getItems().add(menuItem);
-            
+
             // Track menu items by plugin for removal later
             pluginMenuItems.computeIfAbsent(pluginId, k -> new ArrayList<>()).add(menuItem);
-            
+
             logger.fine("Registered menu item: " + category + " > " + itemName + " for plugin " + pluginId);
         });
     }
-    
+
     /**
      * Adds a separator in the plugin's menu category.
      */
@@ -1084,7 +1193,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         });
     }
-    
+
     /**
      * Removes all menu items for a plugin.
      * Called when a plugin is disabled or unloaded.
@@ -1100,7 +1209,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         categoryMenu.getItems().remove(item);
                     }
                 }
-                
+
                 // Clean up empty category menus
                 pluginCategoryMenus.entrySet().removeIf(entry -> {
                     Menu menu = entry.getValue();
@@ -1110,12 +1219,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     }
                     return false;
                 });
-                
+
                 logger.info("Removed menu items for plugin: " + pluginId);
             }
         });
     }
-    
+
     /**
      * Checks if a plugin is enabled.
      */
@@ -1123,52 +1232,54 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     public boolean isPluginEnabled(String pluginId) {
         return pluginManager != null && pluginManager.isPluginEnabled(pluginId);
     }
-    
-    // ==================== SIDE PANEL REGISTRY IMPLEMENTATION (Obsidian-style UI) ====================
-    
+
+    // ==================== SIDE PANEL REGISTRY IMPLEMENTATION (Obsidian-style UI)
+    // ====================
+
     /**
      * Registers a side panel for a plugin.
      * Creates a collapsible section in the right sidebar with the plugin's content.
      */
     @Override
-    public void registerSidePanel(String pluginId, String panelId, String title, javafx.scene.Node content, String icon) {
+    public void registerSidePanel(String pluginId, String panelId, String title, javafx.scene.Node content,
+            String icon) {
         Platform.runLater(() -> {
             if (pluginPanelsContainer == null) {
                 logger.warning("Plugin panels container not available for registration: " + panelId);
                 return;
             }
-            
+
             String fullPanelId = pluginId + ":" + panelId;
-            
+
             // Create panel wrapper
             VBox panelWrapper = new VBox();
             panelWrapper.getStyleClass().add("plugin-panel");
             panelWrapper.setSpacing(8);
-            
+
             // Create header with icon, title, and collapse button
             HBox header = new HBox();
             header.getStyleClass().add("plugin-panel-header");
             header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
             header.setSpacing(8);
-            
+
             String headerText = (icon != null ? icon + " " : "") + title;
             Label titleLabel = new Label(headerText);
             titleLabel.getStyleClass().add("plugin-panel-title");
-            
+
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
-            
+
             Button collapseBtn = new Button("▼");
             collapseBtn.getStyleClass().add("plugin-panel-collapse-btn");
             collapseBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2 6; -fx-background-color: transparent;");
-            
+
             header.getChildren().addAll(titleLabel, spacer, collapseBtn);
-            
+
             // Content wrapper
             VBox contentWrapper = new VBox();
             contentWrapper.getStyleClass().add("plugin-panel-content");
             contentWrapper.getChildren().add(content);
-            
+
             // Toggle collapse
             collapseBtn.setOnAction(e -> {
                 boolean isCollapsed = !contentWrapper.isVisible();
@@ -1176,22 +1287,22 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 contentWrapper.setManaged(isCollapsed);
                 collapseBtn.setText(isCollapsed ? "▼" : "▶");
             });
-            
+
             panelWrapper.getChildren().addAll(header, contentWrapper);
-            
+
             // Add to container
             pluginPanelsContainer.getChildren().add(panelWrapper);
             pluginPanels.put(fullPanelId, panelWrapper);
             pluginPanelIds.computeIfAbsent(pluginId, k -> new ArrayList<>()).add(fullPanelId);
-            
+
             // Show the container if it has content
             pluginPanelsContainer.setVisible(true);
             pluginPanelsContainer.setManaged(true);
-            
+
             logger.fine("Registered side panel: " + title + " for plugin " + pluginId);
         });
     }
-    
+
     /**
      * Removes a side panel.
      */
@@ -1202,24 +1313,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             VBox panel = pluginPanels.remove(fullPanelId);
             if (panel != null && pluginPanelsContainer != null) {
                 pluginPanelsContainer.getChildren().remove(panel);
-                
+
                 // Update tracking
                 List<String> ids = pluginPanelIds.get(pluginId);
                 if (ids != null) {
                     ids.remove(fullPanelId);
                 }
-                
+
                 // Hide container if empty
                 if (pluginPanelsContainer.getChildren().isEmpty()) {
                     pluginPanelsContainer.setVisible(false);
                     pluginPanelsContainer.setManaged(false);
                 }
-                
+
                 logger.info("Removed side panel: " + panelId);
             }
         });
     }
-    
+
     /**
      * Removes all side panels for a plugin.
      */
@@ -1234,18 +1345,18 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         pluginPanelsContainer.getChildren().remove(panel);
                     }
                 }
-                
+
                 // Hide container if empty
                 if (pluginPanelsContainer.getChildren().isEmpty()) {
                     pluginPanelsContainer.setVisible(false);
                     pluginPanelsContainer.setManaged(false);
                 }
-                
+
                 logger.info("Removed all side panels for plugin: " + pluginId);
             }
         });
     }
-    
+
     /**
      * Shows or hides the plugin panels section.
      */
@@ -1258,7 +1369,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         });
     }
-    
+
     /**
      * Checks if the plugin panels section is visible.
      */
@@ -1266,9 +1377,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     public boolean isPluginPanelsVisible() {
         return pluginPanelsContainer != null && pluginPanelsContainer.isVisible();
     }
-    
+
     // ==================== STATUS BAR ITEMS IMPLEMENTATION ====================
-    
+
     /**
      * Registers a status bar item for a plugin.
      */
@@ -1278,28 +1389,28 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 logger.warning("Status bar container not available for: " + itemId);
                 return;
             }
-            
+
             String fullItemId = pluginId + ":" + itemId;
-            
+
             // Wrap content with separator
             HBox wrapper = new HBox(8);
             wrapper.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-            
+
             Separator sep = new Separator();
             sep.setOrientation(javafx.geometry.Orientation.VERTICAL);
             sep.getStyleClass().add("status-separator");
-            
+
             wrapper.getChildren().addAll(sep, content);
-            
+
             // Add to container
             pluginStatusBarContainer.getChildren().add(wrapper);
             pluginStatusBarItems.put(fullItemId, wrapper);
             pluginStatusBarItemIds.computeIfAbsent(pluginId, k -> new ArrayList<>()).add(fullItemId);
-            
+
             logger.fine("Registered status bar item: " + itemId + " for plugin " + pluginId);
         });
     }
-    
+
     /**
      * Removes a status bar item.
      */
@@ -1309,7 +1420,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             javafx.scene.Node item = pluginStatusBarItems.remove(fullItemId);
             if (item != null && pluginStatusBarContainer != null) {
                 pluginStatusBarContainer.getChildren().remove(item);
-                
+
                 List<String> ids = pluginStatusBarItemIds.get(pluginId);
                 if (ids != null) {
                     ids.remove(fullItemId);
@@ -1317,7 +1428,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         });
     }
-    
+
     /**
      * Updates a status bar item's content.
      */
@@ -1333,7 +1444,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         });
     }
-    
+
     /**
      * Removes all status bar items for a plugin.
      * Called when a plugin is disabled or unloaded.
@@ -1351,7 +1462,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         });
     }
-    
+
     /**
      * Loads plugins from the plugins/ directory.
      * All plugins (including built-in ones) must be in plugins/ as JAR files.
@@ -1361,7 +1472,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         try {
             List<Plugin> externalPlugins = com.example.forevernote.plugin.PluginLoader.loadExternalPlugins();
             int registeredCount = 0;
-            
+
             for (Plugin plugin : externalPlugins) {
                 if (pluginManager.registerPlugin(plugin)) {
                     registeredCount++;
@@ -1369,7 +1480,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     logger.warning("Failed to register external plugin: " + plugin.getName());
                 }
             }
-            
+
             if (registeredCount > 0) {
                 logger.info("Registered " + registeredCount + " external plugin(s)");
             }
@@ -1377,7 +1488,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             logger.warning("Failed to load external plugins: " + e.getMessage());
         }
     }
-    
+
     /**
      * Gets the plugin manager for external access.
      * 
@@ -1386,13 +1497,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     public PluginManager getPluginManager() {
         return pluginManager;
     }
-    
+
     /**
      * Execute a command from the Command Palette.
      */
     private void executeCommand(String commandName) {
         logger.info("Executing command: " + commandName);
-        
+
         switch (commandName) {
             // File commands
             case "New Note":
@@ -1416,7 +1527,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             case "Delete Note":
                 handleDelete(null);
                 break;
-                
+
             // Edit commands
             case "Undo":
                 handleUndo(null);
@@ -1439,7 +1550,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             case "Paste":
                 handlePaste(null);
                 break;
-                
+
             // Format commands
             case "Bold":
                 handleBold(null);
@@ -1462,7 +1573,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             case "Insert List":
                 handleNumberedList(null);
                 break;
-                
+
             // View commands
             case "Toggle Sidebar":
                 handleToggleSidebar(null);
@@ -1489,7 +1600,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             case "Reset Zoom":
                 handleResetZoom(null);
                 break;
-                
+
             // Theme commands
             case "Light Theme":
                 handleLightTheme(null);
@@ -1500,7 +1611,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             case "System Theme":
                 handleSystemTheme(null);
                 break;
-                
+
             // Navigation commands
             case "Quick Switcher":
                 showQuickSwitcher();
@@ -1517,7 +1628,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             case "Go to Recent":
                 loadRecentNotes();
                 break;
-                
+
             // Tools commands
             case "Tag Manager":
                 handleTagsManager(null);
@@ -1534,7 +1645,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             case "Plugins: Manage Plugins":
                 showPluginManager();
                 break;
-                
+
             // Help commands
             case "Keyboard Shortcuts":
                 handleKeyboardShortcuts(null);
@@ -1545,7 +1656,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             case "About Forevernote":
                 handleAbout(null);
                 break;
-                
+
             default:
                 // Try to find command in Command Palette (for plugin commands)
                 if (commandPalette != null) {
@@ -1559,28 +1670,26 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 updateStatus("Unknown command: " + commandName);
         }
     }
-    
+
     /**
      * Initialize sort options.
      */
     private void initializeSortOptions() {
         sortComboBox.getItems().addAll(
-            "Title (A-Z)",
-            "Title (Z-A)", 
-            "Created (Newest)",
-            "Created (Oldest)",
-            "Modified (Newest)",
-            "Modified (Oldest)"
-        );
+                "Title (A-Z)",
+                "Title (Z-A)",
+                "Created (Newest)",
+                "Created (Oldest)",
+                "Modified (Newest)",
+                "Modified (Oldest)");
         sortComboBox.getSelectionModel().selectFirst();
-        
+
         sortComboBox.getSelectionModel().selectedItemProperty().addListener(
-            (observable, oldValue, newValue) -> {
-                sortNotes(newValue);
-            }
-        );
+                (observable, oldValue, newValue) -> {
+                    sortNotes(newValue);
+                });
     }
-    
+
     /**
      * Initialize view mode toggle buttons (Obsidian-style).
      */
@@ -1597,7 +1706,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (previewOnlyButton != null) {
             previewOnlyButton.setToggleGroup(viewModeGroup);
         }
-        
+
         // Create toggle group for list/grid view modes
         ToggleGroup notesViewGroup = new ToggleGroup();
         if (listViewButton != null) {
@@ -1607,14 +1716,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (gridViewButton != null) {
             gridViewButton.setToggleGroup(notesViewGroup);
         }
-        
+
         // Initialize grid view container
         initializeGridView();
-        
+
         // Apply initial view mode
         applyViewMode();
     }
-    
+
     /**
      * Initialize the grid view container.
      */
@@ -1625,18 +1734,18 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         notesGridPane.setVgap(12);
         notesGridPane.setPadding(new javafx.geometry.Insets(12));
         notesGridPane.setStyle("-fx-background-color: transparent;");
-        
+
         gridScrollPane = new javafx.scene.control.ScrollPane(notesGridPane);
         gridScrollPane.setFitToWidth(true);
         gridScrollPane.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
         gridScrollPane.getStyleClass().add("notes-grid-scroll");
-        
+
         // Store reference to the notes panel container
         if (notesListView != null && notesListView.getParent() instanceof VBox) {
             notesPanelContainer = (VBox) notesListView.getParent();
         }
     }
-    
+
     /**
      * Handle switching to list view.
      */
@@ -1648,7 +1757,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus("Switched to list view");
         }
     }
-    
+
     /**
      * Handle switching to grid view.
      */
@@ -1660,13 +1769,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus("Switched to grid view");
         }
     }
-    
+
     /**
      * Apply the current notes view mode (list/grid).
      */
     private void applyNotesViewMode() {
-        if (notesListView == null || gridScrollPane == null) return;
-        
+        if (notesListView == null || gridScrollPane == null)
+            return;
+
         // Get or update the panel container reference
         if (notesPanelContainer == null) {
             javafx.scene.Parent parent = notesListView.getParent();
@@ -1680,12 +1790,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 }
             }
         }
-        
+
         if (notesPanelContainer == null) {
             logger.warning("Could not find notes panel container");
             return;
         }
-        
+
         Platform.runLater(() -> {
             if (currentNotesViewMode == NotesViewMode.GRID) {
                 // Switch to grid view
@@ -1709,23 +1819,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         });
     }
-    
+
     /**
      * Refresh the grid view with current notes.
      */
     private void refreshGridView() {
-        if (notesGridPane == null) return;
-        
+        if (notesGridPane == null)
+            return;
+
         notesGridPane.getChildren().clear();
-        
+
         List<Note> notes = new ArrayList<>(notesListView.getItems());
-        
+
         for (Note note : notes) {
             VBox card = createNoteCard(note);
             notesGridPane.getChildren().add(card);
         }
     }
-    
+
     /**
      * Create a note card for grid view.
      */
@@ -1735,34 +1846,33 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         card.setPrefHeight(140);
         card.setPadding(new javafx.geometry.Insets(12));
         card.getStyleClass().add("note-card");
-        
+
         // Determine theme colors
-        boolean isDark = "dark".equals(currentTheme) || 
-                        ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
-        
+        boolean isDark = "dark".equals(currentTheme) ||
+                ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
+
         String bgColor = isDark ? "#2d2d2d" : "#ffffff";
         String borderColor = isDark ? "#404040" : "#e0e0e0";
         String titleColor = isDark ? "#e0e0e0" : "#333333";
         String previewColor = isDark ? "#888888" : "#666666";
         String dateColor = isDark ? "#666666" : "#999999";
-        
+
         card.setStyle(String.format(
-            "-fx-background-color: %s; -fx-border-color: %s; -fx-border-radius: 8; " +
-            "-fx-background-radius: 8; -fx-cursor: hand; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 4, 0, 0, 2);",
-            bgColor, borderColor
-        ));
-        
+                "-fx-background-color: %s; -fx-border-color: %s; -fx-border-radius: 8; " +
+                        "-fx-background-radius: 8; -fx-cursor: hand; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 4, 0, 0, 2);",
+                bgColor, borderColor));
+
         // Title with favorite indicator
-        Label titleLabel = new Label((note.isFavorite() ? "★ " : "") + 
-            (note.getTitle() != null ? note.getTitle() : "Untitled"));
+        Label titleLabel = new Label((note.isFavorite() ? "★ " : "") +
+                (note.getTitle() != null ? note.getTitle() : "Untitled"));
         titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: " + titleColor + ";");
         titleLabel.setWrapText(true);
         titleLabel.setMaxHeight(40);
-        
+
         // Preview text
         String preview = note.getContent() != null && !note.getContent().isEmpty()
-            ? note.getContent().replaceAll("^#+\\s*", "").replaceAll("\\n", " ").trim()
-            : "";
+                ? note.getContent().replaceAll("^#+\\s*", "").replaceAll("\\n", " ").trim()
+                : "";
         if (preview.length() > 80) {
             preview = preview.substring(0, 77) + "...";
         }
@@ -1771,7 +1881,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         previewLabel.setWrapText(true);
         previewLabel.setMaxHeight(60);
         VBox.setVgrow(previewLabel, Priority.ALWAYS);
-        
+
         // Date
         String dateText = note.getModifiedDate() != null ? note.getModifiedDate() : note.getCreatedDate();
         if (dateText != null && dateText.length() > 10) {
@@ -1779,30 +1889,32 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         }
         Label dateLabel = new Label(dateText != null ? dateText : "");
         dateLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: " + dateColor + ";");
-        
+
         card.getChildren().addAll(titleLabel, previewLabel, dateLabel);
-        
+
         // Hover effects
         card.setOnMouseEntered(e -> {
             String hoverBg = isDark ? "#3a3a3a" : "#f5f5f5";
-            card.setStyle(card.getStyle().replace("-fx-background-color: " + bgColor, "-fx-background-color: " + hoverBg));
+            card.setStyle(
+                    card.getStyle().replace("-fx-background-color: " + bgColor, "-fx-background-color: " + hoverBg));
         });
         card.setOnMouseExited(e -> {
-            card.setStyle(card.getStyle().replace("-fx-background-color: " + (isDark ? "#3a3a3a" : "#f5f5f5"), "-fx-background-color: " + bgColor));
+            card.setStyle(card.getStyle().replace("-fx-background-color: " + (isDark ? "#3a3a3a" : "#f5f5f5"),
+                    "-fx-background-color: " + bgColor));
         });
-        
+
         // Click to select and load note
         card.setOnMouseClicked(e -> {
             notesListView.getSelectionModel().select(note);
             loadNoteInEditor(note);
         });
-        
+
         // Setup drag for grid cards
         setupNoteCardDrag(card, note);
-        
+
         return card;
     }
-    
+
     /**
      * Setup drag for note card in grid view.
      */
@@ -1812,15 +1924,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
             content.putString("note:" + note.getId());
             db.setContent(content);
-            
+
             javafx.scene.SnapshotParameters params = new javafx.scene.SnapshotParameters();
             params.setFill(javafx.scene.paint.Color.TRANSPARENT);
             db.setDragView(card.snapshot(params, null));
-            
+
             event.consume();
             updateStatus("Dragging: " + note.getTitle());
         });
-        
+
         card.setOnDragDone(event -> {
             if (event.getTransferMode() == javafx.scene.input.TransferMode.MOVE) {
                 updateStatus("Note moved successfully");
@@ -1828,7 +1940,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             event.consume();
         });
     }
-    
+
     /**
      * Apply the current view mode to the UI.
      */
@@ -1836,7 +1948,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (editorPreviewSplitPane == null || editorPane == null || previewPane == null) {
             return;
         }
-        
+
         switch (currentViewMode) {
             case EDITOR_ONLY:
                 editorPane.setVisible(true);
@@ -1851,7 +1963,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     editorPreviewSplitPane.getItems().add(editorPane);
                 }
                 break;
-                
+
             case PREVIEW_ONLY:
                 editorPane.setVisible(false);
                 editorPane.setManaged(false);
@@ -1866,7 +1978,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 }
                 updatePreview(); // Ensure preview is updated
                 break;
-                
+
             case SPLIT:
             default:
                 editorPane.setVisible(true);
@@ -1880,7 +1992,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 updatePreview();
                 break;
         }
-        
+
         // Update button states
         if (editorOnlyButton != null) {
             editorOnlyButton.setSelected(currentViewMode == ViewMode.EDITOR_ONLY);
@@ -1892,7 +2004,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             previewOnlyButton.setSelected(currentViewMode == ViewMode.PREVIEW_ONLY);
         }
     }
-    
+
     /**
      * Handle editor-only mode button click.
      */
@@ -1902,7 +2014,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         applyViewMode();
         updateStatus("Editor mode");
     }
-    
+
     /**
      * Handle split view mode button click.
      */
@@ -1912,7 +2024,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         applyViewMode();
         updateStatus("Split view mode");
     }
-    
+
     /**
      * Handle preview-only mode button click.
      */
@@ -1922,69 +2034,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         applyViewMode();
         updateStatus("Preview mode");
     }
-    
+
     /**
      * Initialize all icons using Ikonli (Feather icons - similar to Obsidian).
      * Uses simple text labels that work reliably across all platforms.
      */
     private void initializeIcons() {
-        // Toolbar buttons
-        setButtonText(newNoteBtn, "📝", "New Note (Ctrl+N)");
-        setButtonText(newFolderBtn, "📁", "New Folder");
-        setButtonText(saveBtn, "💾", "Save (Ctrl+S)");
-        setButtonText(deleteBtn, "🗑️", "Delete");
-        setButtonText(refreshBtn, "↻", "Refresh");
-        
-        // Sidebar buttons
-        setButtonText(sidebarNewNoteBtn, "📝", "New Note");
-        setButtonText(sidebarNewFolderBtn, "📁", "New Folder");
-        setButtonText(sidebarNewTagBtn, "#", "New Tag");
-        
-        // View mode buttons
-        setToggleText(editorOnlyButton, "✎", "Editor only (Alt+1)");
-        setToggleText(splitViewButton, "││", "Split view (Alt+2)");
-        setToggleText(previewOnlyButton, "🔍", "Preview only (Alt+3)");
-        
-        // Action buttons  
-        setButtonText(favoriteButton, "★", "Add to favorites");
-        setButtonText(deleteNoteBtn, "❌", "Delete note");
-        setButtonText(infoButton, "☰", "Toggle panel");
-        setButtonText(closeRightPanelBtn, "×", "Close panel");
-        
-        // Format toolbar
-        setButtonText(heading1Btn, "H1", "Heading 1");
-        setButtonText(heading2Btn, "H2", "Heading 2");
-        setButtonText(heading3Btn, "H3", "Heading 3");
-        setButtonText(boldBtn, "B", "Bold (Ctrl+B)");
-        setButtonText(italicBtn, "I", "Italic (Ctrl+I)");
-        setButtonText(strikeBtn, "S", "Strikethrough");
-        setButtonText(underlineBtn, "U", "Underline");
-        setButtonText(highlightBtn, "~", "Highlight");
-        setButtonText(linkBtn, "Lk", "Insert link (Ctrl+K)");
-        setButtonText(imageBtn, "Img", "Insert image");
-        setButtonText(todoBtn, "[]", "Checkbox");
-        setButtonText(bulletBtn, "•", "Bullet list");
-        setButtonText(numberBtn, "1.", "Numbered list");
-        setButtonText(quoteBtn, ">", "Blockquote");
-        setButtonText(codeBtn, "</>", "Code block");
-        
-        logger.info("Button labels initialized");
+        // Icons are now set via FXML using Ikonli FontIcon
+        // This method can remain empty or be removed in future refactoring
     }
-    
-    private void setButtonText(Button btn, String text, String tooltip) {
-        if (btn != null) {
-            btn.setText(text);
-            btn.setTooltip(new Tooltip(tooltip));
-        }
-    }
-    
-    private void setToggleText(ToggleButton btn, String text, String tooltip) {
-        if (btn != null) {
-            btn.setText(text);
-            btn.setTooltip(new Tooltip(tooltip));
-        }
-    }
-    
+
     /**
      * Toggle the right panel visibility.
      */
@@ -1994,13 +2053,26 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             boolean isVisible = rightPanel.isVisible();
             rightPanel.setVisible(!isVisible);
             rightPanel.setManaged(!isVisible);
-            
+
+            // Ensure space is released/reclaimed
+            if (!isVisible) {
+                // Expanding
+                rightPanel.setMinWidth(260);
+                rightPanel.setMaxWidth(340);
+                rightPanel.setPrefWidth(300);
+            } else {
+                // Collapsing
+                rightPanel.setMinWidth(0);
+                rightPanel.setMaxWidth(0);
+                rightPanel.setPrefWidth(0);
+            }
+
             if (!isVisible && currentNote != null) {
                 updateNoteInfoPanel();
             }
         }
     }
-    
+
     /**
      * Handle close right panel button.
      */
@@ -2011,7 +2083,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             rightPanel.setManaged(false);
         }
     }
-    
+
     /**
      * Legacy method - redirect to new handler.
      */
@@ -2019,7 +2091,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private void handleShowNoteInfo(ActionEvent event) {
         handleToggleRightPanel(event);
     }
-    
+
     /**
      * Initialize the collapsible sections in the right panel.
      */
@@ -2034,27 +2106,29 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             });
             noteInfoHeader.setStyle("-fx-cursor: hand;");
         }
-        
-        // Plugin panels container should always be visible (content is added dynamically)
+
+        // Plugin panels container should always be visible (content is added
+        // dynamically)
         if (pluginPanelsContainer != null) {
             pluginPanelsContainer.setVisible(true);
             pluginPanelsContainer.setManaged(true);
         }
     }
-    
+
     /**
      * Update the note info panel with current note data.
      */
     private void updateNoteInfoPanel() {
-        if (currentNote == null) return;
-        
+        if (currentNote == null)
+            return;
+
         if (infoCreatedLabel != null && currentNote.getCreatedDate() != null) {
             infoCreatedLabel.setText(currentNote.getCreatedDate().toString());
         }
         if (infoModifiedLabel != null && currentNote.getModifiedDate() != null) {
             infoModifiedLabel.setText(currentNote.getModifiedDate().toString());
         }
-        
+
         String content = noteContentArea.getText();
         if (infoWordsLabel != null) {
             int words = content == null || content.trim().isEmpty() ? 0 : content.trim().split("\\s+").length;
@@ -2063,7 +2137,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (infoCharsLabel != null) {
             infoCharsLabel.setText(String.valueOf(content == null ? 0 : content.length()));
         }
-        
+
         if (infoLatitudeLabel != null) {
             infoLatitudeLabel.setText("Lat: " + (currentNote.getLatitude() != 0 ? currentNote.getLatitude() : "-"));
         }
@@ -2071,13 +2145,18 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             infoLongitudeLabel.setText("Lon: " + (currentNote.getLongitude() != 0 ? currentNote.getLongitude() : "-"));
         }
         if (infoAuthorLabel != null) {
-            infoAuthorLabel.setText("Author: " + (currentNote.getAuthor() != null && !currentNote.getAuthor().isEmpty() ? currentNote.getAuthor() : "-"));
+            infoAuthorLabel.setText("Author: "
+                    + (currentNote.getAuthor() != null && !currentNote.getAuthor().isEmpty() ? currentNote.getAuthor()
+                            : "-"));
         }
         if (infoSourceUrlLabel != null) {
-            infoSourceUrlLabel.setText("URL: " + (currentNote.getSourceUrl() != null && !currentNote.getSourceUrl().isEmpty() ? currentNote.getSourceUrl() : "-"));
+            infoSourceUrlLabel
+                    .setText("URL: " + (currentNote.getSourceUrl() != null && !currentNote.getSourceUrl().isEmpty()
+                            ? currentNote.getSourceUrl()
+                            : "-"));
         }
     }
-    
+
     /**
      * Load folders into the tree view.
      */
@@ -2085,12 +2164,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         try {
             TreeItem<Folder> root = folderTreeView.getRoot();
             root.getChildren().clear();
-            
+
             // Only load root folders (folders with parent_id IS NULL)
-            // We need to check parent_id directly from database since getParent() may not be loaded
+            // We need to check parent_id directly from database since getParent() may not
+            // be loaded
             List<Folder> allFolders = folderDAO.fetchAllFoldersAsList();
             List<Folder> rootFolders = new ArrayList<>();
-            
+
             for (Folder folder : allFolders) {
                 // Check if folder has a parent by querying the database
                 Folder parent = folderDAO.getParentFolder(folder.getId());
@@ -2099,20 +2179,20 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     rootFolders.add(folder);
                 }
             }
-            
+
             for (Folder folder : rootFolders) {
                 TreeItem<Folder> folderItem = new TreeItem<>(folder);
                 root.getChildren().add(folderItem);
                 loadSubFolders(folderItem, folder);
             }
-            
+
             logger.info("Loaded " + rootFolders.size() + " root folders");
         } catch (Exception e) {
             logger.severe("Failed to load folders: " + e.getMessage());
             updateStatus("Error loading folders");
         }
     }
-    
+
     /**
      * Load subfolders recursively.
      */
@@ -2131,7 +2211,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             logger.warning("Failed to load subfolders for " + parentFolder.getTitle() + ": " + e.getMessage());
         }
     }
-    
+
     /**
      * Load all notes.
      */
@@ -2143,19 +2223,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             currentFolder = null;
             currentTag = null;
             currentFilterType = "all";
-            
+
             // Refresh grid view if active
             if (currentNotesViewMode == NotesViewMode.GRID) {
                 Platform.runLater(this::refreshGridView);
             }
-            
+
             updateStatus("Loaded all notes");
         } catch (Exception e) {
             logger.severe("Failed to load all notes: " + e.getMessage());
             updateStatus("Error loading notes");
         }
     }
-    
+
     /**
      * Load notes for selected folder.
      */
@@ -2165,36 +2245,66 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 loadAllNotes();
                 return;
             }
-            
+
             // Reload folder from database to ensure we have the latest data
             Folder loadedFolder = folderDAO.getFolderById(folder.getId());
             if (loadedFolder != null) {
                 currentFolder = loadedFolder;
                 folderDAO.loadNotes(currentFolder);
-                
+
                 List<Note> notes = currentFolder.getChildren().stream()
-                    .filter(c -> c instanceof Note)
-                    .map(c -> (Note) c)
-                    .toList();
-                
+                        .filter(c -> c instanceof Note)
+                        .map(c -> (Note) c)
+                        .toList();
+
                 notesListView.getItems().setAll(notes);
                 noteCountLabel.setText(notes.size() + " notes");
                 currentFilterType = "folder";
                 currentTag = null;
-                
-                // Refresh grid view if active
+
                 if (currentNotesViewMode == NotesViewMode.GRID) {
                     Platform.runLater(this::refreshGridView);
                 }
-                
+
+                // Ensure notes panel is visible when folder is selected (especially in Stacked
+                // Mode)
+                if (notesPanel != null) {
+                    if (isStackedLayout) {
+                        // In stacked layout, ensure navSplitPane is 50/50 (or reasonable split) to show
+                        // notes
+                        if (navSplitPane != null) {
+                            // Check if notes might be hidden (divider roughly at 1.0 or notesPanel
+                            // collapsed)
+                            if (notesPanel.getMaxWidth() < 10 || navSplitPane.getDividerPositions().length > 0
+                                    && navSplitPane.getDividerPositions()[0] > 0.95) {
+                                notesPanel.setMinWidth(180);
+                                notesPanel.setMaxWidth(Double.MAX_VALUE);
+                                navSplitPane.setDividerPositions(0.5); // Show split
+                            }
+                        }
+                    } else {
+                        // In column layout, ensure contentSplitPane shows notes
+                        if (contentSplitPane != null) {
+                            if (notesPanel.getMaxWidth() < 10) {
+                                notesPanel.setMinWidth(180);
+                                notesPanel.setMaxWidth(Double.MAX_VALUE);
+                                contentSplitPane.setDividerPositions(0.25);
+                            }
+                        }
+                    }
+                    if (notesPanelToggleBtn != null)
+                        notesPanelToggleBtn.setSelected(true);
+                }
+
                 updateStatus("Loaded folder: " + currentFolder.getTitle());
             }
         } catch (Exception e) {
-            logger.severe("Failed to load folder " + (folder != null ? folder.getTitle() : "null") + ": " + e.getMessage());
+            logger.severe(
+                    "Failed to load folder " + (folder != null ? folder.getTitle() : "null") + ": " + e.getMessage());
             updateStatus("Error loading folder");
         }
     }
-    
+
     /**
      * Load note in editor.
      */
@@ -2211,42 +2321,42 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 }
             }
         }
-        
+
         currentNote = note;
         noteTitleField.setText(note.getTitle() != null ? note.getTitle() : "");
         noteContentArea.setText(note.getContent() != null ? note.getContent() : "");
-        
+
         // Load tags
         loadNoteTags(note);
-        
+
         // Update metadata
         updateNoteMetadata(note);
-        
+
         // Ensure WebView has correct background color based on theme
         if ("dark".equals(currentTheme) && previewWebView != null) {
             previewWebView.setStyle("-fx-background-color: #1E1E1E;");
         } else if (previewWebView != null) {
             previewWebView.setStyle("-fx-background-color: #FFFFFF;");
         }
-        
+
         // Update preview
         updatePreview();
-        
+
         // Update favorite button icon
         updateFavoriteButtonIcon();
-        
+
         // Refresh favorites list to show current favorite status
         loadFavorites();
-        
+
         // Publish event for plugins (Outline, etc.)
         if (eventBus != null) {
             eventBus.publish(new NoteEvents.NoteSelectedEvent(note));
         }
-        
+
         isModified = false;
         updateStatus("Loaded note: " + note.getTitle());
     }
-    
+
     /**
      * Load tags for a note.
      */
@@ -2254,21 +2364,21 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         try {
             List<Tag> tags = noteDAO.fetchTags(note.getId());
             tagsFlowPane.getChildren().clear();
-            
+
             for (Tag tag : tags) {
                 // Create tag label with X button for removal (like Evernote/Obsidian)
                 HBox tagContainer = new HBox(4);
                 tagContainer.getStyleClass().add("tag-container");
                 tagContainer.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-                
+
                 Label tagLabel = new Label(tag.getTitle());
                 tagLabel.getStyleClass().add("tag-label");
-                
+
                 // X button to remove tag (more intuitive than double-click)
                 Button removeBtn = new Button("×");
                 removeBtn.getStyleClass().add("tag-remove-btn");
                 removeBtn.setTooltip(new Tooltip("Remove tag from note"));
-                
+
                 // Store tag ID to ensure it's accessible when removing
                 final int tagId = tag.getId();
                 final String tagTitle = tag.getTitle();
@@ -2276,7 +2386,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     Tag tagToRemove = new Tag(tagId, tagTitle, null, null);
                     removeTagFromNote(tagToRemove);
                 });
-                
+
                 // Also support double-click on label for removal (backward compatibility)
                 tagLabel.setOnMouseClicked(event -> {
                     if (event.getClickCount() == 2) {
@@ -2285,11 +2395,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     }
                 });
                 tagLabel.setTooltip(new Tooltip("Double-click to remove"));
-                
+
                 tagContainer.getChildren().addAll(tagLabel, removeBtn);
                 tagsFlowPane.getChildren().add(tagContainer);
             }
-            
+
             // Add button to add new tag
             Button addTagButton = new Button("+ Add Tag");
             addTagButton.getStyleClass().add("add-tag-button");
@@ -2299,19 +2409,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             logger.warning("Failed to load tags for note " + note.getId() + ": " + e.getMessage());
         }
     }
-    
+
     /**
      * Update note metadata display.
      */
     private void updateNoteMetadata(Note note) {
         // Update the modified date in the tags bar (subtle format)
         if (modifiedDateLabel != null) {
-            String modifiedText = note.getModifiedDate() != null 
-                ? "Modified " + note.getModifiedDate() 
-                : "";
+            String modifiedText = note.getModifiedDate() != null
+                    ? "Modified " + note.getModifiedDate()
+                    : "";
             modifiedDateLabel.setText(modifiedText);
         }
-        
+
         // Update info panel labels
         if (infoCreatedLabel != null) {
             infoCreatedLabel.setText(note.getCreatedDate() != null ? note.getCreatedDate() : "-");
@@ -2319,7 +2429,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (infoModifiedLabel != null) {
             infoModifiedLabel.setText(note.getModifiedDate() != null ? note.getModifiedDate() : "-");
         }
-        
+
         String content = note.getContent() != null ? note.getContent() : "";
         if (infoWordsLabel != null) {
             infoWordsLabel.setText(String.valueOf(countWords(content)));
@@ -2334,13 +2444,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             infoLongitudeLabel.setText("Lon: " + (note.getLongitude() != 0 ? note.getLongitude() : "-"));
         }
         if (infoAuthorLabel != null) {
-            infoAuthorLabel.setText("Author: " + (note.getAuthor() != null && !note.getAuthor().isEmpty() ? note.getAuthor() : "-"));
+            infoAuthorLabel.setText(
+                    "Author: " + (note.getAuthor() != null && !note.getAuthor().isEmpty() ? note.getAuthor() : "-"));
         }
         if (infoSourceUrlLabel != null) {
-            infoSourceUrlLabel.setText("URL: " + (note.getSourceUrl() != null && !note.getSourceUrl().isEmpty() ? note.getSourceUrl() : "-"));
+            infoSourceUrlLabel.setText("URL: "
+                    + (note.getSourceUrl() != null && !note.getSourceUrl().isEmpty() ? note.getSourceUrl() : "-"));
         }
     }
-    
+
     /**
      * Load recent notes.
      */
@@ -2349,40 +2461,41 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             cachedAllNotes = noteDAO.fetchAllNotes();
             // Sort by modified date (simplified)
             cachedAllNotes.sort((a, b) -> {
-                String dateA = a.getModifiedDate() != null ? a.getModifiedDate() : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
-                String dateB = b.getModifiedDate() != null ? b.getModifiedDate() : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
+                String dateA = a.getModifiedDate() != null ? a.getModifiedDate()
+                        : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
+                String dateB = b.getModifiedDate() != null ? b.getModifiedDate()
+                        : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
                 return dateB.compareTo(dateA);
             });
-            
+
             List<String> recentTitles = cachedAllNotes.stream()
-                .limit(10)
-                .map(Note::getTitle)
-                .toList();
-            
+                    .limit(10)
+                    .map(Note::getTitle)
+                    .toList();
+
             recentNotesListView.getItems().setAll(recentTitles);
-            
+
             // Add listener only once
             if (!recentListenerAdded) {
                 recentListenerAdded = true;
                 recentNotesListView.getSelectionModel().selectedItemProperty().addListener(
-                    (observable, oldValue, newValue) -> {
-                        if (newValue != null) {
-                            // Find and load the recent note from cached list
-                            Optional<Note> recentNote = cachedAllNotes.stream()
-                                .filter(n -> n.getTitle() != null && n.getTitle().equals(newValue))
-                                .findFirst();
-                            if (recentNote.isPresent()) {
-                                loadNoteInEditor(recentNote.get());
+                        (observable, oldValue, newValue) -> {
+                            if (newValue != null) {
+                                // Find and load the recent note from cached list
+                                Optional<Note> recentNote = cachedAllNotes.stream()
+                                        .filter(n -> n.getTitle() != null && n.getTitle().equals(newValue))
+                                        .findFirst();
+                                if (recentNote.isPresent()) {
+                                    loadNoteInEditor(recentNote.get());
+                                }
                             }
-                        }
-                    }
-                );
+                        });
             }
         } catch (Exception e) {
             logger.warning("Failed to load recent notes: " + e.getMessage());
         }
     }
-    
+
     /**
      * Load favorites.
      */
@@ -2390,65 +2503,64 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         try {
             List<Note> allNotes = noteDAO.fetchAllNotes();
             cachedFavoriteNotes = allNotes.stream()
-                .filter(Note::isFavorite)
-                .toList();
-            
+                    .filter(Note::isFavorite)
+                    .toList();
+
             List<String> favoriteTitles = cachedFavoriteNotes.stream()
-                .map(Note::getTitle)
-                .limit(10)
-                .toList();
-            
+                    .map(Note::getTitle)
+                    .limit(10)
+                    .toList();
+
             favoritesListView.getItems().setAll(favoriteTitles);
-            
+
             // Add listener only once
             if (!favoritesListenerAdded) {
                 favoritesListenerAdded = true;
                 favoritesListView.getSelectionModel().selectedItemProperty().addListener(
-                    (observable, oldValue, newValue) -> {
-                        if (newValue != null) {
-                            // Find and load the favorite note from cached list
-                            Optional<Note> favoriteNote = cachedFavoriteNotes.stream()
-                                .filter(n -> n.getTitle() != null && n.getTitle().equals(newValue))
-                                .findFirst();
-                            if (favoriteNote.isPresent()) {
-                                // Update context to show favorites
-                                currentFilterType = "favorites";
-                                currentFolder = null;
-                                currentTag = null;
-                                
-                                // Clear selection and items to avoid IndexOutOfBoundsException
-                                notesListView.getSelectionModel().clearSelection();
-                                notesListView.getItems().clear();
-                                
-                                // Refresh favorites list and show in notes list
-                                List<Note> currentFavorites = new ArrayList<>(cachedFavoriteNotes);
-                                notesListView.getItems().addAll(currentFavorites);
-                                noteCountLabel.setText(currentFavorites.size() + " favorite notes");
-                                
-                                // Use Platform.runLater to ensure list update completes before loading note
-                                final Note noteToLoad = favoriteNote.get();
-                                Platform.runLater(() -> {
-                                    try {
-                                        int index = notesListView.getItems().indexOf(noteToLoad);
-                                        if (index >= 0) {
-                                            notesListView.getSelectionModel().select(index);
+                        (observable, oldValue, newValue) -> {
+                            if (newValue != null) {
+                                // Find and load the favorite note from cached list
+                                Optional<Note> favoriteNote = cachedFavoriteNotes.stream()
+                                        .filter(n -> n.getTitle() != null && n.getTitle().equals(newValue))
+                                        .findFirst();
+                                if (favoriteNote.isPresent()) {
+                                    // Update context to show favorites
+                                    currentFilterType = "favorites";
+                                    currentFolder = null;
+                                    currentTag = null;
+
+                                    // Clear selection and items to avoid IndexOutOfBoundsException
+                                    notesListView.getSelectionModel().clearSelection();
+                                    notesListView.getItems().clear();
+
+                                    // Refresh favorites list and show in notes list
+                                    List<Note> currentFavorites = new ArrayList<>(cachedFavoriteNotes);
+                                    notesListView.getItems().addAll(currentFavorites);
+                                    noteCountLabel.setText(currentFavorites.size() + " favorite notes");
+
+                                    // Use Platform.runLater to ensure list update completes before loading note
+                                    final Note noteToLoad = favoriteNote.get();
+                                    Platform.runLater(() -> {
+                                        try {
+                                            int index = notesListView.getItems().indexOf(noteToLoad);
+                                            if (index >= 0) {
+                                                notesListView.getSelectionModel().select(index);
+                                            }
+                                            loadNoteInEditor(noteToLoad);
+                                        } catch (Exception e) {
+                                            logger.warning("Could not select favorite note in list: " + e.getMessage());
+                                            loadNoteInEditor(noteToLoad);
                                         }
-                                        loadNoteInEditor(noteToLoad);
-                                    } catch (Exception e) {
-                                        logger.warning("Could not select favorite note in list: " + e.getMessage());
-                                        loadNoteInEditor(noteToLoad);
-                                    }
-                                });
+                                    });
+                                }
                             }
-                        }
-                    }
-                );
+                        });
             }
         } catch (Exception e) {
             logger.warning("Failed to load favorites: " + e.getMessage());
         }
     }
-    
+
     /**
      * Load tags.
      */
@@ -2456,28 +2568,27 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         try {
             List<Tag> tags = tagDAO.fetchAllTags();
             tagListView.getItems().clear();
-            
+
             // Store tags in a map for quick lookup
             for (Tag tag : tags) {
                 tagListView.getItems().add(tag.getTitle());
             }
-            
+
             // Add listener for tag selection
             tagListView.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, newValue) -> {
-                    if (newValue != null) {
-                        handleTagSelection(newValue);
-                    } else {
-                        // Deselected - show all notes
-                        loadAllNotes();
-                    }
-                }
-            );
+                    (observable, oldValue, newValue) -> {
+                        if (newValue != null) {
+                            handleTagSelection(newValue);
+                        } else {
+                            // Deselected - show all notes
+                            loadAllNotes();
+                        }
+                    });
         } catch (Exception e) {
             logger.warning("Failed to load tags: " + e.getMessage());
         }
     }
-    
+
     /**
      * Handle tag selection to filter notes.
      */
@@ -2486,9 +2597,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             // Find tag by name
             List<Tag> allTags = tagDAO.fetchAllTags();
             Optional<Tag> selectedTag = allTags.stream()
-                .filter(t -> t.getTitle().equals(tagName))
-                .findFirst();
-            
+                    .filter(t -> t.getTitle().equals(tagName))
+                    .findFirst();
+
             if (selectedTag.isPresent()) {
                 Tag tag = selectedTag.get();
                 currentTag = tag;
@@ -2504,7 +2615,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus("Error filtering by tag");
         }
     }
-    
+
     /**
      * Perform search.
      */
@@ -2520,42 +2631,43 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
             return;
         }
-        
+
         try {
             List<Note> allNotes = noteDAO.fetchAllNotes();
             String searchLower = searchText.toLowerCase();
             List<Note> filteredNotes = allNotes.stream()
-                .filter(note -> {
-                    String title = note.getTitle() != null ? note.getTitle().toLowerCase() : "";
-                    String content = note.getContent() != null ? note.getContent().toLowerCase() : "";
-                    return title.contains(searchLower) || content.contains(searchLower);
-                })
-                .toList();
-            
+                    .filter(note -> {
+                        String title = note.getTitle() != null ? note.getTitle().toLowerCase() : "";
+                        String content = note.getContent() != null ? note.getContent().toLowerCase() : "";
+                        return title.contains(searchLower) || content.contains(searchLower);
+                    })
+                    .toList();
+
             notesListView.getItems().setAll(filteredNotes);
             noteCountLabel.setText(filteredNotes.size() + " notes found");
             currentFilterType = "search";
-            
+
             // Refresh grid view if active
             if (currentNotesViewMode == NotesViewMode.GRID) {
                 Platform.runLater(this::refreshGridView);
             }
-            
+
             updateStatus("Search: " + searchText);
         } catch (Exception e) {
             logger.severe("Failed to perform search: " + e.getMessage());
             updateStatus("Search failed");
         }
     }
-    
+
     /**
      * Sort notes with null-safe comparisons.
      */
     private void sortNotes(String sortOption) {
-        if (sortOption == null) return;
-        
+        if (sortOption == null)
+            return;
+
         List<Note> notes = new ArrayList<>(notesListView.getItems());
-        
+
         switch (sortOption) {
             case "Title (A-Z)":
                 notes.sort((a, b) -> {
@@ -2587,37 +2699,42 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 break;
             case "Modified (Newest)":
                 notes.sort((a, b) -> {
-                    String dateA = a.getModifiedDate() != null ? a.getModifiedDate() : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
-                    String dateB = b.getModifiedDate() != null ? b.getModifiedDate() : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
+                    String dateA = a.getModifiedDate() != null ? a.getModifiedDate()
+                            : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
+                    String dateB = b.getModifiedDate() != null ? b.getModifiedDate()
+                            : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
                     return dateB.compareTo(dateA);
                 });
                 break;
             case "Modified (Oldest)":
                 notes.sort((a, b) -> {
-                    String dateA = a.getModifiedDate() != null ? a.getModifiedDate() : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
-                    String dateB = b.getModifiedDate() != null ? b.getModifiedDate() : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
+                    String dateA = a.getModifiedDate() != null ? a.getModifiedDate()
+                            : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
+                    String dateB = b.getModifiedDate() != null ? b.getModifiedDate()
+                            : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
                     return dateA.compareTo(dateB);
                 });
                 break;
         }
-        
+
         notesListView.getItems().setAll(notes);
-        
+
         // Refresh grid view if active
         if (currentNotesViewMode == NotesViewMode.GRID) {
             Platform.runLater(this::refreshGridView);
         }
     }
-    
+
     /**
      * Update word count.
      */
     private void updateWordCount() {
         String content = noteContentArea != null ? noteContentArea.getText() : "";
-        if (content == null) content = "";
-        
+        if (content == null)
+            content = "";
+
         int wordCount = countWords(content);
-        
+
         if (wordCountLabel != null) {
             wordCountLabel.setText(wordCount + " words");
         }
@@ -2628,7 +2745,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             infoCharsLabel.setText(String.valueOf(content.length()));
         }
     }
-    
+
     /**
      * Count words in text.
      */
@@ -2638,7 +2755,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         }
         return text.trim().split("\\s+").length;
     }
-    
+
     /**
      * Update preview with syntax highlighting (highlight.js).
      */
@@ -2651,148 +2768,184 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 actualTheme = detectSystemTheme();
             }
             boolean isDarkTheme = "dark".equals(actualTheme);
-            
+
             if (content != null && !content.trim().isEmpty()) {
                 // Convert markdown to HTML
                 String html = com.example.forevernote.util.MarkdownProcessor.markdownToHtml(content);
-                
+
                 // highlight.js theme selection (VS Code style)
-                String highlightTheme = isDarkTheme 
-                    ? "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css"
-                    : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs.min.css";
-                
-                // Create a complete HTML document with theme-aware styling and syntax highlighting
+                String highlightTheme = isDarkTheme
+                        ? "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css"
+                        : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs.min.css";
+
+                // Create a complete HTML document with theme-aware styling and syntax
+                // highlighting
                 String fullHtml = "<!DOCTYPE html>\n" +
-                    "<html>\n" +
-                    "<head>\n" +
-                    "    <meta charset=\"UTF-8\">\n" +
-                    "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n" +
-                    "    <link rel=\"stylesheet\" href=\"" + highlightTheme + "\">\n" +
-                    "    <script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js\"></script>\n" +
-                    "    <style>\n" +
-                    "        @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=JetBrains+Mono:wght@400;500&display=swap');\n" +
-                    "        html { " +
-                    (isDarkTheme ? "background-color: #1E1E1E;" : "background-color: #FFFFFF;") +
-                    " margin: 0; padding: 0; width: 100%; height: 100%; }\n" +
-                    (isDarkTheme ? 
-                    // Dark theme styles with improved code styling
-                    "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; padding: 20px; line-height: 1.6; color: #E0E0E0; background-color: #1E1E1E; }\n" +
-                    "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; color: #FFFFFF; }\n" +
-                    "        h1 { font-size: 2em; border-bottom: 2px solid #3a3a3a; padding-bottom: 0.3em; }\n" +
-                    "        h2 { font-size: 1.5em; border-bottom: 1px solid #3a3a3a; padding-bottom: 0.3em; }\n" +
-                    "        h3 { font-size: 1.25em; }\n" +
-                    "        /* Inline code */\n" +
-                    "        code:not(pre code) { background-color: #2d2d2d; color: #ce9178; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.9em; }\n" +
-                    "        /* Code blocks with syntax highlighting */\n" +
-                    "        pre { background-color: #1e1e1e; border: 1px solid #3a3a3a; border-radius: 6px; margin: 1em 0; overflow-x: auto; }\n" +
-                    "        pre code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 13px; line-height: 1.5; padding: 16px !important; display: block; background: transparent !important; color: inherit; }\n" +
-                    "        /* Language label */\n" +
-                    "        pre[class*='language-']::before { content: attr(data-lang); position: absolute; top: 0; right: 0; padding: 2px 8px; font-size: 10px; color: #888; background: #2d2d2d; border-bottom-left-radius: 4px; }\n" +
-                    "        pre { position: relative; }\n" +
-                    "        /* Additional highlight.js overrides for dark theme */\n" +
-                    "        .hljs { background: transparent !important; }\n" +
-                    "        blockquote { border-left: 4px solid #818CF8; margin: 0; padding-left: 20px; color: #B3B3B3; background-color: #252525; padding: 10px 20px; border-radius: 4px; }\n" +
-                    "        ul, ol { margin: 1em 0; padding-left: 2em; color: #E0E0E0; }\n" +
-                    "        li { margin: 0.5em 0; }\n" +
-                    "        /* Task lists */\n" +
-                    "        input[type='checkbox'] { margin-right: 8px; transform: scale(1.2); }\n" +
-                    "        table { border-collapse: collapse; width: 100%; margin: 1em 0; }\n" +
-                    "        table th, table td { border: 1px solid #3a3a3a; padding: 10px; text-align: left; }\n" +
-                    "        table th { background-color: #252525; font-weight: 600; color: #FFFFFF; }\n" +
-                    "        table td { background-color: #1E1E1E; color: #E0E0E0; }\n" +
-                    "        table tr:hover td { background-color: #252525; }\n" +
-                    "        a { color: #818CF8; text-decoration: none; }\n" +
-                    "        a:hover { color: #A5B4FC; text-decoration: underline; }\n" +
-                    "        img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }\n" +
-                    "        hr { border: none; border-top: 1px solid #3a3a3a; margin: 2em 0; }\n" +
-                    "        strong { color: #FFFFFF; font-weight: 600; }\n" +
-                    "        em { font-style: italic; }\n" +
-                    "        mark { background-color: #564a00; color: #ffd700; padding: 1px 3px; border-radius: 2px; }\n" +
-                    "        /* Emoji support */\n" +
-                    "        * { font-variant-emoji: emoji; }\n" :
-                    // Light theme styles with improved code styling
-                    "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; padding: 20px; line-height: 1.6; color: #24292e; background-color: #FFFFFF; }\n" +
-                    "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; color: #24292e; }\n" +
-                    "        h1 { font-size: 2em; border-bottom: 2px solid #eaecef; padding-bottom: 0.3em; }\n" +
-                    "        h2 { font-size: 1.5em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }\n" +
-                    "        h3 { font-size: 1.25em; }\n" +
-                    "        /* Inline code */\n" +
-                    "        code:not(pre code) { background-color: #f0f0f0; color: #d63384; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.9em; }\n" +
-                    "        /* Code blocks with syntax highlighting */\n" +
-                    "        pre { background-color: #f8f8f8; border: 1px solid #e1e4e8; border-radius: 6px; margin: 1em 0; overflow-x: auto; }\n" +
-                    "        pre code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 13px; line-height: 1.5; padding: 16px !important; display: block; background: transparent !important; color: inherit; }\n" +
-                    "        /* Language label */\n" +
-                    "        pre[class*='language-']::before { content: attr(data-lang); position: absolute; top: 0; right: 0; padding: 2px 8px; font-size: 10px; color: #666; background: #e8e8e8; border-bottom-left-radius: 4px; }\n" +
-                    "        pre { position: relative; }\n" +
-                    "        /* Additional highlight.js overrides for light theme */\n" +
-                    "        .hljs { background: transparent !important; }\n" +
-                    "        blockquote { border-left: 4px solid #6366F1; margin: 0; padding-left: 20px; color: #57606a; background-color: #f6f8fa; padding: 10px 20px; border-radius: 4px; }\n" +
-                    "        ul, ol { margin: 1em 0; padding-left: 2em; color: #24292e; }\n" +
-                    "        li { margin: 0.5em 0; }\n" +
-                    "        /* Task lists */\n" +
-                    "        input[type='checkbox'] { margin-right: 8px; transform: scale(1.2); }\n" +
-                    "        table { border-collapse: collapse; width: 100%; margin: 1em 0; }\n" +
-                    "        table th, table td { border: 1px solid #e1e4e8; padding: 10px; text-align: left; }\n" +
-                    "        table th { background-color: #f6f8fa; font-weight: 600; color: #24292e; }\n" +
-                    "        table td { background-color: #FFFFFF; color: #24292e; }\n" +
-                    "        table tr:hover td { background-color: #f6f8fa; }\n" +
-                    "        a { color: #0969da; text-decoration: none; }\n" +
-                    "        a:hover { color: #0550ae; text-decoration: underline; }\n" +
-                    "        img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }\n" +
-                    "        hr { border: none; border-top: 1px solid #e1e4e8; margin: 2em 0; }\n" +
-                    "        strong { color: #24292e; font-weight: 600; }\n" +
-                    "        em { font-style: italic; }\n" +
-                    "        mark { background-color: #fff8c5; padding: 1px 3px; border-radius: 2px; }\n" +
-                    "        /* Emoji support */\n" +
-                    "        * { font-variant-emoji: emoji; }\n") +
-                    "    </style>\n" +
-                    "</head>\n" +
-                    "<body>\n" +
-                    html +
-                    "\n<script>\n" +
-                    "    // Initialize syntax highlighting\n" +
-                    "    document.addEventListener('DOMContentLoaded', function() {\n" +
-                    "        document.querySelectorAll('pre code').forEach(function(block) {\n" +
-                    "            hljs.highlightElement(block);\n" +
-                    "        });\n" +
-                    "    });\n" +
-                    "    // Run immediately in case DOM is already loaded\n" +
-                    "    document.querySelectorAll('pre code').forEach(function(block) {\n" +
-                    "        hljs.highlightElement(block);\n" +
-                    "    });\n" +
-                    "</script>\n" +
-                    "</body>\n" +
-                    "</html>";
-                
+                        "<html>\n" +
+                        "<head>\n" +
+                        "    <meta charset=\"UTF-8\">\n" +
+                        "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n" +
+                        "    <link rel=\"stylesheet\" href=\"" + highlightTheme + "\">\n" +
+                        "    <script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js\"></script>\n"
+                        +
+                        "    <style>\n" +
+                        "        @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=JetBrains+Mono:wght@400;500&display=swap');\n"
+                        +
+                        "        html { " +
+                        (isDarkTheme ? "background-color: #1E1E1E;" : "background-color: #FFFFFF;") +
+                        " margin: 0; padding: 0; width: 100%; height: 100%; }\n" +
+                        (isDarkTheme ?
+                        // Dark theme styles with improved code styling
+                                "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; padding: 20px; line-height: 1.6; color: #E0E0E0; background-color: #1E1E1E; }\n"
+                                        +
+                                        "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; color: #FFFFFF; }\n"
+                                        +
+                                        "        h1 { font-size: 2em; border-bottom: 2px solid #3a3a3a; padding-bottom: 0.3em; }\n"
+                                        +
+                                        "        h2 { font-size: 1.5em; border-bottom: 1px solid #3a3a3a; padding-bottom: 0.3em; }\n"
+                                        +
+                                        "        h3 { font-size: 1.25em; }\n" +
+                                        "        /* Inline code */\n" +
+                                        "        code:not(pre code) { background-color: #2d2d2d; color: #ce9178; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.9em; }\n"
+                                        +
+                                        "        /* Code blocks with syntax highlighting */\n" +
+                                        "        pre { background-color: #1e1e1e; border: 1px solid #3a3a3a; border-radius: 6px; margin: 1em 0; overflow-x: auto; }\n"
+                                        +
+                                        "        pre code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 13px; line-height: 1.5; padding: 16px !important; display: block; background: transparent !important; color: inherit; }\n"
+                                        +
+                                        "        /* Language label */\n" +
+                                        "        pre[class*='language-']::before { content: attr(data-lang); position: absolute; top: 0; right: 0; padding: 2px 8px; font-size: 10px; color: #888; background: #2d2d2d; border-bottom-left-radius: 4px; }\n"
+                                        +
+                                        "        pre { position: relative; }\n" +
+                                        "        /* Additional highlight.js overrides for dark theme */\n" +
+                                        "        .hljs { background: transparent !important; }\n" +
+                                        "        blockquote { border-left: 4px solid #818CF8; margin: 0; padding-left: 20px; color: #B3B3B3; background-color: #252525; padding: 10px 20px; border-radius: 4px; }\n"
+                                        +
+                                        "        ul, ol { margin: 1em 0; padding-left: 2em; color: #E0E0E0; }\n" +
+                                        "        li { margin: 0.5em 0; }\n" +
+                                        "        /* Task lists */\n" +
+                                        "        input[type='checkbox'] { margin-right: 8px; transform: scale(1.2); }\n"
+                                        +
+                                        "        table { border-collapse: collapse; width: 100%; margin: 1em 0; }\n" +
+                                        "        table th, table td { border: 1px solid #3a3a3a; padding: 10px; text-align: left; }\n"
+                                        +
+                                        "        table th { background-color: #252525; font-weight: 600; color: #FFFFFF; }\n"
+                                        +
+                                        "        table td { background-color: #1E1E1E; color: #E0E0E0; }\n" +
+                                        "        table tr:hover td { background-color: #252525; }\n" +
+                                        "        a { color: #818CF8; text-decoration: none; }\n" +
+                                        "        a:hover { color: #A5B4FC; text-decoration: underline; }\n" +
+                                        "        img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }\n"
+                                        +
+                                        "        hr { border: none; border-top: 1px solid #3a3a3a; margin: 2em 0; }\n" +
+                                        "        strong { color: #FFFFFF; font-weight: 600; }\n" +
+                                        "        em { font-style: italic; }\n" +
+                                        "        mark { background-color: #564a00; color: #ffd700; padding: 1px 3px; border-radius: 2px; }\n"
+                                        +
+                                        "        /* Emoji support */\n" +
+                                        "        * { font-variant-emoji: emoji; }\n"
+                                :
+                                // Light theme styles with improved code styling
+                                "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; padding: 20px; line-height: 1.6; color: #24292e; background-color: #FFFFFF; }\n"
+                                        +
+                                        "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; color: #24292e; }\n"
+                                        +
+                                        "        h1 { font-size: 2em; border-bottom: 2px solid #eaecef; padding-bottom: 0.3em; }\n"
+                                        +
+                                        "        h2 { font-size: 1.5em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }\n"
+                                        +
+                                        "        h3 { font-size: 1.25em; }\n" +
+                                        "        /* Inline code */\n" +
+                                        "        code:not(pre code) { background-color: #f0f0f0; color: #d63384; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.9em; }\n"
+                                        +
+                                        "        /* Code blocks with syntax highlighting */\n" +
+                                        "        pre { background-color: #f8f8f8; border: 1px solid #e1e4e8; border-radius: 6px; margin: 1em 0; overflow-x: auto; }\n"
+                                        +
+                                        "        pre code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 13px; line-height: 1.5; padding: 16px !important; display: block; background: transparent !important; color: inherit; }\n"
+                                        +
+                                        "        /* Language label */\n" +
+                                        "        pre[class*='language-']::before { content: attr(data-lang); position: absolute; top: 0; right: 0; padding: 2px 8px; font-size: 10px; color: #666; background: #e8e8e8; border-bottom-left-radius: 4px; }\n"
+                                        +
+                                        "        pre { position: relative; }\n" +
+                                        "        /* Additional highlight.js overrides for light theme */\n" +
+                                        "        .hljs { background: transparent !important; }\n" +
+                                        "        blockquote { border-left: 4px solid #6366F1; margin: 0; padding-left: 20px; color: #57606a; background-color: #f6f8fa; padding: 10px 20px; border-radius: 4px; }\n"
+                                        +
+                                        "        ul, ol { margin: 1em 0; padding-left: 2em; color: #24292e; }\n" +
+                                        "        li { margin: 0.5em 0; }\n" +
+                                        "        /* Task lists */\n" +
+                                        "        input[type='checkbox'] { margin-right: 8px; transform: scale(1.2); }\n"
+                                        +
+                                        "        table { border-collapse: collapse; width: 100%; margin: 1em 0; }\n" +
+                                        "        table th, table td { border: 1px solid #e1e4e8; padding: 10px; text-align: left; }\n"
+                                        +
+                                        "        table th { background-color: #f6f8fa; font-weight: 600; color: #24292e; }\n"
+                                        +
+                                        "        table td { background-color: #FFFFFF; color: #24292e; }\n" +
+                                        "        table tr:hover td { background-color: #f6f8fa; }\n" +
+                                        "        a { color: #0969da; text-decoration: none; }\n" +
+                                        "        a:hover { color: #0550ae; text-decoration: underline; }\n" +
+                                        "        img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }\n"
+                                        +
+                                        "        hr { border: none; border-top: 1px solid #e1e4e8; margin: 2em 0; }\n" +
+                                        "        strong { color: #24292e; font-weight: 600; }\n" +
+                                        "        em { font-style: italic; }\n" +
+                                        "        mark { background-color: #fff8c5; padding: 1px 3px; border-radius: 2px; }\n"
+                                        +
+                                        "        /* Emoji support */\n" +
+                                        "        * { font-variant-emoji: emoji; }\n")
+                        +
+                        "    </style>\n" +
+                        "</head>\n" +
+                        "<body>\n" +
+                        html +
+                        "\n<script>\n" +
+                        "    // Initialize syntax highlighting\n" +
+                        "    document.addEventListener('DOMContentLoaded', function() {\n" +
+                        "        document.querySelectorAll('pre code').forEach(function(block) {\n" +
+                        "            hljs.highlightElement(block);\n" +
+                        "        });\n" +
+                        "    });\n" +
+                        "    // Run immediately in case DOM is already loaded\n" +
+                        "    document.querySelectorAll('pre code').forEach(function(block) {\n" +
+                        "        hljs.highlightElement(block);\n" +
+                        "    });\n" +
+                        "</script>\n" +
+                        "</body>\n" +
+                        "</html>";
+
                 previewWebView.getEngine().loadContent(fullHtml, "text/html");
             } else {
                 // Empty preview with theme-aware background
                 String emptyHtml = "<!DOCTYPE html>\n" +
-                    "<html>\n" +
-                    "<head>\n" +
-                    "    <meta charset=\"UTF-8\">\n" +
-                    "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n" +
-                    "    <style>\n" +
-                    "        html, body { " +
-                    (isDarkTheme ? "color: #B3B3B3; background-color: #1E1E1E;" : "color: #71717A; background-color: #FFFFFF;") +
-                    " margin: 0; padding: 0; width: 100%; height: 100%; }\n" +
-                    "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; }\n" +
-                    "    </style>\n" +
-                    "</head>\n" +
-                    "<body></body>\n" +
-                    "</html>";
+                        "<html>\n" +
+                        "<head>\n" +
+                        "    <meta charset=\"UTF-8\">\n" +
+                        "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n" +
+                        "    <style>\n" +
+                        "        html, body { " +
+                        (isDarkTheme ? "color: #B3B3B3; background-color: #1E1E1E;"
+                                : "color: #71717A; background-color: #FFFFFF;")
+                        +
+                        " margin: 0; padding: 0; width: 100%; height: 100%; }\n" +
+                        "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; }\n"
+                        +
+                        "    </style>\n" +
+                        "</head>\n" +
+                        "<body></body>\n" +
+                        "</html>";
                 previewWebView.getEngine().loadContent(emptyHtml, "text/html");
             }
         }
     }
-    
+
     /**
      * Update status bar.
      */
     private void updateStatus(String message) {
         statusLabel.setText(message);
     }
-    
+
     /**
      * Show save dialog.
      */
@@ -2801,16 +2954,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         alert.setTitle("Save Changes");
         alert.setHeaderText("Do you want to save changes to the current note?");
         alert.setContentText("Your changes will be lost if you don't save them.");
-        
+
         ButtonType saveButton = new ButtonType("Save");
         ButtonType dontSaveButton = new ButtonType("Don't Save");
         ButtonType cancelButton = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
-        
+
         alert.getButtonTypes().setAll(saveButton, dontSaveButton, cancelButton);
-        
+
         return alert.showAndWait();
     }
-    
+
     /**
      * Add tag to current note.
      */
@@ -2820,30 +2973,30 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus("No note selected");
             return;
         }
-        
+
         try {
             // Get existing tags
             List<Tag> existingTags = tagDAO.fetchAllTags();
             List<Tag> noteTags = noteDAO.fetchTags(currentNote.getId());
-            
+
             // Filter out tags already assigned to the note
             List<String> availableTagNames = existingTags.stream()
-                .filter(tag -> !noteTags.stream().anyMatch(nt -> nt.getId().equals(tag.getId())))
-                .map(Tag::getTitle)
-                .sorted()
-                .toList();
-            
+                    .filter(tag -> !noteTags.stream().anyMatch(nt -> nt.getId().equals(tag.getId())))
+                    .map(Tag::getTitle)
+                    .sorted()
+                    .toList();
+
             // Create dialog for adding tag
             Dialog<String> dialog = new Dialog<>();
             dialog.setTitle("Add Tag");
-            dialog.setHeaderText(availableTagNames.isEmpty() 
-                ? "No existing tags available. Enter a new tag name:" 
-                : "Select an existing tag or enter a new tag name:");
-            
+            dialog.setHeaderText(availableTagNames.isEmpty()
+                    ? "No existing tags available. Enter a new tag name:"
+                    : "Select an existing tag or enter a new tag name:");
+
             // Set buttons
             ButtonType addButtonType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
-            
+
             // Create layout
             VBox content = new VBox(10);
             ComboBox<String> tagComboBox = new ComboBox<>();
@@ -2854,7 +3007,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             content.getChildren().add(new Label("Tag:"));
             content.getChildren().add(tagComboBox);
             dialog.getDialogPane().setContent(content);
-            
+
             // Convert result
             dialog.setResultConverter(dialogButton -> {
                 if (dialogButton == addButtonType) {
@@ -2862,16 +3015,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 }
                 return null;
             });
-            
+
             Optional<String> result = dialog.showAndWait();
             if (result.isPresent() && !result.get().trim().isEmpty()) {
                 String tagName = result.get().trim();
-                
+
                 // Check if it's an existing tag
                 Optional<Tag> existingTag = existingTags.stream()
-                    .filter(t -> t.getTitle().equals(tagName))
-                    .findFirst();
-                
+                        .filter(t -> t.getTitle().equals(tagName))
+                        .findFirst();
+
                 Tag tag;
                 if (existingTag.isPresent()) {
                     tag = existingTag.get();
@@ -2881,12 +3034,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     int tagId = tagDAO.createTag(tag);
                     tag.setId(tagId);
                 }
-                
+
                 // Check if tag is already assigned to note (double check)
                 List<Tag> currentNoteTags = noteDAO.fetchTags(currentNote.getId());
                 boolean alreadyHasTag = currentNoteTags.stream()
-                    .anyMatch(t -> t.getId().equals(tag.getId()));
-                
+                        .anyMatch(t -> t.getId().equals(tag.getId()));
+
                 if (alreadyHasTag) {
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
                     alert.setTitle("Tag Already Assigned");
@@ -2905,7 +3058,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus("Error adding tag");
         }
     }
-    
+
     /**
      * Show folder context menu.
      */
@@ -2923,17 +3076,17 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             currentFolder = folder;
             handleNewSubfolder(e);
         });
-        
+
         MenuItem renameItem = new MenuItem("Rename");
         renameItem.setOnAction(e -> handleRenameFolder(folder));
-        
+
         MenuItem deleteItem = new MenuItem("Delete");
         deleteItem.setOnAction(e -> handleDeleteFolder(folder));
-        
+
         contextMenu.getItems().addAll(newNoteItem, newFolderItem, renameItem, deleteItem);
         contextMenu.show(cell, cell.getLayoutX(), cell.getLayoutY());
     }
-    
+
     /**
      * Remove tag from note.
      */
@@ -2946,13 +3099,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus("Invalid tag");
             return;
         }
-        
+
         // Confirm removal
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
         confirm.setTitle("Remove Tag");
         confirm.setHeaderText("Remove tag '" + tag.getTitle() + "' from this note?");
         confirm.setContentText("This will only remove the tag from this note, not delete the tag itself.");
-        
+
         Optional<ButtonType> result = confirm.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
@@ -2965,7 +3118,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         }
     }
-    
+
     /**
      * Handle editor key press.
      */
@@ -2975,65 +3128,66 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             event.consume();
         }
     }
-    
+
     // ==================== MENU HANDLERS ====================
-    
+
     @FXML
     private void handleNewNote(ActionEvent event) {
         try {
             Note newNote = new Note("New Note", "");
             int noteId = noteDAO.createNote(newNote);
             newNote.setId(noteId);
-            
+
             if (currentFolder != null) {
                 folderDAO.addNote(currentFolder, newNote);
             }
-            
+
             notesListView.getItems().add(0, newNote);
             notesListView.getSelectionModel().select(newNote);
             loadNoteInEditor(newNote);
-            
+
             // Refresh recent notes to include new note
             loadRecentNotes();
-            
+
             updateStatus("Created new note");
         } catch (Exception e) {
             logger.severe("Failed to create new note: " + e.getMessage());
             updateStatus("Error creating note");
         }
     }
-    
+
     @FXML
     private void handleNewFolder(ActionEvent event) {
         // Create dialog with option to create in root or as subfolder
         TextInputDialog dialog = new TextInputDialog("New Folder");
         dialog.setTitle("New Folder");
-        
+
         // Determine if we should create in root or as subfolder
-        boolean createInRoot = (currentFolder == null || 
-            currentFolder.getTitle().equals("All Notes") || 
-            currentFolder.getTitle().equals("📚 All Notes"));
-        String headerText = createInRoot 
-            ? "Create a new folder in root (All Notes)" 
-            : "Create a new folder in: " + currentFolder.getTitle() + "\n(Click '📚 All Notes' in tree to create in root)";
+        boolean createInRoot = (currentFolder == null ||
+                currentFolder.getTitle().equals("All Notes") ||
+                currentFolder.getTitle().equals("📚 All Notes"));
+        String headerText = createInRoot
+                ? "Create a new folder in root (All Notes)"
+                : "Create a new folder in: " + currentFolder.getTitle()
+                        + "\n(Click '📚 All Notes' in tree to create in root)";
         dialog.setHeaderText(headerText);
         dialog.setContentText("Folder name:");
-        
+
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             try {
                 Folder newFolder = new Folder(result.get().trim());
                 int folderId = folderDAO.createFolder(newFolder);
                 newFolder.setId(folderId);
-                
+
                 // Only add as subfolder if currentFolder is set and not "All Notes"
-                if (!createInRoot && currentFolder != null && 
-                    !currentFolder.getTitle().equals("All Notes") && 
-                    !currentFolder.getTitle().equals("📚 All Notes")) {
+                if (!createInRoot && currentFolder != null &&
+                        !currentFolder.getTitle().equals("All Notes") &&
+                        !currentFolder.getTitle().equals("📚 All Notes")) {
                     folderDAO.addSubFolder(currentFolder, newFolder);
                 }
                 // Otherwise, it's created in root (parent_id will be NULL)
-                
+
                 loadFolders();
                 // Select "All Notes" root to make it clear where new folders are created
                 folderTreeView.getSelectionModel().select(folderTreeView.getRoot());
@@ -3045,32 +3199,32 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         }
     }
-    
+
     /**
      * Handle creating a new subfolder in the currently selected folder.
      */
     private void handleNewSubfolder(ActionEvent event) {
-        if (currentFolder == null || 
-            currentFolder.getTitle().equals("All Notes") || 
-            currentFolder.getTitle().equals("📚 All Notes")) {
+        if (currentFolder == null ||
+                currentFolder.getTitle().equals("All Notes") ||
+                currentFolder.getTitle().equals("📚 All Notes")) {
             handleNewFolder(event);
             return;
         }
-        
+
         TextInputDialog dialog = new TextInputDialog("New Subfolder");
         dialog.setTitle("New Subfolder");
         dialog.setHeaderText("Create a new subfolder in: " + currentFolder.getTitle());
         dialog.setContentText("Subfolder name:");
-        
+
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             try {
                 Folder newSubfolder = new Folder(result.get().trim());
                 int folderId = folderDAO.createFolder(newSubfolder);
                 newSubfolder.setId(folderId);
-                
+
                 folderDAO.addSubFolder(currentFolder, newSubfolder);
-                
+
                 loadFolders();
                 updateStatus("Created subfolder: " + newSubfolder.getTitle());
             } catch (Exception e) {
@@ -3079,7 +3233,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         }
     }
-    
+
     @FXML
     private void handleSave(ActionEvent event) {
         if (currentNote != null && isModified) {
@@ -3089,18 +3243,18 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 currentNote.setContent(noteContentArea.getText());
                 noteDAO.updateNote(currentNote);
                 isModified = false;
-                
+
                 // Refresh the notes list to show updated title
                 refreshNotesList();
-                
+
                 // Refresh favorites list in case favorite status changed
                 loadFavorites();
-                
+
                 // Publish NoteSavedEvent for plugins (Outline, etc.)
                 if (eventBus != null) {
                     eventBus.publish(new NoteEvents.NoteSavedEvent(currentNote));
                 }
-                
+
                 updateStatus("Saved: " + currentNote.getTitle());
             } catch (Exception e) {
                 logger.severe("Failed to save note: " + e.getMessage());
@@ -3108,7 +3262,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         }
     }
-    
+
     /**
      * Refresh the notes list to reflect current state.
      */
@@ -3118,13 +3272,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         } else {
             handleFolderSelection(currentFolder);
         }
-        
+
         // Also refresh grid view if active
         if (currentNotesViewMode == NotesViewMode.GRID) {
             refreshGridView();
         }
     }
-    
+
     @FXML
     private void handleSaveAll(ActionEvent event) {
         // Save all modified notes (for now, just save current if modified)
@@ -3133,7 +3287,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         }
         updateStatus("All notes saved");
     }
-    
+
     @FXML
     private void handleDelete(ActionEvent event) {
         if (currentNote != null) {
@@ -3141,25 +3295,25 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             alert.setTitle("Delete Note");
             alert.setHeaderText("Are you sure you want to delete this note?");
             alert.setContentText("This action cannot be undone.");
-            
+
             Optional<ButtonType> result = alert.showAndWait();
             if (result.isPresent() && result.get() == ButtonType.OK) {
                 try {
                     Note noteToDelete = currentNote;
                     noteDAO.deleteNote(noteToDelete.getId());
-                    
+
                     // Clear editor
                     currentNote = null;
                     noteTitleField.clear();
                     noteContentArea.clear();
                     tagsFlowPane.getChildren().clear();
                     previewWebView.getEngine().loadContent("", "text/html");
-                    
+
                     // Refresh ALL lists - notes, recent, favorites
                     refreshNotesList();
-                    loadRecentNotes();  // Update recent notes to remove deleted note
-                    loadFavorites();    // Update favorites to remove deleted note
-                    
+                    loadRecentNotes(); // Update recent notes to remove deleted note
+                    loadFavorites(); // Update favorites to remove deleted note
+
                     updateStatus("Note deleted");
                 } catch (Exception e) {
                     logger.severe("Failed to delete note: " + e.getMessage());
@@ -3168,12 +3322,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         }
     }
-    
+
     @FXML
     private void handleDeleteNote(ActionEvent event) {
         handleDelete(event);
     }
-    
+
     @FXML
     private void handleExit(ActionEvent event) {
         if (isModified && currentNote != null) {
@@ -3187,7 +3341,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 }
             }
         }
-        
+
         try {
             if (connection != null && !connection.isClosed()) {
                 SQLiteDB db = SQLiteDB.getInstance();
@@ -3196,26 +3350,25 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         } catch (Exception e) {
             logger.warning("Error closing database connection: " + e.getMessage());
         }
-        
+
         System.exit(0);
     }
-    
-    @FXML 
+
+    @FXML
     private void handleImport(ActionEvent event) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Import Notes");
         fileChooser.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("Supported Files", "*.md", "*.txt", "*.markdown"),
-            new FileChooser.ExtensionFilter("Markdown Files", "*.md", "*.markdown"),
-            new FileChooser.ExtensionFilter("Text Files", "*.txt"),
-            new FileChooser.ExtensionFilter("All Files", "*.*")
-        );
-        
+                new FileChooser.ExtensionFilter("Supported Files", "*.md", "*.txt", "*.markdown"),
+                new FileChooser.ExtensionFilter("Markdown Files", "*.md", "*.markdown"),
+                new FileChooser.ExtensionFilter("Text Files", "*.txt"),
+                new FileChooser.ExtensionFilter("All Files", "*.*"));
+
         List<File> files = fileChooser.showOpenMultipleDialog(mainSplitPane.getScene().getWindow());
         if (files != null && !files.isEmpty()) {
             int imported = 0;
             int failed = 0;
-            
+
             for (File file : files) {
                 try {
                     String content = Files.readString(file.toPath());
@@ -3225,55 +3378,54 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     if (dotIndex > 0) {
                         title = title.substring(0, dotIndex);
                     }
-                    
+
                     // Create new note
                     Note newNote = new Note(title, content);
                     int noteId = noteDAO.createNote(newNote);
                     newNote.setId(noteId);
-                    
+
                     // Add to current folder if selected
                     if (currentFolder != null && currentFolder.getId() != null) {
                         folderDAO.addNote(currentFolder, newNote);
                     }
-                    
+
                     imported++;
                 } catch (Exception e) {
                     logger.warning("Failed to import file " + file.getName() + ": " + e.getMessage());
                     failed++;
                 }
             }
-            
+
             // Refresh lists
             refreshNotesList();
             loadRecentNotes();
-            
+
             // Show result
             String message = "Imported " + imported + " note(s)";
             if (failed > 0) {
                 message += "\nFailed: " + failed + " file(s)";
             }
             updateStatus(message);
-            showAlert(Alert.AlertType.INFORMATION, "Import Complete", 
-                "Import finished", message);
+            showAlert(Alert.AlertType.INFORMATION, "Import Complete",
+                    "Import finished", message);
         }
     }
-    
-    @FXML 
+
+    @FXML
     private void handleExport(ActionEvent event) {
         if (currentNote == null) {
             showAlert(Alert.AlertType.WARNING, "Export", "No note selected", "Please select a note to export.");
             return;
         }
-        
+
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Export Note");
         fileChooser.setInitialFileName(sanitizeFileName(currentNote.getTitle()));
         fileChooser.getExtensionFilters().addAll(
-            new FileChooser.ExtensionFilter("Markdown Files", "*.md"),
-            new FileChooser.ExtensionFilter("Text Files", "*.txt"),
-            new FileChooser.ExtensionFilter("All Files", "*.*")
-        );
-        
+                new FileChooser.ExtensionFilter("Markdown Files", "*.md"),
+                new FileChooser.ExtensionFilter("Text Files", "*.txt"),
+                new FileChooser.ExtensionFilter("All Files", "*.*"));
+
         File file = fileChooser.showSaveDialog(mainSplitPane.getScene().getWindow());
         if (file != null) {
             try (FileWriter writer = new FileWriter(file)) {
@@ -3283,16 +3435,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 }
                 writer.write(currentNote.getContent() != null ? currentNote.getContent() : "");
                 updateStatus("Exported: " + file.getName());
-                showAlert(Alert.AlertType.INFORMATION, "Export Successful", 
-                    "Note exported successfully", "Saved to: " + file.getAbsolutePath());
+                showAlert(Alert.AlertType.INFORMATION, "Export Successful",
+                        "Note exported successfully", "Saved to: " + file.getAbsolutePath());
             } catch (IOException e) {
                 logger.severe("Failed to export note: " + e.getMessage());
-                showAlert(Alert.AlertType.ERROR, "Export Failed", 
-                    "Could not export note", e.getMessage());
+                showAlert(Alert.AlertType.ERROR, "Export Failed",
+                        "Could not export note", e.getMessage());
             }
         }
     }
-    
+
     /**
      * Sanitize filename for safe file system use.
      */
@@ -3302,7 +3454,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         }
         return name.replaceAll("[^a-zA-Z0-9\\-_ ]", "_").substring(0, Math.min(name.length(), 50));
     }
-    
+
     /**
      * Show a simple alert dialog.
      */
@@ -3313,48 +3465,55 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         alert.setContentText(content);
         alert.showAndWait();
     }
-    @FXML private void handleUndo(ActionEvent event) { 
+
+    @FXML
+    private void handleUndo(ActionEvent event) {
         if (noteContentArea != null) {
             noteContentArea.undo();
         }
     }
-    
-    @FXML private void handleRedo(ActionEvent event) { 
+
+    @FXML
+    private void handleRedo(ActionEvent event) {
         // JavaFX TextArea doesn't have redo by default
         updateStatus("Redo not available in TextArea");
     }
-    
-    @FXML private void handleCut(ActionEvent event) { 
+
+    @FXML
+    private void handleCut(ActionEvent event) {
         if (noteContentArea != null && noteContentArea.getSelectedText() != null) {
             noteContentArea.cut();
         } else if (noteTitleField != null && noteTitleField.getSelectedText() != null) {
             noteTitleField.cut();
         }
     }
-    
-    @FXML private void handleCopy(ActionEvent event) { 
+
+    @FXML
+    private void handleCopy(ActionEvent event) {
         if (noteContentArea != null && noteContentArea.getSelectedText() != null) {
             noteContentArea.copy();
         } else if (noteTitleField != null && noteTitleField.getSelectedText() != null) {
             noteTitleField.copy();
         }
     }
-    
-    @FXML private void handlePaste(ActionEvent event) { 
+
+    @FXML
+    private void handlePaste(ActionEvent event) {
         if (noteContentArea != null && noteContentArea.isFocused()) {
             noteContentArea.paste();
         } else if (noteTitleField != null && noteTitleField.isFocused()) {
             noteTitleField.paste();
         }
     }
-    
-    @FXML private void handleFind(ActionEvent event) { 
+
+    @FXML
+    private void handleFind(ActionEvent event) {
         if (noteContentArea != null) {
             TextInputDialog dialog = new TextInputDialog();
             dialog.setTitle("Find");
             dialog.setHeaderText("Find text in note");
             dialog.setContentText("Search for:");
-            
+
             Optional<String> result = dialog.showAndWait();
             if (result.isPresent() && !result.get().trim().isEmpty()) {
                 String searchText = result.get().trim();
@@ -3370,44 +3529,43 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         }
     }
-    
-    @FXML 
+
+    @FXML
     private void handleReplace(ActionEvent event) {
         if (noteContentArea == null) {
             updateStatus("No note open");
             return;
         }
-        
+
         Dialog<String> dialog = new Dialog<>();
         dialog.setTitle("Find and Replace");
         dialog.setHeaderText("Replace text in note");
-        
+
         ButtonType replaceButton = new ButtonType("Replace", ButtonBar.ButtonData.OK_DONE);
         ButtonType replaceAllButton = new ButtonType("Replace All", ButtonBar.ButtonData.APPLY);
         dialog.getDialogPane().getButtonTypes().addAll(replaceButton, replaceAllButton, ButtonType.CANCEL);
-        
+
         VBox content = new VBox(10);
         content.setPadding(new javafx.geometry.Insets(20));
-        
+
         TextField findField = new TextField();
         findField.setPromptText("Find...");
         TextField replaceField = new TextField();
         replaceField.setPromptText("Replace with...");
-        
+
         content.getChildren().addAll(
-            new Label("Find:"), findField,
-            new Label("Replace with:"), replaceField
-        );
-        
+                new Label("Find:"), findField,
+                new Label("Replace with:"), replaceField);
+
         dialog.getDialogPane().setContent(content);
         dialog.setResultConverter(buttonType -> {
             if (buttonType == replaceButton || buttonType == replaceAllButton) {
-                return findField.getText() + "|" + replaceField.getText() + "|" + 
-                       (buttonType == replaceAllButton ? "all" : "one");
+                return findField.getText() + "|" + replaceField.getText() + "|" +
+                        (buttonType == replaceAllButton ? "all" : "one");
             }
             return null;
         });
-        
+
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent()) {
             String[] parts = result.get().split("\\|");
@@ -3415,7 +3573,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 String find = parts[0];
                 String replace = parts[1];
                 boolean replaceAll = parts[2].equals("all");
-                
+
                 String noteContent = noteContentArea.getText();
                 if (replaceAll) {
                     String newContent = noteContent.replace(find, replace);
@@ -3424,8 +3582,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 } else {
                     int index = noteContent.indexOf(find);
                     if (index >= 0) {
-                        String newContent = noteContent.substring(0, index) + replace + 
-                                          noteContent.substring(index + find.length());
+                        String newContent = noteContent.substring(0, index) + replace +
+                                noteContent.substring(index + find.length());
                         noteContentArea.setText(newContent);
                         noteContentArea.selectRange(index, index + replace.length());
                         updateStatus("Replaced first occurrence");
@@ -3437,53 +3595,184 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         }
     }
-    
-    @FXML private void handleToggleSidebar(ActionEvent event) { 
-        if (mainSplitPane != null) {
-            double[] positions = mainSplitPane.getDividerPositions();
-            if (positions[0] < 0.1) {
-                mainSplitPane.setDividerPositions(0.25);
-                updateStatus("Sidebar shown");
+
+    @FXML
+    private void handleToggleSidebar(ActionEvent event) {
+        if (sidebarPane != null) {
+            if (isStackedLayout) {
+                // In stacked layout, "Toggle Sidebar" button actually toggles the entire Left
+                // Navigation Panel (Sidebar + Notes)
+                // This acts like closing the entire file tree/list view
+                if (navSplitPane != null) {
+                    boolean isCollapsed = mainSplitPane.getDividerPositions()[0] < 0.01;
+
+                    if (isCollapsed) {
+                        // Expand Main Split to show nav
+                        mainSplitPane.setDividerPositions(0.25);
+                        updateStatus("Navigation panel shown");
+                        if (sidebarToggleBtn != null)
+                            sidebarToggleBtn.setSelected(true);
+                    } else {
+                        // Collapse Main Split to hide nav
+                        mainSplitPane.setDividerPositions(0.0);
+                        updateStatus("Navigation panel hidden");
+                        if (sidebarToggleBtn != null)
+                            sidebarToggleBtn.setSelected(false);
+                    }
+                }
             } else {
-                mainSplitPane.setDividerPositions(0.0);
-                updateStatus("Sidebar hidden");
+                // Default Mode: Toggle sidebar normally
+                boolean isCollapsed = sidebarPane.getMaxWidth() < 10;
+
+                if (isCollapsed) {
+                    // Expand
+                    sidebarPane.setMinWidth(200);
+                    sidebarPane.setMaxWidth(Double.MAX_VALUE);
+                    sidebarPane.setPrefWidth(250);
+                    mainSplitPane.setDividerPositions(0.22);
+                    updateStatus("Sidebar shown");
+                    if (sidebarToggleBtn != null)
+                        sidebarToggleBtn.setSelected(true);
+                } else {
+                    // Collapse
+                    sidebarPane.setMinWidth(0);
+                    sidebarPane.setMaxWidth(0);
+                    sidebarPane.setPrefWidth(0);
+                    updateStatus("Sidebar hidden");
+                    if (sidebarToggleBtn != null)
+                        sidebarToggleBtn.setSelected(false);
+                }
             }
         }
     }
+
+    @FXML
+    private void handleToggleNotesPanel(ActionEvent event) {
+        if (notesPanel != null) {
+            boolean isCollapsed = notesPanel.getMaxWidth() < 10;
+
+            if (isCollapsed) {
+                // Expand
+                notesPanel.setMinWidth(180);
+                notesPanel.setMaxWidth(Double.MAX_VALUE);
+                notesPanel.setPrefWidth(280);
+
+                if (!isStackedLayout && contentSplitPane != null) {
+                    contentSplitPane.setDividerPositions(0.25);
+                } else if (isStackedLayout && navSplitPane != null) {
+                    navSplitPane.setDividerPositions(0.5);
+                }
+                updateStatus("Notes panel shown");
+                if (notesPanelToggleBtn != null)
+                    notesPanelToggleBtn.setSelected(true);
+            } else {
+                // Collapse
+                notesPanel.setMinWidth(0);
+                notesPanel.setMaxWidth(0);
+                notesPanel.setPrefWidth(0);
+                updateStatus("Notes panel hidden");
+                if (notesPanelToggleBtn != null)
+                    notesPanelToggleBtn.setSelected(false);
+            }
+        }
+    }
+
+    @FXML
+    private void handleViewLayoutSwitch(ActionEvent event) {
+        isStackedLayout = !isStackedLayout;
+
+        // Clean up current layout
+        mainSplitPane.getItems().clear();
+        contentSplitPane.getItems().clear();
+        navSplitPane.getItems().clear(); // Safe clear
+
+        // Reset sizes securely
+        sidebarPane.setMinWidth(200);
+        sidebarPane.setMaxWidth(Double.MAX_VALUE);
+        notesPanel.setMinWidth(180);
+        notesPanel.setMaxWidth(Double.MAX_VALUE);
+
+        if (isStackedLayout) {
+            // Stacked Mode: [NavSplit(Sidebar/Notes)] | [EditorSplit]
+            navSplitPane.getItems().addAll(sidebarPane, notesPanel);
+            navSplitPane.setDividerPositions(0.5);
+
+            mainSplitPane.getItems().addAll(navSplitPane, editorPreviewSplitPane);
+            mainSplitPane.setDividerPositions(0.25);
+
+            updateStatus("Switched to Stacked Layout");
+        } else {
+            // Default Mode: [Sidebar] | [ContentSplit(Notes|EditorSplit)]
+            contentSplitPane.getItems().addAll(notesPanel, editorPreviewSplitPane);
+            contentSplitPane.setDividerPositions(0.3);
+
+            mainSplitPane.getItems().addAll(sidebarPane, contentSplitPane);
+            mainSplitPane.setDividerPositions(0.22);
+
+            updateStatus("Switched to Column Layout");
+        }
+
+        // Synch toggle buttons
+        if (sidebarToggleBtn != null)
+            sidebarToggleBtn.setSelected(true);
+        if (notesPanelToggleBtn != null)
+            notesPanelToggleBtn.setSelected(true);
+    }
+
+    @FXML
+    private void handleToggleTags(ActionEvent event) {
+        // Determine target visibility
+        boolean show = true;
+
+        if (toggleTagsBtn != null) {
+            // If button exists, follow its state
+            show = toggleTagsBtn.isSelected();
+        } else if (tagsContainer != null) {
+            // Toggle current state
+            show = !tagsContainer.isVisible();
+        }
+
+        if (tagsContainer != null) {
+            tagsContainer.setVisible(show);
+            tagsContainer.setManaged(show);
+            updateStatus(show ? "Tags bar shown" : "Tags bar hidden");
+        }
+    }
+
     // Zoom settings
     private double currentZoom = 1.0;
     private static final double ZOOM_STEP = 0.1;
     private static final double MIN_ZOOM = 0.5;
     private static final double MAX_ZOOM = 3.0;
-    
+
     // Preferences for persistence
     private static final Preferences prefs = Preferences.userNodeForPackage(MainController.class);
-    
-    @FXML 
+
+    @FXML
     private void handleZoomIn(ActionEvent event) {
         if (currentZoom < MAX_ZOOM) {
             currentZoom = Math.min(currentZoom + ZOOM_STEP, MAX_ZOOM);
             applyZoom();
-            updateStatus("Zoom: " + (int)(currentZoom * 100) + "%");
+            updateStatus("Zoom: " + (int) (currentZoom * 100) + "%");
         }
     }
-    
-    @FXML 
+
+    @FXML
     private void handleZoomOut(ActionEvent event) {
         if (currentZoom > MIN_ZOOM) {
             currentZoom = Math.max(currentZoom - ZOOM_STEP, MIN_ZOOM);
             applyZoom();
-            updateStatus("Zoom: " + (int)(currentZoom * 100) + "%");
+            updateStatus("Zoom: " + (int) (currentZoom * 100) + "%");
         }
     }
-    
-    @FXML 
+
+    @FXML
     private void handleResetZoom(ActionEvent event) {
         currentZoom = 1.0;
         applyZoom();
         updateStatus("Zoom reset to 100%");
     }
-    
+
     private void applyZoom() {
         if (noteContentArea != null) {
             noteContentArea.setStyle("-fx-font-size: " + (14 * currentZoom) + "px;");
@@ -3492,9 +3781,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             noteTitleField.setStyle("-fx-font-size: " + (16 * currentZoom) + "px;");
         }
     }
+
     private String currentTheme = prefs.get("theme", "light"); // Load from preferences
-    
-    @FXML 
+
+    @FXML
     private void handleLightTheme(ActionEvent event) {
         currentTheme = "light";
         prefs.put("theme", currentTheme); // Save preference
@@ -3502,8 +3792,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         applyTheme();
         updateStatus("Light theme applied");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleDarkTheme(ActionEvent event) {
         currentTheme = "dark";
         prefs.put("theme", currentTheme); // Save preference
@@ -3511,15 +3801,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         applyTheme();
         updateStatus("Dark theme applied");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleSystemTheme(ActionEvent event) {
         currentTheme = "system";
         prefs.put("theme", currentTheme); // Save preference
         // Detect system theme using system properties
         String osName = System.getProperty("os.name", "").toLowerCase();
         boolean isSystemDark = false;
-        
+
         // Try to detect system theme based on OS
         if (osName.contains("win")) {
             // Windows: Detection requires JNA to read registry
@@ -3530,7 +3820,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             try {
                 Process process = Runtime.getRuntime().exec("defaults read -g AppleInterfaceStyle");
                 java.io.BufferedReader reader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(process.getInputStream()));
+                        new java.io.InputStreamReader(process.getInputStream()));
                 String line = reader.readLine();
                 isSystemDark = "Dark".equals(line);
                 process.waitFor();
@@ -3542,21 +3832,21 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             // For now, default to light
             isSystemDark = false;
         }
-        
+
         // Apply the detected system theme
         String actualTheme = isSystemDark ? "dark" : "light";
         currentTheme = "system"; // Keep track that we're in system mode
         updateThemeMenuSelection();
-        
+
         // Temporarily set to detected theme for applyTheme()
         String previousTheme = currentTheme;
         currentTheme = actualTheme;
         applyTheme();
         currentTheme = previousTheme; // Restore system mode
-        
+
         updateStatus("System theme applied (" + actualTheme + ")");
     }
-    
+
     /**
      * Detect Windows theme (simplified approach).
      * In production, use JNA or similar library for better detection.
@@ -3568,25 +3858,23 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         // For now, default to light theme
         return false;
     }
-    
+
     private void applyTheme() {
         if (mainSplitPane == null) {
             logger.warning("Cannot apply theme: mainSplitPane is null");
             return;
         }
-        
+
         javafx.scene.Scene scene = mainSplitPane.getScene();
         if (scene == null) {
             logger.warning("Cannot apply theme: scene is null");
             return;
         }
-        
+
         // Remove existing theme stylesheets
-        scene.getStylesheets().removeIf(stylesheet -> 
-            stylesheet.contains("modern-theme.css") || 
-            stylesheet.contains("dark-theme.css")
-        );
-        
+        scene.getStylesheets().removeIf(stylesheet -> stylesheet.contains("modern-theme.css") ||
+                stylesheet.contains("dark-theme.css"));
+
         // Add the appropriate theme stylesheet
         java.net.URL themeResource;
         if ("dark".equals(currentTheme)) {
@@ -3594,32 +3882,30 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         } else {
             themeResource = getClass().getResource("/com/example/forevernote/ui/css/modern-theme.css");
         }
-        
+
         if (themeResource != null) {
             scene.getStylesheets().add(themeResource.toExternalForm());
             logger.info("Theme changed to: " + currentTheme);
-            
+
             // Determine actual theme (system mode uses detected theme)
             String actualTheme = currentTheme;
             if ("system".equals(currentTheme)) {
                 // Re-detect system theme
                 actualTheme = detectSystemTheme();
             }
-            
+
             // Ensure WebView has correct background color
             if ("dark".equals(actualTheme) && previewWebView != null) {
                 previewWebView.setStyle("-fx-background-color: #1E1E1E;");
                 // Also set background via JavaScript to ensure it's applied
                 previewWebView.getEngine().executeScript(
-                    "document.body.style.backgroundColor = '#1E1E1E';"
-                );
+                        "document.body.style.backgroundColor = '#1E1E1E';");
             } else if (previewWebView != null) {
                 previewWebView.setStyle("-fx-background-color: #FFFFFF;");
                 previewWebView.getEngine().executeScript(
-                    "document.body.style.backgroundColor = '#FFFFFF';"
-                );
+                        "document.body.style.backgroundColor = '#FFFFFF';");
             }
-            
+
             // Update preview to reflect theme change
             if (currentNote != null) {
                 updatePreview();
@@ -3628,21 +3914,21 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             logger.warning("Could not load theme stylesheet for: " + currentTheme);
         }
     }
-    
+
     /**
      * Detect system theme.
      */
     private String detectSystemTheme() {
         String osName = System.getProperty("os.name", "").toLowerCase();
         boolean isSystemDark = false;
-        
+
         if (osName.contains("win")) {
             isSystemDark = detectWindowsTheme();
         } else if (osName.contains("mac")) {
             try {
                 Process process = Runtime.getRuntime().exec("defaults read -g AppleInterfaceStyle");
                 java.io.BufferedReader reader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(process.getInputStream()));
+                        new java.io.InputStreamReader(process.getInputStream()));
                 String line = reader.readLine();
                 isSystemDark = "Dark".equals(line);
                 process.waitFor();
@@ -3650,10 +3936,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 logger.warning("Could not detect macOS theme: " + e.getMessage());
             }
         }
-        
+
         return isSystemDark ? "dark" : "light";
     }
-    @FXML 
+
+    @FXML
     private void handleSearch(ActionEvent event) {
         if (searchField != null) {
             searchField.requestFocus();
@@ -3661,22 +3948,22 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus("Search field focused - Type to search");
         }
     }
-    
-    @FXML 
+
+    @FXML
     private void handleTagsManager(ActionEvent event) {
         try {
             List<Tag> allTags = tagDAO.fetchAllTags();
-            
+
             Dialog<Void> dialog = new Dialog<>();
             dialog.setTitle("Tags Manager");
             dialog.setHeaderText("Manage your tags");
-            
+
             ButtonType closeButton = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
             dialog.getDialogPane().getButtonTypes().add(closeButton);
-            
+
             VBox content = new VBox(10);
             content.setPadding(new javafx.geometry.Insets(20));
-            
+
             ListView<Tag> tagListView = new ListView<>();
             tagListView.getItems().addAll(allTags);
             tagListView.setCellFactory(lv -> new ListCell<Tag>() {
@@ -3692,7 +3979,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         nameLabel.setPrefWidth(200);
                         Label dateLabel = new Label(tag.getCreatedDate() != null ? tag.getCreatedDate() : "N/A");
                         dateLabel.setStyle("-fx-text-fill: gray;");
-                        
+
                         Button deleteButton = new Button("Delete");
                         deleteButton.setOnAction(e -> {
                             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
@@ -3711,170 +3998,170 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                                 }
                             }
                         });
-                        
+
                         hbox.getChildren().addAll(nameLabel, dateLabel, deleteButton);
                         setGraphic(hbox);
                     }
                 }
             });
-            
+
             content.getChildren().add(new Label("All Tags (" + allTags.size() + "):"));
             content.getChildren().add(tagListView);
             dialog.getDialogPane().setContent(content);
             dialog.getDialogPane().setPrefSize(500, 400);
-            
+
             dialog.showAndWait();
         } catch (Exception e) {
             logger.severe("Failed to open tags manager: " + e.getMessage());
             updateStatus("Error opening tags manager");
         }
     }
-    @FXML 
+
+    @FXML
     private void handlePreferences(ActionEvent event) {
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("Preferences");
         dialog.setHeaderText("Application Settings");
-        
+
         ButtonType closeButton = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
         dialog.getDialogPane().getButtonTypes().add(closeButton);
-        
+
         VBox content = new VBox(15);
         content.setPadding(new javafx.geometry.Insets(20));
-        
+
         // Database location
         Label dbLabel = new Label("Database Location:");
         Label dbPathLabel = new Label("Forevernote/data/database.db");
         dbPathLabel.setStyle("-fx-text-fill: gray;");
-        
+
         // Auto-save option (placeholder)
         Label autoSaveLabel = new Label("Auto-save: Coming soon");
         autoSaveLabel.setStyle("-fx-text-fill: gray;");
-        
+
         content.getChildren().addAll(
-            new Label("General Settings"),
-            dbLabel, dbPathLabel,
-            new Separator(),
-            autoSaveLabel
-        );
-        
+                new Label("General Settings"),
+                dbLabel, dbPathLabel,
+                new Separator(),
+                autoSaveLabel);
+
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().setPrefSize(400, 300);
-        
+
         dialog.showAndWait();
     }
-    @FXML 
+
+    @FXML
     private void handleDocumentation(ActionEvent event) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Documentation");
         alert.setHeaderText("Forevernote - User Guide");
         alert.setContentText(
-            "Forevernote is a free, offline note-taking application.\n\n" +
-            "Key Features:\n" +
-            "• Create and organize notes in folders\n" +
-            "• Tag your notes for easy categorization\n" +
-            "• Markdown support with live preview\n" +
-            "• Search across all notes\n" +
-            "• Keyboard shortcuts for quick access\n\n" +
-            "Keyboard Shortcuts:\n" +
-            "• Ctrl+N: New Note\n" +
-            "• Ctrl+S: Save\n" +
-            "• Ctrl+F: Find in note\n" +
-            "• F9: Toggle Sidebar\n" +
-            "• F1: Show all shortcuts\n\n" +
-            "For more information, visit the project repository."
-        );
+                "Forevernote is a free, offline note-taking application.\n\n" +
+                        "Key Features:\n" +
+                        "• Create and organize notes in folders\n" +
+                        "• Tag your notes for easy categorization\n" +
+                        "• Markdown support with live preview\n" +
+                        "• Search across all notes\n" +
+                        "• Keyboard shortcuts for quick access\n\n" +
+                        "Keyboard Shortcuts:\n" +
+                        "• Ctrl+N: New Note\n" +
+                        "• Ctrl+S: Save\n" +
+                        "• Ctrl+F: Find in note\n" +
+                        "• F9: Toggle Sidebar\n" +
+                        "• F1: Show all shortcuts\n\n" +
+                        "For more information, visit the project repository.");
         alert.setResizable(true);
         alert.getDialogPane().setPrefSize(500, 400);
         alert.showAndWait();
     }
-    @FXML 
+
+    @FXML
     private void handleKeyboardShortcuts(ActionEvent event) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle("Keyboard Shortcuts");
         alert.setHeaderText("Available Keyboard Shortcuts");
         alert.setContentText(
-            "File Operations:\n" +
-            "  Ctrl+N          New Note\n" +
-            "  Ctrl+Shift+N    New Folder\n" +
-            "  Ctrl+S          Save\n" +
-            "  Ctrl+Shift+S    Save All\n" +
-            "  Ctrl+E          Export\n" +
-            "  Ctrl+Q          Exit\n\n" +
-            "Edit Operations:\n" +
-            "  Ctrl+Z          Undo\n" +
-            "  Ctrl+Y          Redo\n" +
-            "  Ctrl+X          Cut\n" +
-            "  Ctrl+C          Copy\n" +
-            "  Ctrl+V          Paste\n" +
-            "  Ctrl+F          Find\n" +
-            "  Ctrl+H          Replace\n\n" +
-            "View Operations:\n" +
-            "  F9              Toggle Sidebar\n" +
-            "  Ctrl++          Zoom In\n" +
-            "  Ctrl+-          Zoom Out\n" +
-            "  Ctrl+0          Reset Zoom\n\n" +
-            "Tools:\n" +
-            "  Ctrl+Shift+F    Search\n" +
-            "  F1              Show this help"
-        );
+                "File Operations:\n" +
+                        "  Ctrl+N          New Note\n" +
+                        "  Ctrl+Shift+N    New Folder\n" +
+                        "  Ctrl+S          Save\n" +
+                        "  Ctrl+Shift+S    Save All\n" +
+                        "  Ctrl+E          Export\n" +
+                        "  Ctrl+Q          Exit\n\n" +
+                        "Edit Operations:\n" +
+                        "  Ctrl+Z          Undo\n" +
+                        "  Ctrl+Y          Redo\n" +
+                        "  Ctrl+X          Cut\n" +
+                        "  Ctrl+C          Copy\n" +
+                        "  Ctrl+V          Paste\n" +
+                        "  Ctrl+F          Find\n" +
+                        "  Ctrl+H          Replace\n\n" +
+                        "View Operations:\n" +
+                        "  F9              Toggle Sidebar\n" +
+                        "  Ctrl++          Zoom In\n" +
+                        "  Ctrl+-          Zoom Out\n" +
+                        "  Ctrl+0          Reset Zoom\n\n" +
+                        "Tools:\n" +
+                        "  Ctrl+Shift+F    Search\n" +
+                        "  F1              Show this help");
         alert.setResizable(true);
         alert.getDialogPane().setPrefSize(450, 500);
         alert.showAndWait();
     }
-    @FXML 
+
+    @FXML
     private void handleAbout(ActionEvent event) {
         Dialog<Void> dialog = new Dialog<>();
         dialog.setTitle("About Forevernote");
-        
+
         ButtonType closeButton = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
         dialog.getDialogPane().getButtonTypes().add(closeButton);
-        
+
         VBox content = new VBox(16);
         content.setPadding(new javafx.geometry.Insets(20));
         content.setAlignment(javafx.geometry.Pos.CENTER);
-        
+
         // App icon and name
         Label titleLabel = new Label("Forevernote");
         titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
-        
+
         Label versionLabel = new Label("Version " + com.example.forevernote.AppConfig.getAppVersion());
         versionLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: gray;");
-        
+
         Label descLabel = new Label(com.example.forevernote.AppConfig.getAppDescription());
         descLabel.setStyle("-fx-font-size: 13px;");
         descLabel.setWrapText(true);
         descLabel.setMaxWidth(350);
         descLabel.setAlignment(javafx.geometry.Pos.CENTER);
-        
+
         // Separator
         Separator separator = new Separator();
         separator.setPrefWidth(300);
-        
+
         // Tech stack
         Label techLabel = new Label("Built with Java 17, JavaFX 21, SQLite & CommonMark");
         techLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: gray;");
-        
+
         // Copyright
         Label copyrightLabel = new Label(com.example.forevernote.AppConfig.getAppCopyright());
         copyrightLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: gray;");
-        
+
         // Developer credit
         Label developerLabel = new Label("Developed by Edu Díaz (RGiskard7)");
         developerLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold;");
-        
+
         content.getChildren().addAll(
-            titleLabel, versionLabel, descLabel, 
-            separator, 
-            techLabel, copyrightLabel, developerLabel
-        );
-        
+                titleLabel, versionLabel, descLabel,
+                separator,
+                techLabel, copyrightLabel, developerLabel);
+
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().setPrefSize(400, 320);
-        
+
         dialog.showAndWait();
     }
-    
-    @FXML 
+
+    @FXML
     private void handleRefresh(ActionEvent event) {
         // Refresh based on current context
         try {
@@ -3897,8 +4184,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     // Load favorites
                     List<Note> allNotes = noteDAO.fetchAllNotes();
                     List<Note> favoriteNotes = allNotes.stream()
-                        .filter(Note::isFavorite)
-                        .toList();
+                            .filter(Note::isFavorite)
+                            .toList();
                     notesListView.getItems().setAll(favoriteNotes);
                     noteCountLabel.setText(favoriteNotes.size() + " favorite notes");
                     currentFilterType = "favorites";
@@ -3924,35 +4211,36 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus("Error refreshing");
         }
     }
-    @FXML 
+
+    @FXML
     private void handleToggleFavorite(ActionEvent event) {
         if (currentNote == null) {
             updateStatus("No note selected");
             return;
         }
-        
+
         try {
             // Toggle favorite status
             boolean newFavoriteStatus = !currentNote.isFavorite();
             currentNote.setFavorite(newFavoriteStatus);
-            
+
             // Save to database
             noteDAO.updateNote(currentNote);
             isModified = false; // Already saved
-            
+
             // Update favorite button icon
             updateFavoriteButtonIcon();
-            
+
             // Refresh favorites list if visible
             loadFavorites();
-            
+
             updateStatus(newFavoriteStatus ? "Note marked as favorite" : "Note unmarked as favorite");
         } catch (Exception e) {
             logger.severe("Failed to toggle favorite: " + e.getMessage());
             updateStatus("Error toggling favorite");
         }
     }
-    
+
     /**
      * Update the favorite button icon based on current note's favorite status.
      */
@@ -3971,13 +4259,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         }
     }
-    @FXML 
+
+    @FXML
     private void handleNewTag(ActionEvent event) {
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("New Tag");
         dialog.setHeaderText("Create a new tag");
         dialog.setContentText("Tag name:");
-        
+
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             try {
@@ -4000,14 +4289,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         }
     }
+
     /**
      * Insert Markdown formatting at cursor position or around selected text.
      */
     private void insertMarkdownFormat(String prefix, String suffix) {
-        if (noteContentArea == null) return;
-        
+        if (noteContentArea == null)
+            return;
+
         String selectedText = noteContentArea.getSelectedText();
-        
+
         if (selectedText != null && !selectedText.isEmpty()) {
             // Replace selected text with formatted version
             String formatted = prefix + selectedText + suffix;
@@ -4023,42 +4314,43 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         noteContentArea.requestFocus();
         isModified = true;
     }
-    
-    @FXML 
+
+    @FXML
     private void handleBold(ActionEvent event) {
         insertMarkdownFormat("**", "**");
         updateStatus("Bold formatting applied");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleItalic(ActionEvent event) {
         insertMarkdownFormat("*", "*");
         updateStatus("Italic formatting applied");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleUnderline(ActionEvent event) {
         // Markdown doesn't have underline, but we can use HTML in preview
         insertMarkdownFormat("<u>", "</u>");
         updateStatus("Underline formatting applied");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleLink(ActionEvent event) {
-        if (noteContentArea == null) return;
-        
+        if (noteContentArea == null)
+            return;
+
         TextInputDialog dialog = new TextInputDialog("https://");
         dialog.setTitle("Insert Link");
         dialog.setHeaderText("Enter URL:");
         dialog.setContentText("URL:");
-        
+
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             String url = result.get().trim();
             String selectedText = noteContentArea.getSelectedText();
             String linkText = (selectedText != null && !selectedText.isEmpty()) ? selectedText : "link text";
             String markdownLink = "[" + linkText + "](" + url + ")";
-            
+
             if (selectedText != null && !selectedText.isEmpty()) {
                 noteContentArea.replaceSelection(markdownLink);
             } else {
@@ -4073,23 +4365,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus("Link inserted");
         }
     }
-    
-    @FXML 
+
+    @FXML
     private void handleImage(ActionEvent event) {
-        if (noteContentArea == null) return;
-        
+        if (noteContentArea == null)
+            return;
+
         TextInputDialog dialog = new TextInputDialog("");
         dialog.setTitle("Insert Image");
         dialog.setHeaderText("Enter image URL or path:");
         dialog.setContentText("Image:");
-        
+
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             String imagePath = result.get().trim();
             String selectedText = noteContentArea.getSelectedText();
             String altText = (selectedText != null && !selectedText.isEmpty()) ? selectedText : "image";
             String markdownImage = "![" + altText + "](" + imagePath + ")";
-            
+
             if (selectedText != null && !selectedText.isEmpty()) {
                 noteContentArea.replaceSelection(markdownImage);
             } else {
@@ -4104,25 +4397,26 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus("Image inserted");
         }
     }
-    
-    @FXML 
+
+    @FXML
     private void handleAttachment(ActionEvent event) {
         // Attachments would require file storage - placeholder for now
         updateStatus("File attachments require file storage system");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleTodoList(ActionEvent event) {
-        if (noteContentArea == null) return;
-        
+        if (noteContentArea == null)
+            return;
+
         int caretPos = noteContentArea.getCaretPosition();
         String text = noteContentArea.getText();
         String newLine = "- [ ] ";
-        
+
         // Check if we're at the start of a line
         int lineStart = text.lastIndexOf('\n', caretPos - 1) + 1;
         String lineText = text.substring(lineStart, caretPos);
-        
+
         if (lineText.trim().isEmpty()) {
             // Insert at current position
             String newText = text.substring(0, caretPos) + newLine + text.substring(caretPos);
@@ -4138,19 +4432,20 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         isModified = true;
         updateStatus("Todo item inserted");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleNumberedList(ActionEvent event) {
-        if (noteContentArea == null) return;
-        
+        if (noteContentArea == null)
+            return;
+
         int caretPos = noteContentArea.getCaretPosition();
         String text = noteContentArea.getText();
         String newLine = "1. ";
-        
+
         // Check if we're at the start of a line
         int lineStart = text.lastIndexOf('\n', caretPos - 1) + 1;
         String lineText = text.substring(lineStart, caretPos);
-        
+
         if (lineText.trim().isEmpty()) {
             // Insert at current position
             String newText = text.substring(0, caretPos) + newLine + text.substring(caretPos);
@@ -4166,32 +4461,36 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         isModified = true;
         updateStatus("Numbered list item inserted");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleHeading1(ActionEvent event) {
-        if (noteContentArea == null) return;
+        if (noteContentArea == null)
+            return;
         insertLinePrefix("# ");
         updateStatus("Heading 1 inserted");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleHeading2(ActionEvent event) {
-        if (noteContentArea == null) return;
+        if (noteContentArea == null)
+            return;
         insertLinePrefix("## ");
         updateStatus("Heading 2 inserted");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleBulletList(ActionEvent event) {
-        if (noteContentArea == null) return;
+        if (noteContentArea == null)
+            return;
         insertLinePrefix("- ");
         updateStatus("Bullet list item inserted");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleCode(ActionEvent event) {
-        if (noteContentArea == null) return;
-        
+        if (noteContentArea == null)
+            return;
+
         String selectedText = noteContentArea.getSelectedText();
         if (selectedText != null && selectedText.contains("\n")) {
             // Multi-line: wrap in code block
@@ -4202,44 +4501,46 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         }
         updateStatus("Code formatting applied");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleQuote(ActionEvent event) {
-        if (noteContentArea == null) return;
+        if (noteContentArea == null)
+            return;
         insertLinePrefix("> ");
         updateStatus("Quote inserted");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleHeading3(ActionEvent event) {
-        if (noteContentArea == null) return;
+        if (noteContentArea == null)
+            return;
         insertLinePrefix("### ");
         updateStatus("Heading 3 inserted");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleRealUnderline(ActionEvent event) {
         insertMarkdownFormat("<u>", "</u>");
         updateStatus("Underline formatting applied");
     }
-    
-    @FXML 
+
+    @FXML
     private void handleHighlight(ActionEvent event) {
         insertMarkdownFormat("==", "==");
         updateStatus("Highlight formatting applied");
     }
-    
+
     /**
      * Insert a prefix at the start of the current line.
      */
     private void insertLinePrefix(String prefix) {
         int caretPos = noteContentArea.getCaretPosition();
         String text = noteContentArea.getText() != null ? noteContentArea.getText() : "";
-        
+
         // Find line start
         int lineStart = text.lastIndexOf('\n', caretPos - 1) + 1;
         String lineText = text.substring(lineStart, caretPos);
-        
+
         if (lineText.trim().isEmpty() && lineStart == caretPos) {
             // At the beginning of an empty line
             String newText = text.substring(0, caretPos) + prefix + text.substring(caretPos);
@@ -4254,13 +4555,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         noteContentArea.requestFocus();
         isModified = true;
     }
-    
+
     private void handleRenameFolder(Folder folder) {
         try {
             if (folder == null) {
                 return;
             }
-            
+
             // Reload folder from database to ensure we have the latest data
             Folder folderToRename = folderDAO.getFolderById(folder.getId());
             if (folderToRename != null) {
@@ -4268,9 +4569,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 dialog.setTitle("Rename Folder");
                 dialog.setHeaderText("Rename folder");
                 dialog.setContentText("New name:");
-                
+
                 Optional<String> result = dialog.showAndWait();
-                if (result.isPresent() && !result.get().trim().isEmpty() && !result.get().equals(folderToRename.getTitle())) {
+                if (result.isPresent() && !result.get().trim().isEmpty()
+                        && !result.get().equals(folderToRename.getTitle())) {
                     folderToRename.setTitle(result.get().trim());
                     folderDAO.updateFolder(folderToRename);
                     loadFolders();
@@ -4282,13 +4584,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus("Error renaming folder");
         }
     }
-    
+
     private void handleDeleteFolder(Folder folder) {
         try {
             if (folder == null) {
                 return;
             }
-            
+
             // Reload folder from database to ensure we have the latest data
             Folder folderToDelete = folderDAO.getFolderById(folder.getId());
             if (folderToDelete != null) {
@@ -4296,7 +4598,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 alert.setTitle("Delete Folder");
                 alert.setHeaderText("Are you sure you want to delete this folder?");
                 alert.setContentText("All notes in this folder will be moved to the root.");
-                
+
                 Optional<ButtonType> result = alert.showAndWait();
                 if (result.isPresent() && result.get() == ButtonType.OK) {
                     folderDAO.deleteFolder(folderToDelete.getId());
