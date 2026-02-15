@@ -127,6 +127,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private VBox sidebarPane;
     @FXML
     private VBox notesPanel;
+    @FXML
+    private Label notesPanelTitleLabel;
+    @FXML
+    private VBox editorContainer;
 
     // Navigation components
     @FXML
@@ -2297,6 +2301,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 }
 
                 updateStatus("Loaded folder: " + currentFolder.getTitle());
+                if (notesPanelTitleLabel != null) {
+                    notesPanelTitleLabel.setText("Notes - " + currentFolder.getTitle());
+                }
             }
         } catch (Exception e) {
             logger.severe(
@@ -3602,19 +3609,23 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             if (isStackedLayout) {
                 // In stacked layout, "Toggle Sidebar" button actually toggles the entire Left
                 // Navigation Panel (Sidebar + Notes)
-                // This acts like closing the entire file tree/list view
                 if (navSplitPane != null) {
-                    boolean isCollapsed = mainSplitPane.getDividerPositions()[0] < 0.01;
+                    boolean isCollapsed = navSplitPane.getMaxWidth() < 10;
 
                     if (isCollapsed) {
-                        // Expand Main Split to show nav
+                        // Expand: restore navSplitPane size
+                        navSplitPane.setMinWidth(200);
+                        navSplitPane.setMaxWidth(Double.MAX_VALUE);
+                        navSplitPane.setPrefWidth(300);
                         mainSplitPane.setDividerPositions(0.25);
                         updateStatus("Navigation panel shown");
                         if (sidebarToggleBtn != null)
                             sidebarToggleBtn.setSelected(true);
                     } else {
-                        // Collapse Main Split to hide nav
-                        mainSplitPane.setDividerPositions(0.0);
+                        // Collapse: hide navSplitPane completely
+                        navSplitPane.setMinWidth(0);
+                        navSplitPane.setMaxWidth(0);
+                        navSplitPane.setPrefWidth(0);
                         updateStatus("Navigation panel hidden");
                         if (sidebarToggleBtn != null)
                             sidebarToggleBtn.setSelected(false);
@@ -3648,6 +3659,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
 
     @FXML
     private void handleToggleNotesPanel(ActionEvent event) {
+        if (isStackedLayout) {
+            // In stacked layout, Notes Toggle behaves like Sidebar Toggle (toggles entire
+            // stack)
+            handleToggleSidebar(event);
+            return;
+        }
+
         if (notesPanel != null) {
             boolean isCollapsed = notesPanel.getMaxWidth() < 10;
 
@@ -3657,10 +3675,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 notesPanel.setMaxWidth(Double.MAX_VALUE);
                 notesPanel.setPrefWidth(280);
 
-                if (!isStackedLayout && contentSplitPane != null) {
+                if (contentSplitPane != null) {
                     contentSplitPane.setDividerPositions(0.25);
-                } else if (isStackedLayout && navSplitPane != null) {
-                    navSplitPane.setDividerPositions(0.5);
                 }
                 updateStatus("Notes panel shown");
                 if (notesPanelToggleBtn != null)
@@ -3693,17 +3709,21 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         notesPanel.setMaxWidth(Double.MAX_VALUE);
 
         if (isStackedLayout) {
-            // Stacked Mode: [NavSplit(Sidebar/Notes)] | [EditorSplit]
+            // Stacked Mode: [NavSplit(Sidebar/Notes)] | [EditorContainer]
+            if (navSplitPane == null)
+                navSplitPane = new SplitPane(); // Safety check
+            navSplitPane.getItems().clear();
             navSplitPane.getItems().addAll(sidebarPane, notesPanel);
             navSplitPane.setDividerPositions(0.5);
 
-            mainSplitPane.getItems().addAll(navSplitPane, editorPreviewSplitPane);
+            mainSplitPane.getItems().addAll(navSplitPane, editorContainer);
             mainSplitPane.setDividerPositions(0.25);
 
             updateStatus("Switched to Stacked Layout");
         } else {
-            // Default Mode: [Sidebar] | [ContentSplit(Notes|EditorSplit)]
-            contentSplitPane.getItems().addAll(notesPanel, editorPreviewSplitPane);
+            // Default Mode: [Sidebar] | [ContentSplit(Notes|EditorContainer)]
+            // Note: editorContainer is inside contentSplitPane in default view
+            contentSplitPane.getItems().addAll(notesPanel, editorContainer);
             contentSplitPane.setDividerPositions(0.3);
 
             mainSplitPane.getItems().addAll(sidebarPane, contentSplitPane);

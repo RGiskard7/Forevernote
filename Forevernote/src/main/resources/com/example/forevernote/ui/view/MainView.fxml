@@ -85,13 +85,13 @@
                 </padding>
                 
                 <!-- Layout Toggles -->
-                <ToggleButton fx:id="sidebarToggleBtn" onAction="#handleToggleSidebar" styleClass="toolbar-btn">
+                <ToggleButton fx:id="sidebarToggleBtn" onAction="#handleToggleSidebar" styleClass="view-toggle-btn">
                    <tooltip><Tooltip text="Toggle Sidebar (F9)"/></tooltip>
                    <graphic>
                        <FontIcon iconLiteral="fth-sidebar" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
                    </graphic>
                 </ToggleButton>
-                <ToggleButton fx:id="notesPanelToggleBtn" onAction="#handleToggleNotesPanel" styleClass="toolbar-btn">
+                <ToggleButton fx:id="notesPanelToggleBtn" onAction="#handleToggleNotesPanel" styleClass="view-toggle-btn">
                    <tooltip><Tooltip text="Toggle Notes List (F8)"/></tooltip>
                     <graphic>
                        <FontIcon iconLiteral="fth-list" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
@@ -209,7 +209,7 @@
                         <padding>
                             <Insets top="12" right="12" bottom="12" left="12"/>
                         </padding>
-                        <Label text="Notes" styleClass="panel-title"/>
+                        <Label fx:id="notesPanelTitleLabel" text="Notes" styleClass="panel-title"/>
                         <Region HBox.hgrow="ALWAYS"/>
                         <ComboBox fx:id="sortComboBox" prefWidth="120" styleClass="sort-combo"/>
                         <Button fx:id="refreshBtn" onAction="#handleRefresh" styleClass="icon-btn">
@@ -224,7 +224,7 @@
                 </VBox>
                 
                 <!-- Editor + Preview Panel -->
-                <VBox styleClass="editor-container" HBox.hgrow="ALWAYS">
+                <VBox fx:id="editorContainer" styleClass="editor-container" HBox.hgrow="ALWAYS">
                     <!-- Editor Header -->
                     <HBox alignment="CENTER_LEFT" spacing="8" styleClass="editor-header">
                         <padding>
@@ -271,8 +271,7 @@
                             <padding>
                                 <Insets top="6" right="16" bottom="6" left="16"/>
                             </padding>
-                            <FlowPane fx:id="tagsFlowPane" hgap="6" vgap="6" styleClass="tags-flow"/>
-                            <Region HBox.hgrow="ALWAYS"/>
+                            <FlowPane fx:id="tagsFlowPane" hgap="6" vgap="6" styleClass="tags-flow" HBox.hgrow="ALWAYS"/>
                             <Label fx:id="modifiedDateLabel" text="" styleClass="meta-label"/>
                         </HBox>
                     </VBox>
