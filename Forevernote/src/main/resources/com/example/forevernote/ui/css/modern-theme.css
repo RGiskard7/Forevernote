@@ -156,8 +156,8 @@
     -fx-background-color: #d4d4d4;
 }
 
-/* View Toggle Buttons (List/Grid) */
-.view-toggle-btn {
+/* Modern Toggle Buttons */
+.modern-toggle-btn {
     -fx-background-color: #ffffff;
     -fx-text-fill: #666666;
     -fx-font-size: 14px;
@@ -171,24 +171,24 @@
     -fx-min-width: 36px;
 }
 
-.view-toggle-btn:hover {
+.modern-toggle-btn:hover {
     -fx-background-color: #f5f5f5;
     -fx-border-color: #c0c0c0;
 }
 
-.view-toggle-btn:selected {
+.modern-toggle-btn:selected {
     -fx-background-color: #7c3aed;
     -fx-text-fill: #ffffff;
     -fx-border-color: #7c3aed;
 }
 
-.view-toggle-btn:selected .feather-icon,
-.view-toggle-btn:selected .ikonli-font-icon {
+.modern-toggle-btn:selected .feather-icon,
+.modern-toggle-btn:selected .ikonli-font-icon {
     -fx-icon-color: #ffffff;
     -fx-fill: #ffffff;
 }
 
-.view-toggle-btn:selected:hover {
+.modern-toggle-btn:selected:hover {
     -fx-background-color: #6d28d9;
     -fx-border-color: #6d28d9;
 }

@@ -156,8 +156,8 @@
     -fx-background-color: #3a3a3a;
 }
 
-/* View Toggle Buttons (List/Grid) */
-.view-toggle-btn {
+/* Modern Toggle Buttons */
+.modern-toggle-btn {
     -fx-background-color: #333333;
     -fx-text-fill: #a0a0a0;
     -fx-font-size: 14px;
@@ -171,18 +171,18 @@
     -fx-min-width: 36px;
 }
 
-.view-toggle-btn:hover {
+.modern-toggle-btn:hover {
     -fx-background-color: #404040;
     -fx-border-color: #505050;
 }
 
-.view-toggle-btn:selected {
+.modern-toggle-btn:selected {
     -fx-background-color: #7c3aed;
     -fx-text-fill: #ffffff;
     -fx-border-color: #7c3aed;
 }
 
-.view-toggle-btn:selected:hover {
+.modern-toggle-btn:selected:hover {
     -fx-background-color: #6d28d9;
     -fx-border-color: #6d28d9;
 }

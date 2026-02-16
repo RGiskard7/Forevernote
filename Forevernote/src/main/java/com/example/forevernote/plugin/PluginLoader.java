@@ -23,42 +23,49 @@ import com.example.forevernote.config.LoggerConfig;
 /**
  * Loads external plugins from the plugins/ directory.
  * 
- * <p>This class scans the plugins/ directory for JAR files and dynamically loads
+ * <p>
+ * This class scans the plugins/ directory for JAR files and dynamically loads
  * plugin classes that implement the Plugin interface. Plugins can be added or
- * removed by simply placing or deleting JAR files in the plugins/ directory.</p>
+ * removed by simply placing or deleting JAR files in the plugins/ directory.
+ * </p>
  * 
- * <p>Plugin JARs must contain:</p>
+ * <p>
+ * Plugin JARs must contain:
+ * </p>
  * <ul>
- *   <li>A class that implements the Plugin interface</li>
- *   <li>A manifest entry "Plugin-Class" specifying the fully qualified class name</li>
- *   <li>Or the JAR can contain a single class implementing Plugin (auto-detected)</li>
+ * <li>A class that implements the Plugin interface</li>
+ * <li>A manifest entry "Plugin-Class" specifying the fully qualified class
+ * name</li>
+ * <li>Or the JAR can contain a single class implementing Plugin
+ * (auto-detected)</li>
  * </ul>
  * 
  * @author Edu Díaz (RGiskard7)
  * @since 4.4.0
  */
 public class PluginLoader {
-    
+
     private static final Logger logger = LoggerConfig.getLogger(PluginLoader.class);
     private static final String PLUGINS_DIR = "plugins";
-    
+
     // Keep classloaders open so inner classes remain accessible
     private static final List<URLClassLoader> activeClassLoaders = new ArrayList<>();
-    
+
     /**
      * Scans the plugins directory and loads all available plugins.
      * Checks multiple locations: app bundle (jpackage), AppData, and relative path.
-     * On first run of a packaged app, copies bundled plugins to AppData so they are found.
+     * On first run of a packaged app, copies bundled plugins to AppData so they are
+     * found.
      * 
      * @return List of loaded plugin instances
      */
     public static List<Plugin> loadExternalPlugins() {
         // Copy bundled plugins to AppData on first run (packaged apps: DMG, MSI, etc.)
         copyBundledPluginsToAppDataIfNeeded();
-        
+
         List<Plugin> plugins = new ArrayList<>();
         Set<Path> scannedDirs = new HashSet<>();
-        
+
         for (Path pluginsPath : getPluginSearchPaths()) {
             if (pluginsPath == null || !Files.exists(pluginsPath) || !Files.isDirectory(pluginsPath)) {
                 continue;
@@ -67,48 +74,52 @@ public class PluginLoader {
                 continue;
             }
             scannedDirs.add(pluginsPath.normalize());
-            
+
             try {
                 Files.list(pluginsPath)
-                    .filter(path -> path.toString().toLowerCase().endsWith(".jar"))
-                    .filter(path -> !path.getFileName().toString().contains("forevernote")
-                        && !path.getFileName().toString().contains("uber"))
-                    .forEach(jarPath -> {
-                        try {
-                            Plugin plugin = loadPluginFromJar(jarPath);
-                            if (plugin != null) {
-                                plugins.add(plugin);
-                                logger.info("Loaded external plugin: " + plugin.getName() + " v" + plugin.getVersion());
+                        .filter(path -> path.toString().toLowerCase().endsWith(".jar"))
+                        .filter(path -> !path.getFileName().toString().contains("forevernote")
+                                && !path.getFileName().toString().contains("uber"))
+                        .forEach(jarPath -> {
+                            try {
+                                Plugin plugin = loadPluginFromJar(jarPath);
+                                if (plugin != null) {
+                                    plugins.add(plugin);
+                                    logger.info(
+                                            "Loaded external plugin: " + plugin.getName() + " v" + plugin.getVersion());
+                                }
+                            } catch (Exception e) {
+                                logger.warning(
+                                        "Failed to load plugin from " + jarPath.getFileName() + ": " + e.getMessage());
                             }
-                        } catch (Exception e) {
-                            logger.warning("Failed to load plugin from " + jarPath.getFileName() + ": " + e.getMessage());
-                        }
-                    });
+                        });
             } catch (IOException e) {
                 logger.warning("Failed to scan plugins directory " + pluginsPath + ": " + e.getMessage());
             }
         }
-        
+
         logger.info("Loaded " + plugins.size() + " external plugin(s)");
         return plugins;
     }
-    
+
     /**
      * Gets all paths where plugins may be located.
-     * Order: 1) explicit property, 2) app bundle (jpackage), 3) AppData, 4) relative.
+     * Order: 1) explicit property, 2) app bundle (jpackage), 3) AppData, 4)
+     * relative.
      * 
      * @return List of plugin directory paths to search
      */
     private static List<Path> getPluginSearchPaths() {
         List<Path> paths = new ArrayList<>();
-        
+
         // 1. Explicit system property (highest priority)
         String dataDir = System.getProperty("forevernote.data.dir");
         if (dataDir != null && !dataDir.isEmpty()) {
             paths.add(Paths.get(dataDir, PLUGINS_DIR));
         }
-        
-        // 2. App bundle directory (jpackage) - plugins alongside main JAR or in plugins/ subdir
+
+        // 2. App bundle directory (jpackage) - plugins alongside main JAR or in
+        // plugins/ subdir
         Path appDir = getApplicationDirectory();
         if (appDir != null) {
             paths.add(appDir); // Same dir as JAR (--app-content puts plugins here)
@@ -119,18 +130,33 @@ public class PluginLoader {
                 paths.add(installDir.resolve(PLUGINS_DIR));
             }
         }
-        
+
         // 3. AppData directory (user data, works for packaged apps)
         paths.add(Paths.get(AppDataDirectory.getBaseDirectory(), PLUGINS_DIR));
-        
+
         // 4. Relative to CWD (development)
         paths.add(Paths.get(PLUGINS_DIR));
-        
-        return paths;
+
+        // Normalize all paths and remove duplicates
+        List<Path> uniquePaths = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (Path p : paths) {
+            try {
+                Path absolute = p.toAbsolutePath().normalize();
+                if (seen.add(absolute.toString())) {
+                    uniquePaths.add(absolute);
+                }
+            } catch (Exception e) {
+                // Ignore invalid paths
+            }
+        }
+
+        return uniquePaths;
     }
-    
+
     /**
-     * Gets the directory containing the application JAR (for jpackage/bundled apps).
+     * Gets the directory containing the application JAR (for jpackage/bundled
+     * apps).
      * Returns null if not running from a JAR.
      */
     private static Path getApplicationDirectory() {
@@ -151,7 +177,7 @@ public class PluginLoader {
         }
         return null;
     }
-    
+
     /**
      * Gets the primary plugins directory (for UI display, creating dirs, etc.).
      * Uses AppData so users can add plugins in a known location.
@@ -163,7 +189,7 @@ public class PluginLoader {
         }
         return Paths.get(AppDataDirectory.getBaseDirectory(), PLUGINS_DIR);
     }
-    
+
     /**
      * Copies bundled plugins to AppData on first run.
      * When installing from DMG/MSI/DEB, plugins are packed via --app-content but
@@ -177,8 +203,8 @@ public class PluginLoader {
                 Files.createDirectories(appDataPlugins);
             }
             long existingCount = Files.list(appDataPlugins)
-                .filter(p -> p.toString().toLowerCase().endsWith(".jar"))
-                .count();
+                    .filter(p -> p.toString().toLowerCase().endsWith(".jar"))
+                    .count();
             if (existingCount > 0) {
                 return;
             }
@@ -194,10 +220,10 @@ public class PluginLoader {
             }
             List<Path> jars = new ArrayList<>();
             Files.list(bundleSource)
-                .filter(p -> p.toString().toLowerCase().endsWith(".jar"))
-                .filter(p -> !p.getFileName().toString().contains("forevernote")
-                    && !p.getFileName().toString().contains("uber"))
-                .forEach(jars::add);
+                    .filter(p -> p.toString().toLowerCase().endsWith(".jar"))
+                    .filter(p -> !p.getFileName().toString().contains("forevernote")
+                            && !p.getFileName().toString().contains("uber"))
+                    .forEach(jars::add);
             if (jars.isEmpty()) {
                 return;
             }
@@ -212,7 +238,7 @@ public class PluginLoader {
             logger.fine("Could not copy bundled plugins: " + e.getMessage());
         }
     }
-    
+
     /**
      * Loads a plugin from a JAR file.
      * 
@@ -223,18 +249,17 @@ public class PluginLoader {
         try {
             URL jarUrl = jarPath.toUri().toURL();
             URLClassLoader classLoader = new URLClassLoader(
-                new URL[] { jarUrl },
-                PluginLoader.class.getClassLoader()
-            );
-            
+                    new URL[] { jarUrl },
+                    PluginLoader.class.getClassLoader());
+
             // Try to read plugin class from manifest
             String pluginClassName = getPluginClassFromManifest(jarPath);
-            
+
             // If not in manifest, try to auto-detect by scanning JAR
             if (pluginClassName == null) {
                 pluginClassName = autoDetectPluginClass(jarPath, classLoader);
             }
-            
+
             if (pluginClassName == null) {
                 logger.warning("Could not determine plugin class for " + jarPath.getFileName());
                 try {
@@ -244,10 +269,10 @@ public class PluginLoader {
                 }
                 return null;
             }
-            
+
             // Load and instantiate the plugin class
             Class<?> pluginClass = classLoader.loadClass(pluginClassName);
-            
+
             if (!Plugin.class.isAssignableFrom(pluginClass)) {
                 logger.warning("Class " + pluginClassName + " does not implement Plugin interface");
                 try {
@@ -257,19 +282,20 @@ public class PluginLoader {
                 }
                 return null;
             }
-            
+
             Plugin plugin = (Plugin) pluginClass.getDeclaredConstructor().newInstance();
-            // Keep classloader open - don't close it, or inner classes won't be accessible at runtime
+            // Keep classloader open - don't close it, or inner classes won't be accessible
+            // at runtime
             // The classloader will be closed when the application shuts down
             activeClassLoaders.add(classLoader);
             return plugin;
-            
+
         } catch (Exception e) {
             logger.warning("Error loading plugin from " + jarPath.getFileName() + ": " + e.getMessage());
             return null;
         }
     }
-    
+
     /**
      * Reads the plugin class name from the JAR manifest.
      * 
@@ -279,37 +305,38 @@ public class PluginLoader {
     private static String getPluginClassFromManifest(Path jarPath) {
         try (JarFile jarFile = new JarFile(jarPath.toFile())) {
             return jarFile.getManifest()
-                .getMainAttributes()
-                .getValue("Plugin-Class");
+                    .getMainAttributes()
+                    .getValue("Plugin-Class");
         } catch (Exception e) {
             // Manifest might not exist or not have Plugin-Class entry
             return null;
         }
     }
-    
+
     /**
-     * Auto-detects the plugin class by scanning the JAR for classes implementing Plugin.
+     * Auto-detects the plugin class by scanning the JAR for classes implementing
+     * Plugin.
      * 
-     * @param jarPath The path to the JAR file
+     * @param jarPath     The path to the JAR file
      * @param classLoader The class loader to use
      * @return The plugin class name, or null if not found
      */
     private static String autoDetectPluginClass(Path jarPath, URLClassLoader classLoader) {
         try (JarFile jarFile = new JarFile(jarPath.toFile())) {
             Enumeration<JarEntry> entries = jarFile.entries();
-            
+
             while (entries.hasMoreElements()) {
                 JarEntry entry = entries.nextElement();
                 String name = entry.getName();
-                
+
                 // Skip directories and non-class files
                 if (name.endsWith("/") || !name.endsWith(".class")) {
                     continue;
                 }
-                
+
                 // Convert path to class name
                 String className = name.replace("/", ".").replace(".class", "");
-                
+
                 try {
                     Class<?> clazz = classLoader.loadClass(className);
                     if (Plugin.class.isAssignableFrom(clazz) && !clazz.isInterface()) {
@@ -323,10 +350,10 @@ public class PluginLoader {
         } catch (Exception e) {
             logger.warning("Error scanning JAR for plugin class: " + e.getMessage());
         }
-        
+
         return null;
     }
-    
+
     /**
      * Gets the plugins directory path as a File.
      * Useful for UI components that need to show the directory to users.
@@ -336,7 +363,7 @@ public class PluginLoader {
     public static File getPluginsDirectoryFile() {
         return getPluginsDirectory().toFile();
     }
-    
+
     /**
      * Closes all active classloaders.
      * Should be called when the application shuts down.

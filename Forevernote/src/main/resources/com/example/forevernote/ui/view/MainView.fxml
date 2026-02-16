@@ -85,13 +85,13 @@
                 </padding>
                 
                 <!-- Layout Toggles -->
-                <ToggleButton fx:id="sidebarToggleBtn" onAction="#handleToggleSidebar" styleClass="view-toggle-btn">
+                <ToggleButton fx:id="sidebarToggleBtn" onAction="#handleToggleSidebar" styleClass="modern-toggle-btn">
                    <tooltip><Tooltip text="Toggle Sidebar (F9)"/></tooltip>
                    <graphic>
                        <FontIcon iconLiteral="fth-sidebar" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
                    </graphic>
                 </ToggleButton>
-                <ToggleButton fx:id="notesPanelToggleBtn" onAction="#handleToggleNotesPanel" styleClass="view-toggle-btn">
+                <ToggleButton fx:id="notesPanelToggleBtn" onAction="#handleToggleNotesPanel" styleClass="modern-toggle-btn">
                    <tooltip><Tooltip text="Toggle Notes List (F8)"/></tooltip>
                     <graphic>
                        <FontIcon iconLiteral="fth-list" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
@@ -110,7 +110,7 @@
                 <Button fx:id="newNoteBtn" onAction="#handleNewNote" styleClass="toolbar-btn toolbar-btn-primary">
                     <tooltip><Tooltip text="New Note (Ctrl+N)"/></tooltip>
                     <graphic>
-                        <FontIcon iconLiteral="fth-file-plus" iconSize="18" iconColor="white" styleClass="feather-icon-white"/>
+                        <FontIcon iconLiteral="fth-file-plus" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
                     </graphic>
                 </Button>
                 <Button fx:id="newFolderBtn" onAction="#handleNewFolder" styleClass="toolbar-btn">
@@ -148,13 +148,13 @@
                 <Region HBox.hgrow="ALWAYS"/>
                 
                 <!-- View toggle buttons (List/Grid) -->
-                <ToggleButton fx:id="listViewButton" onAction="#handleListView" styleClass="view-toggle-btn" selected="true">
+                <ToggleButton fx:id="listViewButton" onAction="#handleListView" styleClass="modern-toggle-btn" selected="true">
                     <tooltip><Tooltip text="List view"/></tooltip>
                     <graphic>
                         <FontIcon iconLiteral="fth-align-justify" iconSize="16" iconColor="#555555" styleClass="feather-icon"/>
                     </graphic>
                 </ToggleButton>
-                <ToggleButton fx:id="gridViewButton" onAction="#handleGridView" styleClass="view-toggle-btn">
+                <ToggleButton fx:id="gridViewButton" onAction="#handleGridView" styleClass="modern-toggle-btn">
                     <tooltip><Tooltip text="Grid view"/></tooltip>
                     <graphic>
                         <FontIcon iconLiteral="fth-grid" iconSize="16" iconColor="#555555" styleClass="feather-icon"/>
@@ -185,6 +185,10 @@
                     
                     <Tab text="Favorites" closable="false">
                         <ListView fx:id="favoritesListView" styleClass="sidebar-list"/>
+                    </Tab>
+                    
+                    <Tab text="Trash" closable="false">
+                        <ListView fx:id="trashListView" styleClass="sidebar-list"/>
                     </Tab>
                 </TabPane>
                 
@@ -234,7 +238,7 @@
                         <Separator orientation="VERTICAL" styleClass="header-separator"/>
                          
                         <!-- Tags Toggle UI -->
-                         <ToggleButton fx:id="toggleTagsBtn" onAction="#handleToggleTags" styleClass="icon-btn" selected="true">
+                         <ToggleButton fx:id="toggleTagsBtn" onAction="#handleToggleTags" styleClass="modern-toggle-btn" selected="true">
                             <tooltip><Tooltip text="Toggle Tags Bar"/></tooltip>
                             <graphic>
                                 <FontIcon iconLiteral="fth-hash" iconSize="16" iconColor="#555555" styleClass="feather-icon"/>
@@ -244,13 +248,13 @@
                         <Separator orientation="VERTICAL" styleClass="header-separator"/>
                         
                         <!-- View Mode Toggle -->
-                        <ToggleButton fx:id="editorOnlyButton" text="Edit" onAction="#handleEditorOnlyMode" styleClass="view-btn">
+                        <ToggleButton fx:id="editorOnlyButton" text="Edit" onAction="#handleEditorOnlyMode" styleClass="modern-toggle-btn">
                             <tooltip><Tooltip text="Editor only (Alt+1)"/></tooltip>
                         </ToggleButton>
-                        <ToggleButton fx:id="splitViewButton" text="Split" onAction="#handleSplitViewMode" styleClass="view-btn">
+                        <ToggleButton fx:id="splitViewButton" text="Split" onAction="#handleSplitViewMode" styleClass="modern-toggle-btn">
                             <tooltip><Tooltip text="Split view (Alt+2)"/></tooltip>
                         </ToggleButton>
-                        <ToggleButton fx:id="previewOnlyButton" text="Read" onAction="#handlePreviewOnlyMode" styleClass="view-btn">
+                        <ToggleButton fx:id="previewOnlyButton" text="Read" onAction="#handlePreviewOnlyMode" styleClass="modern-toggle-btn">
                             <tooltip><Tooltip text="Preview only (Alt+3)"/></tooltip>
                         </ToggleButton>
                         <Separator orientation="VERTICAL" styleClass="header-separator"/>
@@ -360,7 +364,7 @@
         </SplitPane>
     </center>
     
-    <!-- Right Panel (Obsidian-style: multiple collapsible sections) -->
+    <!-- Right Panel (multiple collapsible sections) -->
     <right>
         <VBox fx:id="rightPanel" visible="false" managed="false" styleClass="right-panel" minWidth="260" prefWidth="300" maxWidth="340">
             <!-- Panel Header -->

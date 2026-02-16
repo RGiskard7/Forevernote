@@ -107,8 +107,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     // Cached data to avoid recreating listeners
     private List<Note> cachedAllNotes = new ArrayList<>();
     private List<Note> cachedFavoriteNotes = new ArrayList<>();
+    private List<Note> cachedTrashNotes = new ArrayList<>();
     private boolean recentListenerAdded = false;
     private boolean favoritesListenerAdded = false;
+    private boolean trashListenerAdded = false;
 
     // FXML UI Components
     @FXML
@@ -141,6 +143,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private ListView<String> recentNotesListView;
     @FXML
     private ListView<String> favoritesListView;
+    @FXML
+    private ListView<String> trashListView;
 
     // Layout State
     private boolean isStackedLayout = false;
@@ -384,6 +388,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             loadRecentNotes();
             loadTags();
             loadFavorites();
+            loadTrashNotes();
 
             // Initialize keyboard shortcuts after scene is ready
             Platform.runLater(this::initializeKeyboardShortcuts);
@@ -2518,7 +2523,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     .limit(10)
                     .toList();
 
-            favoritesListView.getItems().setAll(favoriteTitles);
+            Platform.runLater(() -> {
+                favoritesListView.getItems().setAll(favoriteTitles);
+            });
 
             // Add listener only once
             if (!favoritesListenerAdded) {
@@ -2536,27 +2543,29 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                                     currentFolder = null;
                                     currentTag = null;
 
-                                    // Clear selection and items to avoid IndexOutOfBoundsException
-                                    notesListView.getSelectionModel().clearSelection();
-                                    notesListView.getItems().clear();
-
-                                    // Refresh favorites list and show in notes list
-                                    List<Note> currentFavorites = new ArrayList<>(cachedFavoriteNotes);
-                                    notesListView.getItems().addAll(currentFavorites);
-                                    noteCountLabel.setText(currentFavorites.size() + " favorite notes");
-
-                                    // Use Platform.runLater to ensure list update completes before loading note
-                                    final Note noteToLoad = favoriteNote.get();
+                                    // Use Platform.runLater for the entire UI update to avoid race conditions
+                                    // during selection
                                     Platform.runLater(() -> {
-                                        try {
-                                            int index = notesListView.getItems().indexOf(noteToLoad);
-                                            if (index >= 0) {
-                                                notesListView.getSelectionModel().select(index);
+                                        notesListView.getSelectionModel().clearSelection();
+                                        notesListView.getItems().clear();
+
+                                        List<Note> currentFavorites = new ArrayList<>(cachedFavoriteNotes);
+                                        if (!currentFavorites.isEmpty()) {
+                                            notesListView.getItems().addAll(currentFavorites);
+                                            noteCountLabel.setText(currentFavorites.size() + " favorite notes");
+
+                                            final Note noteToLoad = favoriteNote.get();
+                                            try {
+                                                int index = notesListView.getItems().indexOf(noteToLoad);
+                                                if (index >= 0 && index < notesListView.getItems().size()) {
+                                                    notesListView.getSelectionModel().select(index);
+                                                }
+                                                loadNoteInEditor(noteToLoad);
+                                            } catch (Exception e) {
+                                                logger.warning(
+                                                        "Could not select favorite note in list: " + e.getMessage());
+                                                loadNoteInEditor(noteToLoad);
                                             }
-                                            loadNoteInEditor(noteToLoad);
-                                        } catch (Exception e) {
-                                            logger.warning("Could not select favorite note in list: " + e.getMessage());
-                                            loadNoteInEditor(noteToLoad);
                                         }
                                     });
                                 }
@@ -2565,6 +2574,133 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         } catch (Exception e) {
             logger.warning("Failed to load favorites: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Load trash notes.
+     */
+    private void loadTrashNotes() {
+        try {
+            cachedTrashNotes = noteDAO.fetchTrashNotes();
+
+            List<String> trashTitles = cachedTrashNotes.stream()
+                    .map(Note::getTitle)
+                    .toList();
+
+            trashListView.getItems().setAll(trashTitles);
+
+            // Add listener only once
+            if (!trashListenerAdded) {
+                trashListenerAdded = true;
+                trashListView.getSelectionModel().selectedItemProperty().addListener(
+                        (observable, oldValue, newValue) -> {
+                            if (newValue != null) {
+                                // Find and load the trash note from cached list
+                                Optional<Note> trashNote = cachedTrashNotes.stream()
+                                        .filter(n -> n.getTitle() != null && n.getTitle().equals(newValue))
+                                        .findFirst();
+                                if (trashNote.isPresent()) {
+                                    // Update context to show trash
+                                    currentFilterType = "trash";
+                                    currentFolder = null;
+                                    currentTag = null;
+
+                                    // Clear current selection and showing list
+                                    // Use Platform.runLater for the entire UI update to avoid race conditions
+                                    // during selection
+                                    Platform.runLater(() -> {
+                                        notesListView.getSelectionModel().clearSelection();
+                                        notesListView.getItems().clear();
+
+                                        if (cachedTrashNotes != null && !cachedTrashNotes.isEmpty()) {
+                                            // Show all trash notes in the notes list
+                                            notesListView.getItems().addAll(cachedTrashNotes);
+                                            noteCountLabel.setText(cachedTrashNotes.size() + " notes in trash");
+
+                                            final Note noteToLoad = trashNote.get();
+                                            try {
+                                                int index = notesListView.getItems().indexOf(noteToLoad);
+                                                if (index >= 0 && index < notesListView.getItems().size()) {
+                                                    notesListView.getSelectionModel().select(index);
+                                                }
+                                                loadNoteInEditor(noteToLoad);
+                                            } catch (Exception e) {
+                                                loadNoteInEditor(noteToLoad);
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        });
+
+                // Add context menu for Trash
+                ContextMenu trashMenu = new ContextMenu();
+                MenuItem restoreItem = new MenuItem("Restore Note");
+                restoreItem.setOnAction(e -> {
+                    String selected = trashListView.getSelectionModel().getSelectedItem();
+                    if (selected != null) {
+                        cachedTrashNotes.stream()
+                                .filter(n -> n.getTitle().equals(selected))
+                                .findFirst()
+                                .ifPresent(n -> {
+                                    noteDAO.restoreNote(n.getId());
+                                    loadTrashNotes();
+                                    refreshNotesList();
+                                    updateStatus("Note restored");
+                                });
+                    }
+                });
+
+                MenuItem deleteDefItem = new MenuItem("Delete Permanently");
+                deleteDefItem.setOnAction(e -> {
+                    String selected = trashListView.getSelectionModel().getSelectedItem();
+                    if (selected != null) {
+                        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                        alert.setTitle("Delete Permanently");
+                        alert.setHeaderText("Delete this note permanently?");
+                        alert.setContentText("This action cannot be undone.");
+
+                        if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+                            cachedTrashNotes.stream()
+                                    .filter(n -> n.getTitle().equals(selected))
+                                    .findFirst()
+                                    .ifPresent(n -> {
+                                        noteDAO.permanentlyDeleteNote(n.getId());
+                                        loadTrashNotes();
+                                        updateStatus("Note deleted permanently");
+                                    });
+                        }
+                    }
+                });
+
+                MenuItem emptyTrashItem = new MenuItem("Empty Trash");
+                emptyTrashItem.setOnAction(e -> {
+                    if (cachedTrashNotes.isEmpty()) {
+                        return;
+                    }
+
+                    Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+                    alert.setTitle("Empty Trash");
+                    alert.setHeaderText("Empty the trash?");
+                    alert.setContentText(
+                            "All notes in the trash will be permanently deleted. This action cannot be undone.");
+
+                    if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+                        for (Note n : cachedTrashNotes) {
+                            noteDAO.permanentlyDeleteNote(n.getId());
+                        }
+                        loadTrashNotes();
+                        updateStatus("Trash emptied");
+                    }
+                });
+
+                trashMenu.getItems().addAll(restoreItem, new SeparatorMenuItem(), deleteDefItem,
+                        new SeparatorMenuItem(), emptyTrashItem);
+                trashListView.setContextMenu(trashMenu);
+            }
+        } catch (Exception e) {
+            logger.warning("Failed to load trash notes: " + e.getMessage());
         }
     }
 
@@ -3299,9 +3435,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private void handleDelete(ActionEvent event) {
         if (currentNote != null) {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Delete Note");
-            alert.setHeaderText("Are you sure you want to delete this note?");
-            alert.setContentText("This action cannot be undone.");
+            alert.setTitle("Move to Trash");
+            alert.setHeaderText("Do you want to move this note to the trash?");
+            alert.setContentText("You can restore it later from the Trash tab.");
 
             Optional<ButtonType> result = alert.showAndWait();
             if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -3318,10 +3454,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
 
                     // Refresh ALL lists - notes, recent, favorites
                     refreshNotesList();
-                    loadRecentNotes(); // Update recent notes to remove deleted note
-                    loadFavorites(); // Update favorites to remove deleted note
+                    loadRecentNotes();
+                    loadFavorites();
+                    loadTrashNotes();
 
-                    updateStatus("Note deleted");
+                    updateStatus("Note moved to trash");
                 } catch (Exception e) {
                     logger.severe("Failed to delete note: " + e.getMessage());
                     updateStatus("Error deleting note");

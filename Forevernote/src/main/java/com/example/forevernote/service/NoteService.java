@@ -40,7 +40,6 @@ public class NoteService {
 
     private final NoteDAO noteDAO;
     private final FolderDAO folderDAO;
-    private final TagDAO tagDAO;
 
     /**
      * Sorting options for notes list.
@@ -83,7 +82,7 @@ public class NoteService {
     public NoteService(NoteDAO noteDAO, FolderDAO folderDAO, TagDAO tagDAO) {
         this.noteDAO = noteDAO;
         this.folderDAO = folderDAO;
-        this.tagDAO = tagDAO;
+
         logger.info("NoteService initialized");
     }
 
