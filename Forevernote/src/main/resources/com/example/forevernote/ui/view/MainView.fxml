@@ -88,19 +88,19 @@
                 <ToggleButton fx:id="sidebarToggleBtn" onAction="#handleToggleSidebar" styleClass="modern-toggle-btn">
                    <tooltip><Tooltip text="Toggle Sidebar (F9)"/></tooltip>
                    <graphic>
-                       <FontIcon iconLiteral="fth-sidebar" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
+                       <FontIcon iconLiteral="fth-sidebar" styleClass="feather-icon"/>
                    </graphic>
                 </ToggleButton>
                 <ToggleButton fx:id="notesPanelToggleBtn" onAction="#handleToggleNotesPanel" styleClass="modern-toggle-btn">
                    <tooltip><Tooltip text="Toggle Notes List (F8)"/></tooltip>
                     <graphic>
-                       <FontIcon iconLiteral="fth-list" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
+                       <FontIcon iconLiteral="fth-list" styleClass="feather-icon"/>
                    </graphic>
                 </ToggleButton>
                 <Button fx:id="layoutSwitchBtn" onAction="#handleViewLayoutSwitch" styleClass="toolbar-btn">
                    <tooltip><Tooltip text="Switch Layout Columns"/></tooltip>
                     <graphic>
-                       <FontIcon iconLiteral="fth-columns" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
+                       <FontIcon iconLiteral="fth-columns" styleClass="feather-icon"/>
                    </graphic>
                 </Button>
                 
@@ -110,19 +110,19 @@
                 <Button fx:id="newNoteBtn" onAction="#handleNewNote" styleClass="toolbar-btn toolbar-btn-primary">
                     <tooltip><Tooltip text="New Note (Ctrl+N)"/></tooltip>
                     <graphic>
-                        <FontIcon iconLiteral="fth-file-plus" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
+                        <FontIcon iconLiteral="fth-file-plus" styleClass="feather-icon"/>
                     </graphic>
                 </Button>
                 <Button fx:id="newFolderBtn" onAction="#handleNewFolder" styleClass="toolbar-btn">
                     <tooltip><Tooltip text="New Folder"/></tooltip>
                     <graphic>
-                        <FontIcon iconLiteral="fth-folder-plus" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
+                        <FontIcon iconLiteral="fth-folder-plus" styleClass="feather-icon"/>
                     </graphic>
                 </Button>
                 <Button fx:id="newTagBtn" onAction="#handleNewTag" styleClass="toolbar-btn">
                     <tooltip><Tooltip text="New Tag"/></tooltip>
                     <graphic>
-                       <FontIcon iconLiteral="fth-hash" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
+                       <FontIcon iconLiteral="fth-hash" styleClass="feather-icon"/>
                    </graphic>
                 </Button>
                 
@@ -131,13 +131,13 @@
                 <Button fx:id="saveBtn" onAction="#handleSave" styleClass="toolbar-btn">
                     <tooltip><Tooltip text="Save (Ctrl+S)"/></tooltip>
                     <graphic>
-                        <FontIcon iconLiteral="fth-save" iconSize="18" iconColor="#555555" styleClass="feather-icon"/>
+                        <FontIcon iconLiteral="fth-save" styleClass="feather-icon"/>
                     </graphic>
                 </Button>
                 <Button fx:id="deleteBtn" onAction="#handleDelete" styleClass="toolbar-btn toolbar-btn-danger">
                     <tooltip><Tooltip text="Delete"/></tooltip>
                     <graphic>
-                        <FontIcon iconLiteral="fth-trash-2" iconSize="18" iconColor="#c53030" styleClass="feather-icon-danger"/>
+                        <FontIcon iconLiteral="fth-trash-2" styleClass="feather-icon-danger"/>
                     </graphic>
                 </Button>
                 <Separator orientation="VERTICAL" styleClass="toolbar-separator"/>
@@ -151,13 +151,13 @@
                 <ToggleButton fx:id="listViewButton" onAction="#handleListView" styleClass="modern-toggle-btn" selected="true">
                     <tooltip><Tooltip text="List view"/></tooltip>
                     <graphic>
-                        <FontIcon iconLiteral="fth-align-justify" iconSize="16" iconColor="#555555" styleClass="feather-icon"/>
+                        <FontIcon iconLiteral="fth-align-justify" styleClass="feather-icon"/>
                     </graphic>
                 </ToggleButton>
                 <ToggleButton fx:id="gridViewButton" onAction="#handleGridView" styleClass="modern-toggle-btn">
                     <tooltip><Tooltip text="Grid view"/></tooltip>
                     <graphic>
-                        <FontIcon iconLiteral="fth-grid" iconSize="16" iconColor="#555555" styleClass="feather-icon"/>
+                        <FontIcon iconLiteral="fth-grid" styleClass="feather-icon"/>
                     </graphic>
                 </ToggleButton>
             </HBox>
@@ -219,7 +219,7 @@
                         <Button fx:id="refreshBtn" onAction="#handleRefresh" styleClass="icon-btn">
                             <tooltip><Tooltip text="Refresh list"/></tooltip>
                             <graphic>
-                                <FontIcon iconLiteral="fth-refresh-cw" iconSize="16" iconColor="#555555" styleClass="feather-icon"/>
+                                <FontIcon iconLiteral="fth-refresh-cw" styleClass="feather-icon"/>
                             </graphic>
                         </Button>
                     </HBox>
@@ -241,7 +241,7 @@
                          <ToggleButton fx:id="toggleTagsBtn" onAction="#handleToggleTags" styleClass="modern-toggle-btn" selected="true">
                             <tooltip><Tooltip text="Toggle Tags Bar"/></tooltip>
                             <graphic>
-                                <FontIcon iconLiteral="fth-hash" iconSize="16" iconColor="#555555" styleClass="feather-icon"/>
+                                <FontIcon iconLiteral="fth-hash" styleClass="feather-icon"/>
                             </graphic>
                         </ToggleButton>
                         

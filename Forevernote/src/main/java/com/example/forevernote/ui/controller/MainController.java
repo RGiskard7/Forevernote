@@ -601,11 +601,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 } else {
                     // Create rich cell content
                     VBox container = new VBox(2);
+                    container.getStyleClass().add("note-cell-container");
                     container.setPadding(new javafx.geometry.Insets(4, 8, 4, 8));
 
                     // Title with favorite indicator
                     Label titleLabel = new Label((note.isFavorite() ? "★ " : "") + note.getTitle());
-                    titleLabel.setStyle("-fx-font-weight: 500;");
+                    titleLabel.getStyleClass().add("note-cell-title");
 
                     // Preview text (first 60 chars of content)
                     String preview = note.getContent() != null && !note.getContent().isEmpty()
@@ -615,7 +616,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         preview = preview.substring(0, 57) + "...";
                     }
                     Label previewLabel = new Label(preview);
-                    previewLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 11px;");
+                    previewLabel.getStyleClass().add("note-cell-preview");
 
                     // Date
                     String dateText = note.getModifiedDate() != null ? note.getModifiedDate() : note.getCreatedDate();
@@ -623,7 +624,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         dateText = dateText.substring(0, 10);
                     }
                     Label dateLabel = new Label(dateText != null ? dateText : "");
-                    dateLabel.setStyle("-fx-text-fill: #666666; -fx-font-size: 10px;");
+                    dateLabel.getStyleClass().add("note-cell-date");
 
                     container.getChildren().addAll(titleLabel, previewLabel, dateLabel);
 
@@ -717,14 +718,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         container.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
 
                         Label iconLabel = new Label(icon);
-                        iconLabel.setStyle("-fx-text-fill: " + color + "; -fx-font-weight: bold; -fx-font-size: 10px;");
+                        iconLabel.getStyleClass().add("folder-cell-icon");
+                        iconLabel.setStyle("-fx-text-fill: " + color + ";"); // Keep color for specific folder types but
+                                                                             // use class for sizing
 
                         Label nameLabel = new Label(folder.getTitle());
-                        nameLabel.setStyle("-fx-text-fill: inherit;");
+                        nameLabel.getStyleClass().add("folder-cell-name");
 
                         if (noteCount > 0) {
                             Label countLabel = new Label("(" + noteCount + ")");
-                            countLabel.setStyle("-fx-text-fill: #888888; -fx-font-size: 10px;");
+                            countLabel.getStyleClass().add("folder-cell-count");
                             container.getChildren().addAll(iconLabel, nameLabel, countLabel);
                         } else {
                             container.getChildren().addAll(iconLabel, nameLabel);
@@ -745,14 +748,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     Folder folder = cell.getItem();
                     if (folder != null && !folder.getTitle().equals("All Notes")) {
                         event.acceptTransferModes(javafx.scene.input.TransferMode.MOVE);
-                        cell.setStyle("-fx-background-color: #4a5568; -fx-background-radius: 4;");
+                        cell.getStyleClass().add("folder-cell-drag-over");
                     }
                 }
                 event.consume();
             });
 
             cell.setOnDragExited(event -> {
-                cell.setStyle("");
+                cell.getStyleClass().remove("folder-cell-drag-over");
                 event.consume();
             });
 
@@ -2345,10 +2348,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         updateNoteMetadata(note);
 
         // Ensure WebView has correct background color based on theme
-        if ("dark".equals(currentTheme) && previewWebView != null) {
-            previewWebView.setStyle("-fx-background-color: #1E1E1E;");
-        } else if (previewWebView != null) {
-            previewWebView.setStyle("-fx-background-color: #FFFFFF;");
+        if (previewWebView != null && !previewWebView.getStyleClass().contains("webview-theme")) {
+            previewWebView.getStyleClass().add("webview-theme");
         }
 
         // Update preview
@@ -4052,15 +4053,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
 
             // Ensure WebView has correct background color
-            if ("dark".equals(actualTheme) && previewWebView != null) {
-                previewWebView.setStyle("-fx-background-color: #1E1E1E;");
-                // Also set background via JavaScript to ensure it's applied
+            if (previewWebView != null) {
+                if (!previewWebView.getStyleClass().contains("webview-theme")) {
+                    previewWebView.getStyleClass().add("webview-theme");
+                }
+
+                // Still set background via JavaScript to ensure it's applied to the body
+                String bgColor = "dark".equals(actualTheme) ? "#1E1E1E" : "#FFFFFF";
                 previewWebView.getEngine().executeScript(
-                        "document.body.style.backgroundColor = '#1E1E1E';");
-            } else if (previewWebView != null) {
-                previewWebView.setStyle("-fx-background-color: #FFFFFF;");
-                previewWebView.getEngine().executeScript(
-                        "document.body.style.backgroundColor = '#FFFFFF';");
+                        "document.body.style.backgroundColor = '" + bgColor + "';");
             }
 
             // Update preview to reflect theme change

@@ -13,9 +13,47 @@
 .root,
 .root-container {
     -fx-font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", -apple-system, sans-serif;
+    font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", -apple-system, sans-serif;
     -fx-font-size: 13px;
-    -fx-background-color: #fafafa;
-    -fx-text-fill: #222222;
+    font-size: 13px;
+
+    /* Global Variables - Light Theme */
+    -fx-base-bg: #fafafa;
+    -fx-sidebar-bg: #f5f5f5;
+    -fx-header-bg: #f0f0f0;
+    -fx-accent: #7c3aed;
+    -fx-accent-hover: #6d28d9;
+    -fx-text-main: #222222;
+    -fx-text-muted: #666666;
+    -fx-text-faint: #999999;
+    -fx-fn-border-color: #d4d4d4;
+    -fx-hover-bg: #ebebeb;
+    -fx-selected-bg: #7c3aed;
+    -fx-selected-text: #ffffff;
+
+    -fx-background-color: -fx-base-bg;
+    background-color: -fx-base-bg;
+    -fx-text-fill: -fx-text-main;
+    color: -fx-text-main;
+}
+
+.feather-icon {
+    -fx-icon-color: #555555;
+    -fx-fill: #555555;
+    fill: #555555;
+    -fx-icon-size: 16;
+}
+
+.feather-icon-selected {
+    -fx-icon-color: #ffffff;
+    -fx-fill: #ffffff;
+    fill: #ffffff;
+}
+
+.feather-icon-danger {
+    -fx-icon-color: #c53030;
+    -fx-fill: #c53030;
+    fill: #c53030;
 }
 
 /* ========================================
@@ -23,13 +61,16 @@
    ======================================== */
 
 .top-container {
-    -fx-background-color: #f0f0f0;
-    -fx-border-color: transparent transparent #d4d4d4 transparent;
+    -fx-background-color: -fx-header-bg;
+    background-color: -fx-header-bg;
+    -fx-border-color: transparent transparent -fx-fn-border-color transparent;
+    border-color: transparent transparent -fx-fn-border-color transparent;
     -fx-border-width: 0 0 1 0;
+    border-width: 0 0 1 0;
 }
 
 .menu-bar {
-    -fx-background-color: #f0f0f0;
+    -fx-background-color: -fx-header-bg;
     -fx-padding: 2 8;
 }
 
@@ -41,17 +82,17 @@
 
 .menu-bar .menu:hover,
 .menu-bar .menu:showing {
-    -fx-background-color: #e0e0e0;
+    -fx-background-color: -fx-hover-bg;
 }
 
 .menu-bar .menu .label {
-    -fx-text-fill: #222222;
+    -fx-text-fill: -fx-text-main;
     -fx-font-size: 13px;
 }
 
 .context-menu {
     -fx-background-color: #ffffff;
-    -fx-border-color: #d4d4d4;
+    -fx-border-color: -fx-fn-border-color;
     -fx-border-radius: 8;
     -fx-background-radius: 8;
     -fx-padding: 6;
@@ -66,7 +107,7 @@
 
 .menu-item:hover,
 .menu-item:focused {
-    -fx-background-color: #e8e8e8;
+    -fx-background-color: -fx-hover-bg;
 }
 
 .menu-item .label {
@@ -82,8 +123,8 @@
    ======================================== */
 
 .toolbar {
-    -fx-background-color: #f0f0f0;
-    -fx-border-color: transparent transparent #d4d4d4 transparent;
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: transparent transparent -fx-fn-border-color transparent;
     -fx-border-width: 0 0 1 0;
 }
 
@@ -95,7 +136,7 @@
     -fx-padding: 6 12;
     -fx-background-radius: 6;
     -fx-border-radius: 6;
-    -fx-border-color: #d4d4d4;
+    -fx-border-color: -fx-fn-border-color;
     -fx-border-width: 1;
     -fx-cursor: hand;
     -fx-min-height: 32px;
@@ -103,23 +144,22 @@
 }
 
 .toolbar-btn:hover {
-    -fx-background-color: #f5f5f5;
+    -fx-background-color: -fx-sidebar-bg;
     -fx-border-color: #c0c0c0;
 }
 
 .toolbar-btn:pressed {
-    -fx-background-color: #e8e8e8;
+    -fx-background-color: -fx-hover-bg;
 }
 
 .toolbar-btn:selected {
-    -fx-background-color: #e8e8e8;
-    -fx-border-color: #c0c0c0;
-    -fx-text-fill: #111111;
+    -fx-background-color: -fx-hover-bg;
+    -fx-border-color: -fx-accent;
+    -fx-text-fill: -fx-accent;
 }
 
-.toolbar-btn:selected .ikonli-font-icon {
-    -fx-icon-color: #7c3aed;
-    -fx-fill: #7c3aed;
+.toolbar-btn:selected .feather-icon {
+    -fx-icon-color: -fx-accent;
 }
 
 /* Ensure emoji icons are visible */
@@ -195,7 +235,7 @@
 
 .search-field {
     -fx-background-color: #ffffff;
-    -fx-border-color: #d4d4d4;
+    -fx-border-color: -fx-fn-border-color;
     -fx-border-radius: 20;
     -fx-background-radius: 20;
     -fx-padding: 8 16;
@@ -214,7 +254,7 @@
 
 .sidebar {
     -fx-background-color: #f5f5f5;
-    -fx-border-color: transparent #d4d4d4 transparent transparent;
+    -fx-border-color: transparent -fx-fn-border-color transparent transparent;
     -fx-border-width: 0 1 0 0;
 }
 
@@ -365,55 +405,59 @@
     -fx-background-color: #ffffff;
 }
 
-/* Folder icon, name and count styles (Obsidian-style) */
-.folder-icon {
-    -fx-text-fill: #7c3aed;
-    -fx-font-size: 11px;
-    -fx-font-weight: bold;
-    -fx-min-width: 24px;
-    -fx-font-family: "Consolas", "Monaco", monospace;
+/* Custom Note Cell Styles */
+.note-cell-container {
+    -fx-background-color: transparent;
 }
 
-.folder-icon-all {
-    -fx-text-fill: #7c3aed;
-}
-
-.folder-icon-open {
-    -fx-text-fill: #38a169;
-}
-
-.folder-icon-closed {
-    -fx-text-fill: #dd6b20;
-}
-
-.folder-name {
-    -fx-text-fill: #333333;
+.note-cell-title {
+    -fx-font-weight: 600;
     -fx-font-size: 13px;
+    -fx-text-fill: -fx-text-main;
 }
 
-.folder-count {
-    -fx-text-fill: #7c3aed;
+.note-cell-preview {
+    -fx-text-fill: -fx-text-muted;
     -fx-font-size: 11px;
-    -fx-font-weight: 500;
-    -fx-padding: 2 6;
-    -fx-background-color: #ebebeb;
-    -fx-background-radius: 10;
 }
 
-.tree-cell:selected .folder-icon,
-.tree-cell:selected .folder-icon-all,
-.tree-cell:selected .folder-icon-open,
-.tree-cell:selected .folder-icon-closed {
-    -fx-text-fill: #ffffff !important;
+.note-cell-date {
+    -fx-text-fill: -fx-text-faint;
+    -fx-font-size: 10px;
 }
 
-.tree-cell:selected .folder-name {
-    -fx-text-fill: #ffffff !important;
+.list-cell:selected .note-cell-title,
+.list-cell:selected .note-cell-preview,
+.list-cell:selected .note-cell-date {
+    -fx-text-fill: #ffffff;
 }
 
-.tree-cell:selected .folder-count {
-    -fx-text-fill: #ffffff !important;
-    -fx-background-color: rgba(255, 255, 255, 0.2);
+/* Folder Tree Styles */
+.folder-cell-icon {
+    -fx-font-weight: bold;
+    -fx-font-size: 10px;
+}
+
+.folder-cell-name {
+    -fx-text-fill: inherit;
+}
+
+.folder-cell-count {
+    -fx-text-fill: -fx-text-faint;
+    -fx-font-size: 10px;
+}
+
+.tree-cell:selected .folder-cell-count {
+    -fx-text-fill: #ffffff;
+}
+
+.folder-cell-drag-over {
+    -fx-background-color: -fx-accent;
+    -fx-background-radius: 4;
+}
+
+.webview-theme {
+    -fx-background-color: -fx-base-bg;
 }
 
 /* ========================================
@@ -1379,6 +1423,10 @@
     -fx-background-color: #7c3aed;
     -fx-text-fill: white;
     -fx-border-color: #7c3aed;
+}
+
+.webview-theme {
+    -fx-background-color: -fx-base-bg;
 }
 
 .toolbar-btn.toolbar-btn-primary:hover {
