@@ -28,6 +28,7 @@ public class Note extends LeafModel implements Serializable {
 	private String source = null;
 	private String sourceApplication = null;
 	private boolean isFavorite = false;
+	private boolean isPinned = false;
 	private boolean isDeleted = false;
 	private String deletedDate = null;
 
@@ -173,6 +174,14 @@ public class Note extends LeafModel implements Serializable {
 
 	public void setFavorite(boolean isFavorite) {
 		this.isFavorite = isFavorite;
+	}
+
+	public boolean isPinned() {
+		return isPinned;
+	}
+
+	public void setPinned(boolean isPinned) {
+		this.isPinned = isPinned;
 	}
 
 	public boolean isDeleted() {

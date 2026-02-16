@@ -41,6 +41,7 @@ public class SQLiteDB {
             + "source TEXT DEFAULT NULL, "
             + "source_application TEXT DEFAULT NULL, "
             + "is_favorite INTEGER NOT NULL DEFAULT 0 CHECK (is_favorite IN (0, 1)), "
+            + "is_pinned INTEGER NOT NULL DEFAULT 0 CHECK (is_pinned IN (0, 1)), "
             + "is_deleted INTEGER NOT NULL DEFAULT 0 CHECK (is_deleted IN (0, 1)), "
             + "deleted_date TEXT DEFAULT NULL, "
             + "FOREIGN KEY (parent_id) REFERENCES folders(folder_id) "
@@ -235,6 +236,7 @@ public class SQLiteDB {
             try {
                 ResultSet rs = stmt.executeQuery("PRAGMA table_info(notes)");
                 boolean hasIsFavorite = false;
+                boolean hasIsPinned = false;
                 boolean hasIsDeleted = false;
                 boolean hasDeletedDate = false;
 
@@ -242,6 +244,8 @@ public class SQLiteDB {
                     String columnName = rs.getString("name");
                     if ("is_favorite".equals(columnName))
                         hasIsFavorite = true;
+                    if ("is_pinned".equals(columnName))
+                        hasIsPinned = true;
                     if ("is_deleted".equals(columnName))
                         hasIsDeleted = true;
                     if ("deleted_date".equals(columnName))
@@ -252,6 +256,11 @@ public class SQLiteDB {
                     logger.info("Adding is_favorite column to notes table...");
                     stmt.executeUpdate(
                             "ALTER TABLE notes ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0 CHECK (is_favorite IN (0, 1))");
+                }
+                if (!hasIsPinned) {
+                    logger.info("Adding is_pinned column to notes table...");
+                    stmt.executeUpdate(
+                            "ALTER TABLE notes ADD COLUMN is_pinned INTEGER NOT NULL DEFAULT 0 CHECK (is_pinned IN (0, 1))");
                 }
                 if (!hasIsDeleted) {
                     logger.info("Adding is_deleted column to notes table...");

@@ -1,5 +1,10 @@
 package com.example.forevernote;
 
+/**
+ * IMPORTANT: Do NOT run this class directly in VS Code/IDEs.
+ * Due to JavaFX module system requirements, use the Launcher class 
+ * or the "Forevernote (Launcher)" Run configuration.
+ */
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;

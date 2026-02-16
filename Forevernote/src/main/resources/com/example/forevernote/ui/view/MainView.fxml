@@ -79,7 +79,7 @@
             </MenuBar>
             
             <!-- Toolbar -->
-            <HBox styleClass="toolbar" spacing="8" alignment="CENTER_LEFT">
+            <HBox fx:id="toolbarHBox" styleClass="toolbar" spacing="8" alignment="CENTER_LEFT">
                 <padding>
                     <Insets top="8" right="16" bottom="8" left="16"/>
                 </padding>
@@ -104,7 +104,7 @@
                    </graphic>
                 </Button>
                 
-                <Separator orientation="VERTICAL" styleClass="toolbar-separator"/>
+                <Separator fx:id="toolbarSeparator1" orientation="VERTICAL" styleClass="toolbar-separator"/>
 
                 <!-- File Actions -->
                 <Button fx:id="newNoteBtn" onAction="#handleNewNote" styleClass="toolbar-btn toolbar-btn-primary">
@@ -126,7 +126,7 @@
                    </graphic>
                 </Button>
                 
-                <Separator orientation="VERTICAL" styleClass="toolbar-separator"/>
+                <Separator fx:id="toolbarSeparator2" orientation="VERTICAL" styleClass="toolbar-separator"/>
                 
                 <Button fx:id="saveBtn" onAction="#handleSave" styleClass="toolbar-btn">
                     <tooltip><Tooltip text="Save (Ctrl+S)"/></tooltip>
@@ -140,7 +140,7 @@
                         <FontIcon iconLiteral="fth-trash-2" styleClass="feather-icon-danger"/>
                     </graphic>
                 </Button>
-                <Separator orientation="VERTICAL" styleClass="toolbar-separator"/>
+                <Separator fx:id="toolbarSeparator3" orientation="VERTICAL" styleClass="toolbar-separator"/>
                 
                 <!-- Search Box -->
                 <TextField fx:id="searchField" promptText="Search notes..." prefWidth="240" styleClass="search-field"/>
@@ -160,6 +160,14 @@
                         <FontIcon iconLiteral="fth-grid" styleClass="feather-icon"/>
                     </graphic>
                 </ToggleButton>
+
+                <!-- Overflow Menu Button -->
+                <MenuButton fx:id="toolbarOverflowBtn" styleClass="modern-toggle-btn" visible="false" managed="false">
+                    <tooltip><Tooltip text="More actions"/></tooltip>
+                    <graphic>
+                        <FontIcon iconLiteral="fth-more-horizontal" styleClass="feather-icon"/>
+                    </graphic>
+                </MenuButton>
             </HBox>
         </VBox>
     </top>
@@ -258,15 +266,24 @@
                             <tooltip><Tooltip text="Preview only (Alt+3)"/></tooltip>
                         </ToggleButton>
                         <Separator orientation="VERTICAL" styleClass="header-separator"/>
-                        <Button fx:id="favoriteButton" text="*" onAction="#handleToggleFavorite" styleClass="action-btn">
+                        <ToggleButton fx:id="pinButton" onAction="#handleTogglePin" styleClass="modern-toggle-btn">
+                            <tooltip><Tooltip text="Pin note"/></tooltip>
+                            <graphic>
+                                <FontIcon iconLiteral="fth-map-pin" styleClass="feather-icon"/>
+                            </graphic>
+                        </ToggleButton>
+                        <ToggleButton fx:id="favoriteButton" onAction="#handleToggleFavorite" styleClass="modern-toggle-btn">
                             <tooltip><Tooltip text="Add to favorites"/></tooltip>
-                        </Button>
-                        <Button fx:id="infoButton" text="☰" onAction="#handleToggleRightPanel" styleClass="action-btn">
+                            <graphic>
+                                <FontIcon iconLiteral="fth-star" styleClass="feather-icon"/>
+                            </graphic>
+                        </ToggleButton>
+                        <ToggleButton fx:id="infoButton" onAction="#handleToggleRightPanel" styleClass="modern-toggle-btn">
                             <tooltip><Tooltip text="Toggle right panel (Ctrl+.)"/></tooltip>
-                        </Button>
-                        <Button fx:id="deleteNoteBtn" text="x" onAction="#handleDeleteNote" styleClass="action-btn action-btn-danger">
-                            <tooltip><Tooltip text="Delete note"/></tooltip>
-                        </Button>
+                            <graphic>
+                                <FontIcon iconLiteral="fth-menu" styleClass="feather-icon"/>
+                            </graphic>
+                        </ToggleButton>
                     </HBox>
                     
                     <!-- Tags Bar (Collapsible) -->

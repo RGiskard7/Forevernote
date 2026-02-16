@@ -31,8 +31,8 @@ public class NoteDAOSQLite implements NoteDAO {
 
 	// SQL Queries
 	private static final String INSERT_NOTE_SQL = "INSERT INTO notes (title, content, created_date, modified_date, "
-			+ "latitude, longitude, author, source_url, source, source_application, is_todo, todo_due, todo_completed, is_favorite, is_deleted, deleted_date) "
-			+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+			+ "latitude, longitude, author, source_url, source, source_application, is_todo, todo_due, todo_completed, is_favorite, is_pinned, is_deleted, deleted_date) "
+			+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 	private static final String INSERT_TAG_NOTE_SQL = "INSERT INTO tagsNotes (tag_id, note_id, added_date) VALUES (?, ?, ?)";
 
@@ -49,7 +49,7 @@ public class NoteDAOSQLite implements NoteDAO {
 	private static final String SELECT_NOTES_BY_TAG_ID_SQL = "SELECT DISTINCT notes.* FROM notes "
 			+ "INNER JOIN tagsNotes ON notes.note_id = tagsNotes.note_id WHERE tagsNotes.tag_id = ? AND notes.is_deleted = 0";
 
-	private static final String UPDATE_NOTE_SQL = "UPDATE notes SET title = ?, content = ?, modified_date = ?, is_favorite = ? WHERE note_id = ?";
+	private static final String UPDATE_NOTE_SQL = "UPDATE notes SET title = ?, content = ?, modified_date = ?, is_favorite = ?, is_pinned = ? WHERE note_id = ?";
 
 	private static final String SOFT_DELETE_NOTE_SQL = "UPDATE notes SET is_deleted = 1, deleted_date = ? WHERE note_id = ?";
 
@@ -107,8 +107,9 @@ public class NoteDAOSQLite implements NoteDAO {
 			}
 
 			pstmt.setInt(14, note.isFavorite() ? 1 : 0); // is_favorite
-			pstmt.setInt(15, note.isDeleted() ? 1 : 0); // is_deleted
-			pstmt.setString(16, note.getDeletedDate()); // deleted_date
+			pstmt.setInt(15, note.isPinned() ? 1 : 0); // is_pinned
+			pstmt.setInt(16, note.isDeleted() ? 1 : 0); // is_deleted
+			pstmt.setString(17, note.getDeletedDate()); // deleted_date
 
 			pstmt.executeUpdate();
 
@@ -168,7 +169,8 @@ public class NoteDAOSQLite implements NoteDAO {
 			pstmt.setString(2, note.getContent());
 			pstmt.setString(3, DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
 			pstmt.setInt(4, note.isFavorite() ? 1 : 0);
-			pstmt.setInt(5, note.getId());
+			pstmt.setInt(5, note.isPinned() ? 1 : 0);
+			pstmt.setInt(6, note.getId());
 			pstmt.executeUpdate();
 			connection.commit();
 
@@ -471,10 +473,12 @@ public class NoteDAOSQLite implements NoteDAO {
 			String source = rs.getString("source");
 			String sourceApplication = rs.getString("source_application");
 			int isFavorite = 0;
+			int isPinned = 0;
 			int isDeleted = 0;
 			String deletedDate = null;
 			try {
 				isFavorite = rs.getInt("is_favorite");
+				isPinned = rs.getInt("is_pinned");
 				isDeleted = rs.getInt("is_deleted");
 				deletedDate = rs.getString("deleted_date");
 			} catch (SQLException e) {
@@ -495,6 +499,7 @@ public class NoteDAOSQLite implements NoteDAO {
 			note.setSource(source);
 			note.setSourceApplication(sourceApplication);
 			note.setFavorite(isFavorite == 1);
+			note.setPinned(isPinned == 1);
 			note.setDeleted(isDeleted == 1);
 			note.setDeletedDate(deletedDate);
 		}

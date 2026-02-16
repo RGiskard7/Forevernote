@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Forevernote (Launcher)",
+            "request": "launch",
+            "mainClass": "com.example.forevernote.Launcher",
+            "projectName": "forevernote",
+            "args": "",
+            "vmArgs": "-Dfile.encoding=UTF-8"
+        }
+    ]
+}
