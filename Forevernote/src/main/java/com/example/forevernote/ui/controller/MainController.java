@@ -298,6 +298,20 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private Label infoLatitudeLabel;
     @FXML
     private Label infoLongitudeLabel;
+
+    @FXML
+    private RadioMenuItem lightThemeMenuItem;
+    @FXML
+    private RadioMenuItem darkThemeMenuItem;
+    @FXML
+    private RadioMenuItem systemThemeMenuItem;
+    @FXML
+    private RadioMenuItem englishLangMenuItem;
+    @FXML
+    private RadioMenuItem spanishLangMenuItem;
+
+    private ToggleGroup themeToggleGroup;
+    private ToggleGroup languageToggleGroup;
     @FXML
     private Label infoAuthorLabel;
     @FXML
@@ -310,15 +324,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private Label noteCountLabel;
     @FXML
     private Label syncStatusLabel;
-
-    // Theme menu items
-    @FXML
-    private RadioMenuItem lightThemeMenuItem;
-    @FXML
-    private RadioMenuItem darkThemeMenuItem;
-    @FXML
-    private RadioMenuItem systemThemeMenuItem;
-    private ToggleGroup themeToggleGroup;
 
     // Plugin menu (dynamic)
     @FXML
@@ -369,6 +374,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private PluginManager pluginManager;
     private PluginManagerDialog pluginManagerDialog;
 
+    @FXML
+    private java.util.ResourceBundle resources;
+
+    private double uiFontSize = 13.0;
+    private double editorFontSize = 14.0;
+
+    private String getString(String key) {
+        if (resources != null && resources.containsKey(key)) {
+            return resources.getString(key);
+        }
+        return key; // Fallback to key if not found
+    }
+
     /**
      * Initialize the controller after FXML loading.
      */
@@ -382,8 +400,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             // Initialize database connections
             initializeDatabase();
 
-            // Initialize theme toggle group
+            // Initialize theme and language groups
             initializeThemeMenu();
+            initializeLanguageMenu();
 
             // Initialize UI components
             initializeFolderTree();
@@ -448,7 +467,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
      */
     private void initializeFolderTree() {
         // Create a visible root folder for "All Notes" (like Evernote/Joplin/Obsidian)
-        Folder rootFolder = new Folder("All Notes", null, null);
+        String rootTitle = getString("app.all_notes");
+        Folder rootFolder = new Folder(rootTitle, null, null);
         TreeItem<Folder> rootItem = new TreeItem<>(rootFolder);
         rootItem.setExpanded(true);
         folderTreeView.setRoot(rootItem);
@@ -459,7 +479,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 (observable, oldValue, newValue) -> {
                     if (newValue != null && newValue.getValue() != null) {
                         Folder selectedFolder = newValue.getValue();
-                        if (selectedFolder.getTitle().equals("All Notes")) {
+                        if (selectedFolder.getTitle().equals(rootTitle) ||
+                                selectedFolder.getTitle().equals("All Notes") ||
+                                selectedFolder.getTitle().endsWith("All Notes")) {
                             currentFolder = null;
                             loadAllNotes();
                         } else {
@@ -830,6 +852,46 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 applyTheme();
             }
         });
+    }
+
+    private void initializeLanguageMenu() {
+        languageToggleGroup = new ToggleGroup();
+        if (englishLangMenuItem != null) {
+            englishLangMenuItem.setToggleGroup(languageToggleGroup);
+        }
+        if (spanishLangMenuItem != null) {
+            spanishLangMenuItem.setToggleGroup(languageToggleGroup);
+        }
+
+        String currentLang = prefs.get("language", java.util.Locale.getDefault().getLanguage());
+        if (currentLang.startsWith("es")) {
+            if (spanishLangMenuItem != null)
+                spanishLangMenuItem.setSelected(true);
+        } else {
+            if (englishLangMenuItem != null)
+                englishLangMenuItem.setSelected(true);
+        }
+    }
+
+    @FXML
+    private void handleLanguageEnglish(ActionEvent event) {
+        changeLanguage("en");
+    }
+
+    @FXML
+    private void handleLanguageSpanish(ActionEvent event) {
+        changeLanguage("es");
+    }
+
+    private void changeLanguage(String lang) {
+        String currentLang = prefs.get("language", java.util.Locale.getDefault().getLanguage());
+        if (!currentLang.equals(lang)) {
+            prefs.put("language", lang);
+            showAlert(Alert.AlertType.INFORMATION,
+                    getString("app.restart_required"),
+                    getString("app.restart_required"),
+                    getString("app.restart_message"));
+        }
     }
 
     /**
@@ -1624,7 +1686,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     }
                 }
                 logger.warning("Unknown command: " + commandName);
-                updateStatus("Unknown command: " + commandName);
+                updateStatus(java.text.MessageFormat.format(getString("status.unknown_command"), commandName));
         }
     }
 
@@ -1633,12 +1695,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
      */
     private void initializeSortOptions() {
         sortComboBox.getItems().addAll(
-                "Title (A-Z)",
-                "Title (Z-A)",
-                "Created (Newest)",
-                "Created (Oldest)",
-                "Modified (Newest)",
-                "Modified (Oldest)");
+                getString("sort.title_az"),
+                getString("sort.title_za"),
+                getString("sort.created_newest"),
+                getString("sort.created_oldest"),
+                getString("sort.modified_newest"),
+                getString("sort.modified_oldest"));
         sortComboBox.getSelectionModel().selectFirst();
 
         sortComboBox.getSelectionModel().selectedItemProperty().addListener(
@@ -1711,7 +1773,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (currentNotesViewMode != NotesViewMode.LIST) {
             currentNotesViewMode = NotesViewMode.LIST;
             applyNotesViewMode();
-            updateStatus("Switched to list view");
+            updateStatus(getString("status.view_list"));
         }
     }
 
@@ -1723,7 +1785,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (currentNotesViewMode != NotesViewMode.GRID) {
             currentNotesViewMode = NotesViewMode.GRID;
             applyNotesViewMode();
-            updateStatus("Switched to grid view");
+            updateStatus(getString("status.view_grid"));
         }
     }
 
@@ -1819,9 +1881,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             return;
 
         // Thresholds for different buttons (cumulative widths approx)
-        boolean showSearch = width > 700;
-        boolean showFileActions = width > 500;
-        boolean showLayoutToggles = width > 350;
+        boolean showSearch = width > 750;
+        boolean showFileActions = width > 550;
+        boolean showLayoutToggles = width > 400;
 
         // File Actions (New, Folder, Tag, Save, Delete)
         newNoteBtn.setVisible(showFileActions);
@@ -1835,9 +1897,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         deleteBtn.setVisible(showFileActions);
         deleteBtn.setManaged(showFileActions);
 
+        // Update separator 2 (between file actions and save/delete) - actually between
+        // file actions group and search
+        toolbarSeparator2.setVisible(showFileActions);
+        toolbarSeparator2.setManaged(showFileActions);
+
         // Search Field
         searchField.setVisible(showSearch);
         searchField.setManaged(showSearch);
+        toolbarSeparator3.setVisible(showSearch);
+        toolbarSeparator3.setManaged(showSearch);
 
         // Layout Toggles
         sidebarToggleBtn.setVisible(showLayoutToggles);
@@ -1846,6 +1915,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         notesPanelToggleBtn.setManaged(showLayoutToggles);
         layoutSwitchBtn.setVisible(showLayoutToggles);
         layoutSwitchBtn.setManaged(showLayoutToggles);
+        toolbarSeparator1.setVisible(showLayoutToggles);
+        toolbarSeparator1.setManaged(showLayoutToggles);
 
         // Manage Overflow Menu
         toolbarOverflowBtn.getItems().clear();
@@ -1853,32 +1924,33 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
 
         if (needsOverflow) {
             if (!showSearch) {
-                MenuItem searchItem = new MenuItem("Search...");
+                MenuItem searchItem = new MenuItem(getString("app.search.placeholder"));
                 searchItem.setOnAction(e -> searchField.requestFocus());
                 toolbarOverflowBtn.getItems().add(searchItem);
                 toolbarOverflowBtn.getItems().add(new SeparatorMenuItem());
             }
             if (!showFileActions) {
-                MenuItem newNote = new MenuItem("New Note");
-                newNote.setOnAction(e -> handleNewNote(null));
-                MenuItem newFolder = new MenuItem("New Folder");
-                newFolder.setOnAction(e -> handleNewFolder(null));
-                MenuItem newTag = new MenuItem("New Tag");
-                newTag.setOnAction(e -> handleNewTag(null));
-                MenuItem save = new MenuItem("Save");
-                save.setOnAction(e -> handleSave(null));
-                MenuItem delete = new MenuItem("Delete");
-                delete.setOnAction(e -> handleDelete(null));
-                toolbarOverflowBtn.getItems().addAll(newNote, newFolder, newTag, save, new SeparatorMenuItem(), delete);
+                MenuItem newNoteItem = new MenuItem(getString("action.new_note"));
+                newNoteItem.setOnAction(e -> handleNewNote(null));
+                MenuItem newFolderItem = new MenuItem(getString("action.new_folder"));
+                newFolderItem.setOnAction(e -> handleNewFolder(null));
+                MenuItem newTagItem = new MenuItem(getString("action.new_tag"));
+                newTagItem.setOnAction(e -> handleNewTag(null));
+                MenuItem saveItem = new MenuItem(getString("action.save"));
+                saveItem.setOnAction(e -> handleSave(null));
+                MenuItem deleteItem = new MenuItem(getString("action.delete"));
+                deleteItem.setOnAction(e -> handleDelete(null));
+                toolbarOverflowBtn.getItems().addAll(newNoteItem, newFolderItem, newTagItem, saveItem,
+                        new SeparatorMenuItem(), deleteItem);
             }
             if (!showLayoutToggles) {
                 if (!toolbarOverflowBtn.getItems().isEmpty())
                     toolbarOverflowBtn.getItems().add(new SeparatorMenuItem());
-                MenuItem toggleSidebar = new MenuItem("Toggle Sidebar");
+                MenuItem toggleSidebar = new MenuItem(getString("action.toggle_sidebar"));
                 toggleSidebar.setOnAction(e -> handleToggleSidebar(null));
-                MenuItem toggleNotes = new MenuItem("Toggle Notes List");
+                MenuItem toggleNotes = new MenuItem(getString("action.toggle_notes_list"));
                 toggleNotes.setOnAction(e -> handleToggleNotesPanel(null));
-                MenuItem switchLayout = new MenuItem("Switch Layout");
+                MenuItem switchLayout = new MenuItem(getString("action.switch_layout"));
                 switchLayout.setOnAction(e -> handleViewLayoutSwitch(null));
                 toolbarOverflowBtn.getItems().addAll(toggleSidebar, toggleNotes, switchLayout);
             }
@@ -1934,7 +2006,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             titleRow.getChildren().add(favIcon);
         }
 
-        Label titleLabel = new Label(note.getTitle() != null ? note.getTitle() : "Untitled");
+        Label titleLabel = new Label(note.getTitle() != null ? note.getTitle() : getString("app.untitled"));
         titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: " + titleColor + ";");
         titleLabel.setWrapText(true);
         titleLabel.setMaxHeight(40);
@@ -2001,12 +2073,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             db.setDragView(card.snapshot(params, null));
 
             event.consume();
-            updateStatus("Dragging: " + note.getTitle());
+            updateStatus(java.text.MessageFormat.format(getString("status.dragging"), note.getTitle()));
         });
 
         card.setOnDragDone(event -> {
             if (event.getTransferMode() == javafx.scene.input.TransferMode.MOVE) {
-                updateStatus("Note moved successfully");
+                updateStatus(getString("status.note_moved"));
             }
             event.consume();
         });
@@ -2083,7 +2155,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private void handleEditorOnlyMode(ActionEvent event) {
         currentViewMode = ViewMode.EDITOR_ONLY;
         applyViewMode();
-        updateStatus("Editor mode");
+        updateStatus(getString("status.mode_editor"));
     }
 
     /**
@@ -2093,7 +2165,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private void handleSplitViewMode(ActionEvent event) {
         currentViewMode = ViewMode.SPLIT;
         applyViewMode();
-        updateStatus("Split view mode");
+        updateStatus(getString("status.mode_split"));
     }
 
     /**
@@ -2103,7 +2175,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private void handlePreviewOnlyMode(ActionEvent event) {
         currentViewMode = ViewMode.PREVIEW_ONLY;
         applyViewMode();
-        updateStatus("Preview mode");
+        updateStatus(getString("status.mode_preview"));
     }
 
     /**
@@ -2218,21 +2290,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         }
 
         if (infoLatitudeLabel != null) {
-            infoLatitudeLabel.setText("Lat: " + (currentNote.getLatitude() != 0 ? currentNote.getLatitude() : "-"));
+            String latVal = currentNote.getLatitude() != 0 ? String.valueOf(currentNote.getLatitude()) : "-";
+            infoLatitudeLabel.setText(java.text.MessageFormat.format(getString("info.lat"), latVal));
         }
         if (infoLongitudeLabel != null) {
-            infoLongitudeLabel.setText("Lon: " + (currentNote.getLongitude() != 0 ? currentNote.getLongitude() : "-"));
+            String lonVal = currentNote.getLongitude() != 0 ? String.valueOf(currentNote.getLongitude()) : "-";
+            infoLongitudeLabel.setText(java.text.MessageFormat.format(getString("info.lon"), lonVal));
         }
         if (infoAuthorLabel != null) {
-            infoAuthorLabel.setText("Author: "
-                    + (currentNote.getAuthor() != null && !currentNote.getAuthor().isEmpty() ? currentNote.getAuthor()
-                            : "-"));
+            String authorVal = (currentNote.getAuthor() != null && !currentNote.getAuthor().isEmpty())
+                    ? currentNote.getAuthor()
+                    : "-";
+            infoAuthorLabel.setText(java.text.MessageFormat.format(getString("info.author"), authorVal));
         }
         if (infoSourceUrlLabel != null) {
-            infoSourceUrlLabel
-                    .setText("URL: " + (currentNote.getSourceUrl() != null && !currentNote.getSourceUrl().isEmpty()
-                            ? currentNote.getSourceUrl()
-                            : "-"));
+            String sourceVal = (currentNote.getSourceUrl() != null && !currentNote.getSourceUrl().isEmpty())
+                    ? currentNote.getSourceUrl()
+                    : "-";
+            infoSourceUrlLabel.setText(java.text.MessageFormat.format(getString("info.source"), sourceVal));
         }
     }
 
@@ -2268,7 +2343,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             logger.info("Loaded " + rootFolders.size() + " root folders");
         } catch (Exception e) {
             logger.severe("Failed to load folders: " + e.getMessage());
-            updateStatus("Error loading folders");
+            updateStatus(getString("status.error_loading_folders"));
         }
     }
 
@@ -2299,7 +2374,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             List<Note> notes = noteDAO.fetchAllNotes();
             notesListView.getItems().setAll(notes);
             sortNotes(sortComboBox.getValue());
-            noteCountLabel.setText(notes.size() + " notes");
+            noteCountLabel.setText(java.text.MessageFormat.format(getString("info.notes_count"), notes.size()));
             currentFolder = null;
             currentTag = null;
             currentFilterType = "all";
@@ -2309,10 +2384,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 Platform.runLater(this::refreshGridView);
             }
 
-            updateStatus("Loaded all notes");
+            updateStatus(getString("status.loaded_all"));
         } catch (Exception e) {
             logger.severe("Failed to load all notes: " + e.getMessage());
-            updateStatus("Error loading notes");
+            updateStatus(getString("status.error_loading"));
         }
     }
 
@@ -2377,15 +2452,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         notesPanelToggleBtn.setSelected(true);
                 }
 
-                updateStatus("Loaded folder: " + currentFolder.getTitle());
+                updateStatus(
+                        java.text.MessageFormat.format(getString("status.loaded_folder"), currentFolder.getTitle()));
                 if (notesPanelTitleLabel != null) {
-                    notesPanelTitleLabel.setText("Notes - " + currentFolder.getTitle());
+                    notesPanelTitleLabel.setText(getString("panel.notes.title") + " - " + currentFolder.getTitle());
                 }
             }
         } catch (Exception e) {
             logger.severe(
                     "Failed to load folder " + (folder != null ? folder.getTitle() : "null") + ": " + e.getMessage());
-            updateStatus("Error loading folder");
+            updateStatus(getString("status.error_loading_folder"));
         }
     }
 
@@ -2439,7 +2515,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         }
 
         isModified = false;
-        updateStatus("Loaded note: " + note.getTitle());
+        updateStatus(java.text.MessageFormat.format(getString("status.note_loaded"), note.getTitle()));
     }
 
     /**
@@ -2523,18 +2599,21 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             infoCharsLabel.setText(String.valueOf(content.length()));
         }
         if (infoLatitudeLabel != null) {
-            infoLatitudeLabel.setText("Lat: " + (note.getLatitude() != 0 ? note.getLatitude() : "-"));
+            String latVal = note.getLatitude() != 0 ? String.valueOf(note.getLatitude()) : "-";
+            infoLatitudeLabel.setText(java.text.MessageFormat.format(getString("info.lat"), latVal));
         }
         if (infoLongitudeLabel != null) {
-            infoLongitudeLabel.setText("Lon: " + (note.getLongitude() != 0 ? note.getLongitude() : "-"));
+            String lonVal = note.getLongitude() != 0 ? String.valueOf(note.getLongitude()) : "-";
+            infoLongitudeLabel.setText(java.text.MessageFormat.format(getString("info.lon"), lonVal));
         }
         if (infoAuthorLabel != null) {
-            infoAuthorLabel.setText(
-                    "Author: " + (note.getAuthor() != null && !note.getAuthor().isEmpty() ? note.getAuthor() : "-"));
+            String authorVal = (note.getAuthor() != null && !note.getAuthor().isEmpty()) ? note.getAuthor() : "-";
+            infoAuthorLabel.setText(java.text.MessageFormat.format(getString("info.author"), authorVal));
         }
         if (infoSourceUrlLabel != null) {
-            infoSourceUrlLabel.setText("URL: "
-                    + (note.getSourceUrl() != null && !note.getSourceUrl().isEmpty() ? note.getSourceUrl() : "-"));
+            String sourceVal = (note.getSourceUrl() != null && !note.getSourceUrl().isEmpty()) ? note.getSourceUrl()
+                    : "-";
+            infoSourceUrlLabel.setText(java.text.MessageFormat.format(getString("info.source"), sourceVal));
         }
     }
 
@@ -2721,7 +2800,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                                     noteDAO.restoreNote(n.getId());
                                     loadTrashNotes();
                                     refreshNotesList();
-                                    updateStatus("Note restored");
+                                    updateStatus(getString("status.note_restored"));
                                 });
                     }
                 });
@@ -2742,7 +2821,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                                     .ifPresent(n -> {
                                         noteDAO.permanentlyDeleteNote(n.getId());
                                         loadTrashNotes();
-                                        updateStatus("Note deleted permanently");
+                                        updateStatus(getString("status.note_deleted_perm"));
                                     });
                         }
                     }
@@ -2765,7 +2844,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                             noteDAO.permanentlyDeleteNote(n.getId());
                         }
                         loadTrashNotes();
-                        updateStatus("Trash emptied");
+                        updateStatus(getString("status.trash_emptied"));
                     }
                 });
 
@@ -2843,7 +2922,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 notesListView.getItems().setAll(notesWithTag);
                 sortNotes(sortComboBox.getValue());
                 noteCountLabel.setText(notesWithTag.size() + " notes with tag: " + tagName);
-                updateStatus("Filtered by tag: " + tagName);
+                updateStatus(java.text.MessageFormat.format(getString("status.filtered_tag"), tagName));
             }
         } catch (Exception e) {
             logger.severe("Failed to filter notes by tag " + tagName + ": " + e.getMessage());
@@ -2880,7 +2959,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
 
             notesListView.getItems().setAll(filteredNotes);
             sortNotes(sortComboBox.getValue());
-            noteCountLabel.setText(filteredNotes.size() + " notes found");
+            noteCountLabel.setText(java.text.MessageFormat.format(getString("info.notes_found"), filteredNotes.size()));
             currentFilterType = "search";
 
             // Refresh grid view if active
@@ -2888,10 +2967,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 Platform.runLater(this::refreshGridView);
             }
 
-            updateStatus("Search: " + searchText);
+            updateStatus(java.text.MessageFormat.format(getString("status.search_active"), searchText));
         } catch (Exception e) {
             logger.severe("Failed to perform search: " + e.getMessage());
-            updateStatus("Search failed");
+            updateStatus(getString("status.search_failed"));
         }
     }
 
@@ -2911,37 +2990,36 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
 
             // Normal matching based on selection
-            switch (sortOption) {
-                case "Title (A-Z)":
-                    String titleA = a.getTitle() != null ? a.getTitle() : "";
-                    String titleB = b.getTitle() != null ? b.getTitle() : "";
-                    return titleA.compareToIgnoreCase(titleB);
-                case "Title (Z-A)":
-                    String titleZA = a.getTitle() != null ? a.getTitle() : "";
-                    String titleZB = b.getTitle() != null ? b.getTitle() : "";
-                    return titleZB.compareToIgnoreCase(titleZA);
-                case "Created (Newest)":
-                    String cDateA = a.getCreatedDate() != null ? a.getCreatedDate() : "";
-                    String cDateB = b.getCreatedDate() != null ? b.getCreatedDate() : "";
-                    return cDateB.compareTo(cDateA);
-                case "Created (Oldest)":
-                    String coDateA = a.getCreatedDate() != null ? a.getCreatedDate() : "";
-                    String coDateB = b.getCreatedDate() != null ? b.getCreatedDate() : "";
-                    return coDateA.compareTo(coDateB);
-                case "Modified (Newest)":
-                    String mDateA = a.getModifiedDate() != null ? a.getModifiedDate()
-                            : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
-                    String mDateB = b.getModifiedDate() != null ? b.getModifiedDate()
-                            : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
-                    return mDateB.compareTo(mDateA);
-                case "Modified (Oldest)":
-                    String moDateA = a.getModifiedDate() != null ? a.getModifiedDate()
-                            : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
-                    String moDateB = b.getModifiedDate() != null ? b.getModifiedDate()
-                            : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
-                    return moDateA.compareTo(moDateB);
-                default:
-                    return 0;
+            if (sortOption.equals(getString("sort.title_az"))) {
+                String titleA = a.getTitle() != null ? a.getTitle() : "";
+                String titleB = b.getTitle() != null ? b.getTitle() : "";
+                return titleA.compareToIgnoreCase(titleB);
+            } else if (sortOption.equals(getString("sort.title_za"))) {
+                String titleZA = a.getTitle() != null ? a.getTitle() : "";
+                String titleZB = b.getTitle() != null ? b.getTitle() : "";
+                return titleZB.compareToIgnoreCase(titleZA);
+            } else if (sortOption.equals(getString("sort.created_newest"))) {
+                String cDateA = a.getCreatedDate() != null ? a.getCreatedDate() : "";
+                String cDateB = b.getCreatedDate() != null ? b.getCreatedDate() : "";
+                return cDateB.compareTo(cDateA);
+            } else if (sortOption.equals(getString("sort.created_oldest"))) {
+                String coDateA = a.getCreatedDate() != null ? a.getCreatedDate() : "";
+                String coDateB = b.getCreatedDate() != null ? b.getCreatedDate() : "";
+                return coDateA.compareTo(coDateB);
+            } else if (sortOption.equals(getString("sort.modified_newest"))) {
+                String mDateA = a.getModifiedDate() != null ? a.getModifiedDate()
+                        : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
+                String mDateB = b.getModifiedDate() != null ? b.getModifiedDate()
+                        : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
+                return mDateB.compareTo(mDateA);
+            } else if (sortOption.equals(getString("sort.modified_oldest"))) {
+                String moDateA = a.getModifiedDate() != null ? a.getModifiedDate()
+                        : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
+                String moDateB = b.getModifiedDate() != null ? b.getModifiedDate()
+                        : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
+                return moDateA.compareTo(moDateB);
+            } else {
+                return 0;
             }
         });
 
@@ -3198,7 +3276,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     @FXML
     private void handleAddTagToNote() {
         if (currentNote == null) {
-            updateStatus("No note selected");
+            updateStatus(getString("status.no_note"));
             return;
         }
 
@@ -3278,30 +3356,30 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     loadNoteTags(currentNote);
                     // Update tags list in sidebar
                     loadTags();
-                    updateStatus("Added tag: " + tagName);
+                    updateStatus(java.text.MessageFormat.format(getString("status.tag_added"), tagName));
                 }
             }
         } catch (Exception e) {
             logger.severe("Failed to add tag: " + e.getMessage());
-            updateStatus("Error adding tag");
+            updateStatus(getString("status.tag_add_error"));
         }
     }
 
     private ContextMenu createFolderContextMenu(Folder folder) {
         ContextMenu contextMenu = new ContextMenu();
-        MenuItem newNoteItem = new MenuItem("New Note");
+        MenuItem newNoteItem = new MenuItem(getString("action.new_note"));
         newNoteItem.setOnAction(e -> {
             currentFolder = folder;
             handleNewNote(e);
         });
-        MenuItem newFolderItem = new MenuItem("New Subfolder");
+        MenuItem newFolderItem = new MenuItem(getString("action.new_subfolder"));
         newFolderItem.setOnAction(e -> {
             currentFolder = folder;
             handleNewSubfolder(e);
         });
-        MenuItem renameItem = new MenuItem("Rename");
+        MenuItem renameItem = new MenuItem(getString("action.rename"));
         renameItem.setOnAction(e -> handleRenameFolder(folder));
-        MenuItem deleteItem = new MenuItem("Delete");
+        MenuItem deleteItem = new MenuItem(getString("action.delete"));
         deleteItem.setOnAction(e -> handleDeleteFolder(folder));
         contextMenu.getItems().addAll(newNoteItem, newFolderItem, renameItem, deleteItem);
         return contextMenu;
@@ -3309,13 +3387,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
 
     private ContextMenu createNoteContextMenu(Note note) {
         ContextMenu contextMenu = new ContextMenu();
-        MenuItem openItem = new MenuItem("Open");
+        MenuItem openItem = new MenuItem(getString("action.open"));
         openItem.setOnAction(e -> loadNoteInEditor(note));
-        MenuItem favoriteItem = new MenuItem(note.isFavorite() ? "Remove from Favorites" : "Add to Favorites");
+        MenuItem favoriteItem = new MenuItem(
+                note.isFavorite() ? getString("action.remove_favorite") : getString("action.add_favorite"));
         favoriteItem.setOnAction(e -> toggleFavorite(note));
-        MenuItem pinItem = new MenuItem(note.isPinned() ? "Unpin Note" : "Pin Note");
+        MenuItem pinItem = new MenuItem(
+                note.isPinned() ? getString("action.unpin_note") : getString("action.pin_note"));
         pinItem.setOnAction(e -> togglePin(note));
-        MenuItem deleteItem = new MenuItem("Move to Trash");
+        MenuItem deleteItem = new MenuItem(getString("action.move_to_trash"));
         deleteItem.setOnAction(e -> deleteNote(note));
         contextMenu.getItems().addAll(openItem, favoriteItem, pinItem, new SeparatorMenuItem(), deleteItem);
         return contextMenu;
@@ -3323,9 +3403,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
 
     private ContextMenu createTagContextMenu(Tag tag) {
         ContextMenu contextMenu = new ContextMenu();
-        MenuItem renameItem = new MenuItem("Rename Tag");
+        MenuItem renameItem = new MenuItem(getString("action.rename_tag"));
         renameItem.setOnAction(e -> handleRenameTag(tag));
-        MenuItem deleteItem = new MenuItem("Delete Tag");
+        MenuItem deleteItem = new MenuItem(getString("action.delete_tag"));
         deleteItem.setOnAction(e -> handleDeleteTag(tag));
         contextMenu.getItems().addAll(renameItem, deleteItem);
         return contextMenu;
@@ -3336,29 +3416,29 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
      */
     private void removeTagFromNote(Tag tag) {
         if (currentNote == null) {
-            updateStatus("No note selected");
+            updateStatus(getString("status.no_note_selected"));
             return;
         }
         if (tag == null || tag.getId() == null) {
-            updateStatus("Invalid tag");
+            updateStatus(getString("status.invalid_tag"));
             return;
         }
 
         // Confirm removal
         Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle("Remove Tag");
-        confirm.setHeaderText("Remove tag '" + tag.getTitle() + "' from this note?");
-        confirm.setContentText("This will only remove the tag from this note, not delete the tag itself.");
+        confirm.setTitle(getString("dialog.remove_tag.title"));
+        confirm.setHeaderText(java.text.MessageFormat.format(getString("dialog.remove_tag.header"), tag.getTitle()));
+        confirm.setContentText(getString("dialog.remove_tag.content"));
 
         Optional<ButtonType> result = confirm.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
                 noteDAO.removeTag(currentNote, tag);
                 loadNoteTags(currentNote);
-                updateStatus("Removed tag: " + tag.getTitle());
+                updateStatus(java.text.MessageFormat.format(getString("status.tag_removed"), tag.getTitle()));
             } catch (Exception e) {
                 logger.severe("Failed to remove tag: " + e.getMessage());
-                updateStatus("Error removing tag: " + e.getMessage());
+                updateStatus(java.text.MessageFormat.format(getString("status.tag_remove_error"), e.getMessage()));
             }
         }
     }
@@ -3378,7 +3458,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     @FXML
     private void handleNewNote(ActionEvent event) {
         try {
-            Note newNote = new Note("New Note", "");
+            Note newNote = new Note(getString("action.new_note"), "");
             int noteId = noteDAO.createNote(newNote);
             newNote.setId(noteId);
 
@@ -3393,29 +3473,32 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             // Refresh recent notes to include new note
             loadRecentNotes();
 
-            updateStatus("Created new note");
+            updateStatus(getString("status.note_created"));
         } catch (Exception e) {
             logger.severe("Failed to create new note: " + e.getMessage());
-            updateStatus("Error creating note");
+            updateStatus(getString("status.error_creating_note"));
         }
     }
 
     @FXML
     private void handleNewFolder(ActionEvent event) {
-        // Create dialog with option to create in root or as subfolder
-        TextInputDialog dialog = new TextInputDialog("New Folder");
-        dialog.setTitle("New Folder");
+        // Create dialog
+        TextInputDialog dialog = new TextInputDialog("");
+        dialog.setTitle(getString("dialog.new_folder.title"));
 
         // Determine if we should create in root or as subfolder
         boolean createInRoot = (currentFolder == null ||
+                currentFolder.getTitle().equals(getString("app.all_notes")) ||
                 currentFolder.getTitle().equals("All Notes") ||
-                currentFolder.getTitle().equals("📚 All Notes"));
+                currentFolder.getTitle().equals("📚 All Notes") ||
+                currentFolder.getTitle().endsWith("All Notes")); // Robust check
+
         String headerText = createInRoot
-                ? "Create a new folder in root (All Notes)"
-                : "Create a new folder in: " + currentFolder.getTitle()
-                        + "\n(Click '📚 All Notes' in tree to create in root)";
+                ? getString("dialog.new_folder.header_root")
+                : java.text.MessageFormat.format(getString("dialog.new_folder.header_sub"), currentFolder.getTitle());
+
         dialog.setHeaderText(headerText);
-        dialog.setContentText("Folder name:");
+        dialog.setContentText(getString("dialog.new_folder.content"));
 
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
@@ -3425,21 +3508,21 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 newFolder.setId(folderId);
 
                 // Only add as subfolder if currentFolder is set and not "All Notes"
-                if (!createInRoot && currentFolder != null &&
-                        !currentFolder.getTitle().equals("All Notes") &&
-                        !currentFolder.getTitle().equals("📚 All Notes")) {
+                if (!createInRoot && currentFolder != null) {
                     folderDAO.addSubFolder(currentFolder, newFolder);
                 }
                 // Otherwise, it's created in root (parent_id will be NULL)
 
                 loadFolders();
                 // Select "All Notes" root to make it clear where new folders are created
-                folderTreeView.getSelectionModel().select(folderTreeView.getRoot());
+                if (folderTreeView.getRoot() != null) {
+                    folderTreeView.getSelectionModel().select(folderTreeView.getRoot());
+                }
                 currentFolder = null;
-                updateStatus("Created folder: " + newFolder.getTitle());
+                updateStatus(java.text.MessageFormat.format(getString("status.folder_created"), newFolder.getTitle()));
             } catch (Exception e) {
                 logger.severe("Failed to create folder: " + e.getMessage());
-                updateStatus("Error creating folder: " + e.getMessage());
+                updateStatus(getString("status.error") + ": " + e.getMessage());
             }
         }
     }
@@ -3470,10 +3553,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 folderDAO.addSubFolder(currentFolder, newSubfolder);
 
                 loadFolders();
-                updateStatus("Created subfolder: " + newSubfolder.getTitle());
+                updateStatus(
+                        java.text.MessageFormat.format(getString("status.subfolder_created"), newSubfolder.getTitle()));
             } catch (Exception e) {
                 logger.severe("Failed to create subfolder: " + e.getMessage());
-                updateStatus("Error creating subfolder");
+                updateStatus(getString("status.subfolder_error"));
             }
         }
     }
@@ -3499,10 +3583,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     eventBus.publish(new NoteEvents.NoteSavedEvent(currentNote));
                 }
 
-                updateStatus("Saved: " + currentNote.getTitle());
+                updateStatus(java.text.MessageFormat.format(getString("status.saved_note"), currentNote.getTitle()));
             } catch (Exception e) {
                 logger.severe("Failed to save note: " + e.getMessage());
-                updateStatus("Error saving note");
+                updateStatus(getString("status.error_saving"));
             }
         }
     }
@@ -3529,7 +3613,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (currentNote != null && isModified) {
             handleSave(event);
         }
-        updateStatus("All notes saved");
+        updateStatus(getString("status.saved_all"));
     }
 
     @FXML
@@ -3542,7 +3626,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             TreeItem<Folder> selectedFolderItem = folderTreeView.getSelectionModel().getSelectedItem();
             if (selectedFolderItem != null && selectedFolderItem.getValue() != null) {
                 Folder folder = selectedFolderItem.getValue();
-                if (!"All Notes".equals(folder.getTitle())) {
+                String rootTitle = getString("app.all_notes");
+                if (!folder.getTitle().equals(rootTitle) && !"All Notes".equals(folder.getTitle())) {
                     handleDeleteFolder(folder);
                     return;
                 }
@@ -3575,7 +3660,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             return;
         }
 
-        updateStatus("Selecciona algo para borrar (nota, carpeta o etiqueta)");
+        updateStatus(getString("status.nothing_to_delete"));
     }
 
     /**
@@ -3586,9 +3671,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             return;
 
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Move to Trash");
-        alert.setHeaderText("Do you want to move this note to the trash?");
-        alert.setContentText("You can restore it later from the Trash tab.");
+        alert.setTitle(getString("dialog.delete_note.title"));
+        alert.setHeaderText(getString("dialog.delete_note.header"));
+        alert.setContentText(getString("dialog.delete_note.content"));
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -3610,10 +3695,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 loadFavorites();
                 loadTrashNotes();
 
-                updateStatus("Note moved to trash");
+                updateStatus(getString("status.note_moved_trash"));
             } catch (Exception e) {
                 logger.severe("Failed to delete note: " + e.getMessage());
-                updateStatus("Error deleting note");
+                updateStatus(getString("status.note_delete_error"));
             }
         }
     }
@@ -3696,30 +3781,31 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             loadRecentNotes();
 
             // Show result
-            String message = "Imported " + imported + " note(s)";
+            String message = java.text.MessageFormat.format(getString("status.imported_notes"), imported);
             if (failed > 0) {
-                message += "\nFailed: " + failed + " file(s)";
+                message += "\n" + java.text.MessageFormat.format(getString("status.import_failed_count"), failed);
             }
             updateStatus(message);
-            showAlert(Alert.AlertType.INFORMATION, "Import Complete",
-                    "Import finished", message);
+            showAlert(Alert.AlertType.INFORMATION, getString("status.import_complete"),
+                    getString("dialog.import_finished"), message);
         }
     }
 
     @FXML
     private void handleExport(ActionEvent event) {
         if (currentNote == null) {
-            showAlert(Alert.AlertType.WARNING, "Export", "No note selected", "Please select a note to export.");
+            showAlert(Alert.AlertType.WARNING, getString("dialog.export.title"),
+                    getString("dialog.export.no_note_header"), getString("dialog.export.no_note_content"));
             return;
         }
 
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Export Note");
+        fileChooser.setTitle(getString("dialog.export.save_title"));
         fileChooser.setInitialFileName(sanitizeFileName(currentNote.getTitle()));
         fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Markdown Files", "*.md"),
-                new FileChooser.ExtensionFilter("Text Files", "*.txt"),
-                new FileChooser.ExtensionFilter("All Files", "*.*"));
+                new FileChooser.ExtensionFilter(getString("file_filter.markdown"), "*.md"),
+                new FileChooser.ExtensionFilter(getString("file_filter.text"), "*.txt"),
+                new FileChooser.ExtensionFilter(getString("file_filter.all"), "*.*"));
 
         File file = fileChooser.showSaveDialog(mainSplitPane.getScene().getWindow());
         if (file != null) {
@@ -3729,13 +3815,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     writer.write("# " + currentNote.getTitle() + "\n\n");
                 }
                 writer.write(currentNote.getContent() != null ? currentNote.getContent() : "");
-                updateStatus("Exported: " + file.getName());
-                showAlert(Alert.AlertType.INFORMATION, "Export Successful",
-                        "Note exported successfully", "Saved to: " + file.getAbsolutePath());
+                updateStatus(java.text.MessageFormat.format(getString("status.exported"), file.getName()));
+                showAlert(Alert.AlertType.INFORMATION, getString("status.export_success"),
+                        getString("dialog.export.success_header"),
+                        java.text.MessageFormat.format(getString("dialog.export.saved_to"), file.getAbsolutePath()));
             } catch (IOException e) {
                 logger.severe("Failed to export note: " + e.getMessage());
-                showAlert(Alert.AlertType.ERROR, "Export Failed",
-                        "Could not export note", e.getMessage());
+                showAlert(Alert.AlertType.ERROR, getString("status.export_failed"),
+                        getString("dialog.export.failed_header"), e.getMessage());
             }
         }
     }
@@ -3771,7 +3858,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     @FXML
     private void handleRedo(ActionEvent event) {
         // JavaFX TextArea doesn't have redo by default
-        updateStatus("Redo not available in TextArea");
+        updateStatus(getString("status.redo_not_available"));
     }
 
     @FXML
@@ -3817,9 +3904,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 if (index >= 0) {
                     noteContentArea.selectRange(index, index + searchText.length());
                     noteContentArea.requestFocus();
-                    updateStatus("Found: " + searchText);
+                    updateStatus(java.text.MessageFormat.format(getString("status.found_text"), searchText));
                 } else {
-                    updateStatus("Text not found: " + searchText);
+                    updateStatus(java.text.MessageFormat.format(getString("status.text_not_found"), searchText));
                 }
             }
         }
@@ -3828,7 +3915,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     @FXML
     private void handleReplace(ActionEvent event) {
         if (noteContentArea == null) {
-            updateStatus("No note open");
+            updateStatus(getString("status.no_note_open"));
             return;
         }
 
@@ -3873,7 +3960,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 if (replaceAll) {
                     String newContent = noteContent.replace(find, replace);
                     noteContentArea.setText(newContent);
-                    updateStatus("Replaced all occurrences");
+                    updateStatus(getString("status.replaced_all"));
                 } else {
                     int index = noteContent.indexOf(find);
                     if (index >= 0) {
@@ -3881,9 +3968,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                                 noteContent.substring(index + find.length());
                         noteContentArea.setText(newContent);
                         noteContentArea.selectRange(index, index + replace.length());
-                        updateStatus("Replaced first occurrence");
+                        updateStatus(getString("status.replaced_first"));
                     } else {
-                        updateStatus("Text not found");
+                        updateStatus(getString("status.text_not_found_general"));
                     }
                 }
                 isModified = true;
@@ -3906,7 +3993,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         navSplitPane.setMaxWidth(Double.MAX_VALUE);
                         navSplitPane.setPrefWidth(300);
                         mainSplitPane.setDividerPositions(0.25);
-                        updateStatus("Navigation panel shown");
+                        updateStatus(getString("status.nav_shown"));
                         if (sidebarToggleBtn != null)
                             sidebarToggleBtn.setSelected(true);
                     } else {
@@ -3914,7 +4001,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         navSplitPane.setMinWidth(0);
                         navSplitPane.setMaxWidth(0);
                         navSplitPane.setPrefWidth(0);
-                        updateStatus("Navigation panel hidden");
+                        updateStatus(getString("status.nav_hidden"));
                         if (sidebarToggleBtn != null)
                             sidebarToggleBtn.setSelected(false);
                     }
@@ -3929,7 +4016,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     sidebarPane.setMaxWidth(Double.MAX_VALUE);
                     sidebarPane.setPrefWidth(250);
                     mainSplitPane.setDividerPositions(0.22);
-                    updateStatus("Sidebar shown");
+                    updateStatus(getString("status.sidebar_shown"));
                     if (sidebarToggleBtn != null)
                         sidebarToggleBtn.setSelected(true);
                 } else {
@@ -3937,7 +4024,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     sidebarPane.setMinWidth(0);
                     sidebarPane.setMaxWidth(0);
                     sidebarPane.setPrefWidth(0);
-                    updateStatus("Sidebar hidden");
+                    updateStatus(getString("status.sidebar_hidden"));
                     if (sidebarToggleBtn != null)
                         sidebarToggleBtn.setSelected(false);
                 }
@@ -3966,7 +4053,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 if (contentSplitPane != null) {
                     contentSplitPane.setDividerPositions(0.25);
                 }
-                updateStatus("Notes panel shown");
+                updateStatus(getString("status.notes_panel_shown"));
                 if (notesPanelToggleBtn != null)
                     notesPanelToggleBtn.setSelected(true);
             } else {
@@ -3974,10 +4061,65 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 notesPanel.setMinWidth(0);
                 notesPanel.setMaxWidth(0);
                 notesPanel.setPrefWidth(0);
-                updateStatus("Notes panel hidden");
+                updateStatus(getString("status.notes_panel_hidden"));
                 if (notesPanelToggleBtn != null)
                     notesPanelToggleBtn.setSelected(false);
             }
+        }
+    }
+
+    @FXML
+    private void handleZoomIn(ActionEvent event) {
+        uiFontSize += 1.0;
+        applyUiZoom();
+    }
+
+    @FXML
+    private void handleZoomOut(ActionEvent event) {
+        if (uiFontSize > 8.0) {
+            uiFontSize -= 1.0;
+            applyUiZoom();
+        }
+    }
+
+    @FXML
+    private void handleResetZoom(ActionEvent event) {
+        uiFontSize = 13.0; // Default
+        applyUiZoom();
+    }
+
+    private void applyUiZoom() {
+        if (toolbarHBox != null && toolbarHBox.getScene() != null) {
+            toolbarHBox.getScene().getRoot().setStyle("-fx-font-size: " + uiFontSize + "px;");
+        }
+    }
+
+    @FXML
+    private void handleEditorZoomIn(ActionEvent event) {
+        editorFontSize += 1.0;
+        applyEditorZoom();
+    }
+
+    @FXML
+    private void handleEditorZoomOut(ActionEvent event) {
+        if (editorFontSize > 8.0) {
+            editorFontSize -= 1.0;
+            applyEditorZoom();
+        }
+    }
+
+    @FXML
+    private void handleEditorResetZoom(ActionEvent event) {
+        editorFontSize = 14.0; // Default
+        applyEditorZoom();
+    }
+
+    private void applyEditorZoom() {
+        if (noteContentArea != null) {
+            noteContentArea.setStyle("-fx-font-size: " + editorFontSize + "px;");
+        }
+        if (noteTitleField != null) {
+            noteTitleField.setStyle("-fx-font-size: " + (editorFontSize + 2) + "px;");
         }
     }
 
@@ -4007,7 +4149,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             mainSplitPane.getItems().addAll(navSplitPane, editorContainer);
             mainSplitPane.setDividerPositions(0.25);
 
-            updateStatus("Switched to Stacked Layout");
+            updateStatus(getString("status.layout_stacked"));
         } else {
             // Default Mode: [Sidebar] | [ContentSplit(Notes|EditorContainer)]
             // Note: editorContainer is inside contentSplitPane in default view
@@ -4017,7 +4159,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             mainSplitPane.getItems().addAll(sidebarPane, contentSplitPane);
             mainSplitPane.setDividerPositions(0.22);
 
-            updateStatus("Switched to Column Layout");
+            updateStatus(getString("status.layout_column"));
         }
 
         // Synch toggle buttons
@@ -4047,48 +4189,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         }
     }
 
-    // Zoom settings
-    private double currentZoom = 1.0;
-    private static final double ZOOM_STEP = 0.1;
-    private static final double MIN_ZOOM = 0.5;
-    private static final double MAX_ZOOM = 3.0;
-
     // Preferences for persistence
     private static final Preferences prefs = Preferences.userNodeForPackage(MainController.class);
-
-    @FXML
-    private void handleZoomIn(ActionEvent event) {
-        if (currentZoom < MAX_ZOOM) {
-            currentZoom = Math.min(currentZoom + ZOOM_STEP, MAX_ZOOM);
-            applyZoom();
-            updateStatus("Zoom: " + (int) (currentZoom * 100) + "%");
-        }
-    }
-
-    @FXML
-    private void handleZoomOut(ActionEvent event) {
-        if (currentZoom > MIN_ZOOM) {
-            currentZoom = Math.max(currentZoom - ZOOM_STEP, MIN_ZOOM);
-            applyZoom();
-            updateStatus("Zoom: " + (int) (currentZoom * 100) + "%");
-        }
-    }
-
-    @FXML
-    private void handleResetZoom(ActionEvent event) {
-        currentZoom = 1.0;
-        applyZoom();
-        updateStatus("Zoom reset to 100%");
-    }
-
-    private void applyZoom() {
-        if (noteContentArea != null) {
-            noteContentArea.setStyle("-fx-font-size: " + (14 * currentZoom) + "px;");
-        }
-        if (noteTitleField != null) {
-            noteTitleField.setStyle("-fx-font-size: " + (16 * currentZoom) + "px;");
-        }
-    }
 
     private String currentTheme = prefs.get("theme", "light"); // Load from preferences
 
@@ -4098,7 +4200,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         prefs.put("theme", currentTheme); // Save preference
         updateThemeMenuSelection();
         applyTheme();
-        updateStatus("Light theme applied");
+        updateStatus(getString("status.theme_light"));
     }
 
     @FXML
@@ -4107,7 +4209,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         prefs.put("theme", currentTheme); // Save preference
         updateThemeMenuSelection();
         applyTheme();
-        updateStatus("Dark theme applied");
+        updateStatus(getString("status.theme_dark"));
     }
 
     @FXML
@@ -4152,7 +4254,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         applyTheme();
         currentTheme = previousTheme; // Restore system mode
 
-        updateStatus("System theme applied (" + actualTheme + ")");
+        updateStatus(java.text.MessageFormat.format(getString("status.theme_system"), actualTheme));
     }
 
     /**
@@ -4253,7 +4355,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (searchField != null) {
             searchField.requestFocus();
             searchField.selectAll();
-            updateStatus("Search field focused - Type to search");
+            updateStatus(getString("status.search_focused"));
         }
     }
 
@@ -4300,7 +4402,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                                     tagDAO.deleteTag(tag.getId());
                                     tagListView.getItems().remove(tag);
                                     loadTags(); // Refresh sidebar
-                                    updateStatus("Tag deleted: " + tag.getTitle());
+                                    updateStatus(java.text.MessageFormat.format(getString("status.tag_deleted"),
+                                            tag.getTitle()));
                                 } catch (Exception ex) {
                                     logger.severe("Failed to delete tag: " + ex.getMessage());
                                 }
@@ -4321,7 +4424,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             dialog.showAndWait();
         } catch (Exception e) {
             logger.severe("Failed to open tags manager: " + e.getMessage());
-            updateStatus("Error opening tags manager");
+            updateStatus(getString("status.tags_manager_error"));
         }
     }
 
@@ -4500,7 +4603,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     currentFilterType = "favorites";
                     currentFolder = null;
                     currentTag = null;
-                    updateStatus("Refreshed favorites");
+                    updateStatus(getString("status.favs_refreshed"));
                     break;
                 case "search":
                     // Re-execute current search
@@ -4517,14 +4620,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
         } catch (Exception e) {
             logger.severe("Failed to refresh: " + e.getMessage());
-            updateStatus("Error refreshing");
+            updateStatus(getString("status.refresh_error"));
         }
     }
 
     @FXML
     private void handleToggleFavorite(ActionEvent event) {
         if (currentNote == null) {
-            updateStatus("No note selected");
+            updateStatus(getString("status.no_note"));
             return;
         }
         toggleFavorite(currentNote);
@@ -4557,14 +4660,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus(newFavoriteStatus ? "Note marked as favorite" : "Note unmarked as favorite");
         } catch (Exception e) {
             logger.severe("Failed to toggle favorite: " + e.getMessage());
-            updateStatus("Error toggling favorite");
+            updateStatus(getString("status.fav_error"));
         }
     }
 
     @FXML
     private void handleTogglePin(ActionEvent event) {
         if (currentNote == null) {
-            updateStatus("No note selected");
+            updateStatus(getString("status.no_note"));
             return;
         }
         togglePin(currentNote);
@@ -4588,7 +4691,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             updateStatus(newPinStatus ? "Note pinned" : "Note unpinned");
         } catch (Exception e) {
             logger.severe("Failed to toggle pin: " + e.getMessage());
-            updateStatus("Error toggling pin");
+            updateStatus(getString("status.pin_error"));
         }
     }
 
@@ -4621,9 +4724,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     @FXML
     private void handleNewTag(ActionEvent event) {
         TextInputDialog dialog = new TextInputDialog();
-        dialog.setTitle("New Tag");
-        dialog.setHeaderText("Create a new tag");
-        dialog.setContentText("Tag name:");
+        dialog.setTitle(getString("dialog.new_tag.title"));
+        dialog.setHeaderText(getString("dialog.new_tag.header"));
+        dialog.setContentText(getString("dialog.new_tag.content"));
 
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
@@ -4631,19 +4734,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 String tagName = result.get().trim();
                 if (tagDAO.existsByTitle(tagName)) {
                     Alert alert = new Alert(Alert.AlertType.WARNING);
-                    alert.setTitle("Tag Already Exists");
-                    alert.setHeaderText("A tag with this name already exists");
-                    alert.setContentText("Please choose a different name.");
+                    alert.setTitle(getString("dialog.tag_exists.title"));
+                    alert.setHeaderText(getString("dialog.tag_exists.header"));
+                    alert.setContentText(getString("dialog.tag_exists.content"));
                     alert.showAndWait();
                 } else {
                     Tag newTag = new Tag(tagName);
                     tagDAO.createTag(newTag);
                     loadTags(); // Refresh tag list
-                    updateStatus("Created tag: " + tagName);
+                    updateStatus(java.text.MessageFormat.format(getString("status.tag_created"), tagName));
                 }
             } catch (Exception e) {
                 logger.severe("Failed to create tag: " + e.getMessage());
-                updateStatus("Error creating tag");
+                updateStatus(getString("status.error") + ": " + e.getMessage());
             }
         }
     }
@@ -4676,20 +4779,20 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     @FXML
     private void handleBold(ActionEvent event) {
         insertMarkdownFormat("**", "**");
-        updateStatus("Bold formatting applied");
+        updateStatus(getString("status.bold"));
     }
 
     @FXML
     private void handleItalic(ActionEvent event) {
         insertMarkdownFormat("*", "*");
-        updateStatus("Italic formatting applied");
+        updateStatus(getString("status.italic"));
     }
 
     @FXML
     private void handleUnderline(ActionEvent event) {
         // Markdown doesn't have underline, but we can use HTML in preview
         insertMarkdownFormat("<u>", "</u>");
-        updateStatus("Underline formatting applied");
+        updateStatus(getString("status.underline"));
     }
 
     @FXML
@@ -4720,7 +4823,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
             noteContentArea.requestFocus();
             isModified = true;
-            updateStatus("Link inserted");
+            updateStatus(getString("status.link"));
         }
     }
 
@@ -4752,14 +4855,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             }
             noteContentArea.requestFocus();
             isModified = true;
-            updateStatus("Image inserted");
+            updateStatus(getString("status.image"));
         }
     }
 
     @FXML
     private void handleAttachment(ActionEvent event) {
         // Attachments would require file storage - placeholder for now
-        updateStatus("File attachments require file storage system");
+        updateStatus(getString("status.attachments_not_supported"));
     }
 
     @FXML
@@ -4788,7 +4891,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         }
         noteContentArea.requestFocus();
         isModified = true;
-        updateStatus("Todo item inserted");
+        updateStatus(getString("status.todo"));
     }
 
     @FXML
@@ -4817,7 +4920,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         }
         noteContentArea.requestFocus();
         isModified = true;
-        updateStatus("Numbered list item inserted");
+        updateStatus(getString("status.number"));
     }
 
     @FXML
@@ -4825,7 +4928,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (noteContentArea == null)
             return;
         insertLinePrefix("# ");
-        updateStatus("Heading 1 inserted");
+        updateStatus(getString("status.h1"));
     }
 
     @FXML
@@ -4833,7 +4936,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (noteContentArea == null)
             return;
         insertLinePrefix("## ");
-        updateStatus("Heading 2 inserted");
+        updateStatus(getString("status.h2"));
     }
 
     @FXML
@@ -4841,7 +4944,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (noteContentArea == null)
             return;
         insertLinePrefix("- ");
-        updateStatus("Bullet list item inserted");
+        updateStatus(getString("status.bullet"));
     }
 
     @FXML
@@ -4857,7 +4960,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             // Single line: inline code
             insertMarkdownFormat("`", "`");
         }
-        updateStatus("Code formatting applied");
+        updateStatus(getString("status.code"));
     }
 
     @FXML
@@ -4865,7 +4968,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (noteContentArea == null)
             return;
         insertLinePrefix("> ");
-        updateStatus("Quote inserted");
+        updateStatus(getString("status.quote"));
     }
 
     @FXML
@@ -4873,19 +4976,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
         if (noteContentArea == null)
             return;
         insertLinePrefix("### ");
-        updateStatus("Heading 3 inserted");
+        updateStatus(getString("status.h3"));
     }
 
     @FXML
     private void handleRealUnderline(ActionEvent event) {
         insertMarkdownFormat("<u>", "</u>");
-        updateStatus("Underline formatting applied");
+        updateStatus(getString("status.underline"));
     }
 
     @FXML
     private void handleHighlight(ActionEvent event) {
         insertMarkdownFormat("==", "==");
-        updateStatus("Highlight formatting applied");
+        updateStatus(getString("status.highlight"));
     }
 
     /**
@@ -4924,9 +5027,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             Folder folderToRename = folderDAO.getFolderById(folder.getId());
             if (folderToRename != null) {
                 TextInputDialog dialog = new TextInputDialog(folderToRename.getTitle());
-                dialog.setTitle("Rename Folder");
-                dialog.setHeaderText("Rename folder");
-                dialog.setContentText("New name:");
+                dialog.setTitle(getString("dialog.rename_folder.title"));
+                dialog.setHeaderText(getString("dialog.rename_folder.header"));
+                dialog.setContentText(getString("dialog.rename_folder.content"));
 
                 Optional<String> result = dialog.showAndWait();
                 if (result.isPresent() && !result.get().trim().isEmpty()
@@ -4934,12 +5037,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                     folderToRename.setTitle(result.get().trim());
                     folderDAO.updateFolder(folderToRename);
                     loadFolders();
-                    updateStatus("Renamed folder to: " + result.get());
+                    updateStatus(java.text.MessageFormat.format(getString("status.renamed_folder"), result.get()));
                 }
             }
         } catch (Exception e) {
             logger.severe("Failed to rename folder: " + e.getMessage());
-            updateStatus("Error renaming folder");
+            updateStatus(getString("status.error_renaming_folder"));
         }
     }
 
@@ -4953,9 +5056,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             Folder folderToDelete = folderDAO.getFolderById(folder.getId());
             if (folderToDelete != null) {
                 Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-                alert.setTitle("Delete Folder");
-                alert.setHeaderText("Are you sure you want to delete this folder?");
-                alert.setContentText("All notes in this folder will be moved to the root.");
+                alert.setTitle(getString("dialog.delete_folder.title"));
+                alert.setHeaderText(getString("dialog.delete_folder.header"));
+                alert.setContentText(getString("dialog.delete_folder.content"));
 
                 Optional<ButtonType> result = alert.showAndWait();
                 if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -4965,12 +5068,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         currentFolder = null;
                         loadAllNotes();
                     }
-                    updateStatus("Deleted folder: " + folderToDelete.getTitle());
+                    updateStatus(java.text.MessageFormat.format(getString("status.deleted_folder"),
+                            folderToDelete.getTitle()));
                 }
             }
         } catch (Exception e) {
             logger.severe("Failed to delete folder: " + e.getMessage());
-            updateStatus("Error deleting folder");
+            updateStatus(getString("status.error_deleting_folder"));
         }
     }
 
@@ -4982,9 +5086,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             return;
 
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Delete Tag");
-        alert.setHeaderText("Are you sure you want to delete this tag?");
-        alert.setContentText("The tag '" + tag.getTitle() + "' will be removed from all notes.");
+        alert.setTitle(getString("dialog.delete_tag.title"));
+        alert.setHeaderText(getString("dialog.delete_tag.header"));
+        alert.setContentText(java.text.MessageFormat.format(getString("dialog.delete_tag.content"), tag.getTitle()));
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
@@ -4993,10 +5097,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 loadTags();
                 if (currentNote != null)
                     loadNoteTags(currentNote);
-                updateStatus("Deleted tag: " + tag.getTitle());
+                updateStatus(java.text.MessageFormat.format(getString("status.deleted_tag"), tag.getTitle()));
             } catch (Exception e) {
                 logger.severe("Failed to delete tag: " + e.getMessage());
-                updateStatus("Error deleting tag");
+                updateStatus(getString("status.error_deleting_tag"));
             }
         }
     }
@@ -5009,9 +5113,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             return;
 
         TextInputDialog dialog = new TextInputDialog(tag.getTitle());
-        dialog.setTitle("Rename Tag");
-        dialog.setHeaderText("Rename tag");
-        dialog.setContentText("New name:");
+        dialog.setTitle(getString("dialog.rename_tag.title"));
+        dialog.setHeaderText(getString("dialog.rename_tag.header"));
+        dialog.setContentText(getString("dialog.rename_tag.content"));
 
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty() && !result.get().equals(tag.getTitle())) {
@@ -5021,10 +5125,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                 loadTags();
                 if (currentNote != null)
                     loadNoteTags(currentNote);
-                updateStatus("Renamed tag to: " + result.get());
+                updateStatus(java.text.MessageFormat.format(getString("status.renamed_tag"), result.get()));
             } catch (Exception e) {
                 logger.severe("Failed to rename tag: " + e.getMessage());
-                updateStatus("Error renaming tag");
+                updateStatus(getString("status.error_renaming_tag"));
             }
         }
     }

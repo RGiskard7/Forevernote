@@ -72,11 +72,16 @@
 }
 
 .tree-cell:selected .feather-pin-active,
-.list-cell:selected .feather-pin-active,
-.note-card:hover .feather-pin-active {
+.list-cell:selected .feather-pin-active {
     -fx-icon-color: -fx-accent-contrast;
     -fx-fill: -fx-accent-contrast;
     fill: -fx-accent-contrast;
+}
+
+.note-card:hover .feather-pin-active {
+    -fx-icon-color: -fx-accent;
+    -fx-fill: -fx-accent;
+    fill: -fx-accent;
 }
 
 .feather-icon-danger {

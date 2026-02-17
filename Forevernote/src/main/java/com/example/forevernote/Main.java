@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.ResourceBundle;
 import java.util.logging.Logger;
 
 /**
@@ -46,8 +47,14 @@ public class Main extends Application {
             performAutomaticBackup();
             initializeDatabase();
 
+            java.util.prefs.Preferences prefs = java.util.prefs.Preferences
+                    .userNodeForPackage(com.example.forevernote.ui.controller.MainController.class);
+            String lang = prefs.get("language", java.util.Locale.getDefault().getLanguage());
+            java.util.Locale locale = new java.util.Locale(lang);
+            java.util.Locale.setDefault(locale);
+            ResourceBundle bundle = ResourceBundle.getBundle("com.example.forevernote.i18n.messages", locale);
             FXMLLoader loader = new FXMLLoader(getClass().getResource(
-                    "/com/example/forevernote/ui/view/MainView.fxml"));
+                    "/com/example/forevernote/ui/view/MainView.fxml"), bundle);
             Scene scene = new Scene(loader.load(), 1200, 800);
 
             var cssResource = getClass().getResource(

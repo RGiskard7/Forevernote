@@ -14,67 +14,76 @@
     <top>
         <VBox styleClass="top-container">
             <MenuBar fx:id="menuBar" styleClass="menu-bar">
-                <Menu text="File">
-                    <MenuItem text="New Note" onAction="#handleNewNote" accelerator="Shortcut+N"/>
-                    <MenuItem text="New Folder" onAction="#handleNewFolder" accelerator="Shortcut+Shift+N"/>
+                <Menu text="%menu.file">
+                    <MenuItem text="%action.new_note" onAction="#handleNewNote" accelerator="Shortcut+N"/>
+                    <MenuItem text="%action.new_folder" onAction="#handleNewFolder" accelerator="Shortcut+Shift+N"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Save" onAction="#handleSave" accelerator="Shortcut+S"/>
-                    <MenuItem text="Save All" onAction="#handleSaveAll" accelerator="Shortcut+Shift+S"/>
+                    <MenuItem text="%action.save" onAction="#handleSave" accelerator="Shortcut+S"/>
+                    <MenuItem text="%action.save_all" onAction="#handleSaveAll" accelerator="Shortcut+Shift+S"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Import..." onAction="#handleImport" accelerator="Shortcut+I"/>
-                    <MenuItem text="Export..." onAction="#handleExport" accelerator="Shortcut+E"/>
+                    <MenuItem text="%action.import" onAction="#handleImport" accelerator="Shortcut+I"/>
+                    <MenuItem text="%action.export" onAction="#handleExport" accelerator="Shortcut+E"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Exit" onAction="#handleExit" accelerator="Shortcut+Q"/>
+                    <MenuItem text="%action.exit" onAction="#handleExit" accelerator="Shortcut+Q"/>
                 </Menu>
                 
-                <Menu text="Edit">
-                    <MenuItem text="Undo" onAction="#handleUndo" accelerator="Shortcut+Z"/>
-                    <MenuItem text="Redo" onAction="#handleRedo" accelerator="Shortcut+Y"/>
+                <Menu text="%menu.edit">
+                    <MenuItem text="%action.undo" onAction="#handleUndo" accelerator="Shortcut+Z"/>
+                    <MenuItem text="%action.redo" onAction="#handleRedo" accelerator="Shortcut+Y"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Cut" onAction="#handleCut" accelerator="Shortcut+X"/>
-                    <MenuItem text="Copy" onAction="#handleCopy" accelerator="Shortcut+C"/>
-                    <MenuItem text="Paste" onAction="#handlePaste" accelerator="Shortcut+V"/>
+                    <MenuItem text="%action.cut" onAction="#handleCut" accelerator="Shortcut+X"/>
+                    <MenuItem text="%action.copy" onAction="#handleCopy" accelerator="Shortcut+C"/>
+                    <MenuItem text="%action.paste" onAction="#handlePaste" accelerator="Shortcut+V"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Find..." onAction="#handleFind" accelerator="Shortcut+F"/>
-                    <MenuItem text="Replace..." onAction="#handleReplace" accelerator="Shortcut+H"/>
+                    <MenuItem text="%action.find" onAction="#handleFind" accelerator="Shortcut+F"/>
+                    <MenuItem text="%action.replace" onAction="#handleReplace" accelerator="Shortcut+H"/>
                 </Menu>
                 
-                <Menu text="View">
-                    <MenuItem text="Toggle Sidebar" onAction="#handleToggleSidebar" accelerator="F9"/>
-                    <MenuItem text="Toggle Notes Panel" onAction="#handleToggleNotesPanel" accelerator="F8"/>
+                <Menu text="%menu.view">
+                    <MenuItem text="%action.toggle_sidebar" onAction="#handleToggleSidebar" accelerator="F9"/>
+                    <MenuItem text="%action.toggle_notes_list" onAction="#handleToggleNotesPanel" accelerator="F8"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Zoom In" onAction="#handleZoomIn" accelerator="Shortcut+Plus"/>
-                    <MenuItem text="Zoom Out" onAction="#handleZoomOut" accelerator="Shortcut+Minus"/>
-                    <MenuItem text="Reset Zoom" onAction="#handleResetZoom" accelerator="Shortcut+0"/>
+                    <MenuItem text="%action.zoom_in" onAction="#handleZoomIn" accelerator="Shortcut+Plus"/>
+                    <MenuItem text="%action.zoom_out" onAction="#handleZoomOut" accelerator="Shortcut+Minus"/>
+                    <MenuItem text="%action.reset_zoom" onAction="#handleResetZoom" accelerator="Shortcut+0"/>
                     <SeparatorMenuItem/>
-                    <Menu text="Theme">
-                        <RadioMenuItem fx:id="lightThemeMenuItem" text="Light" selected="true" onAction="#handleLightTheme"/>
-                        <RadioMenuItem fx:id="darkThemeMenuItem" text="Dark" onAction="#handleDarkTheme"/>
-                        <RadioMenuItem fx:id="systemThemeMenuItem" text="System" onAction="#handleSystemTheme"/>
+                    <MenuItem text="%action.zoom_editor_in" onAction="#handleEditorZoomIn" accelerator="Shortcut+Shift+Plus"/>
+                    <MenuItem text="%action.zoom_editor_out" onAction="#handleEditorZoomOut" accelerator="Shortcut+Shift+Minus"/>
+                    <MenuItem text="%action.reset_editor_zoom" onAction="#handleEditorResetZoom" accelerator="Shortcut+Shift+0"/>
+                    <SeparatorMenuItem/>
+                    <Menu text="%menu.language">
+                        <RadioMenuItem fx:id="englishLangMenuItem" text="%lang.en" onAction="#handleLanguageEnglish"/>
+                        <RadioMenuItem fx:id="spanishLangMenuItem" text="%lang.es" onAction="#handleLanguageSpanish"/>
+                    </Menu>
+                    <SeparatorMenuItem/>
+                    <Menu text="%menu.theme">
+                        <RadioMenuItem fx:id="lightThemeMenuItem" text="%theme.light" selected="true" onAction="#handleLightTheme"/>
+                        <RadioMenuItem fx:id="darkThemeMenuItem" text="%theme.dark" onAction="#handleDarkTheme"/>
+                        <RadioMenuItem fx:id="systemThemeMenuItem" text="%theme.system" onAction="#handleSystemTheme"/>
                     </Menu>
                 </Menu>
                 
-                <Menu text="Tools">
-                    <MenuItem text="Command Palette..." onAction="#handleCommandPalette" accelerator="Shortcut+P"/>
-                    <MenuItem text="Quick Switcher..." onAction="#handleQuickSwitcher" accelerator="Shortcut+O"/>
+                <Menu text="%menu.tools">
+                    <MenuItem text="%action.command_palette" onAction="#handleCommandPalette" accelerator="Shortcut+P"/>
+                    <MenuItem text="%action.quick_switcher" onAction="#handleQuickSwitcher" accelerator="Shortcut+O"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Global Search" onAction="#handleSearch" accelerator="Shortcut+Shift+F"/>
-                    <MenuItem text="Tags Manager..." onAction="#handleTagsManager"/>
+                    <MenuItem text="%action.global_search" onAction="#handleSearch" accelerator="Shortcut+Shift+F"/>
+                    <MenuItem text="%action.tags_manager" onAction="#handleTagsManager"/>
                     <SeparatorMenuItem/>
-                    <Menu fx:id="pluginsMenu" text="Plugins">
-                        <MenuItem text="Manage Plugins..." onAction="#handlePluginManager"/>
+                    <Menu fx:id="pluginsMenu" text="%menu.plugins">
+                        <MenuItem text="%action.manage_plugins" onAction="#handlePluginManager"/>
                         <SeparatorMenuItem/>
                         <!-- Plugin menu items are added dynamically by plugins -->
                     </Menu>
                     <SeparatorMenuItem/>
-                    <MenuItem text="Preferences..." onAction="#handlePreferences"/>
+                    <MenuItem text="%menu.preferences" onAction="#handlePreferences"/>
                 </Menu>
                 
-                <Menu text="Help">
-                    <MenuItem text="Documentation" onAction="#handleDocumentation"/>
-                    <MenuItem text="Keyboard Shortcuts" onAction="#handleKeyboardShortcuts" accelerator="F1"/>
+                <Menu text="%menu.help">
+                    <MenuItem text="%menu.documentation" onAction="#handleDocumentation"/>
+                    <MenuItem text="%menu.shortcuts" onAction="#handleKeyboardShortcuts" accelerator="F1"/>
                     <SeparatorMenuItem/>
-                    <MenuItem text="About Forevernote" onAction="#handleAbout"/>
+                    <MenuItem text="%menu.about" onAction="#handleAbout"/>
                 </Menu>
             </MenuBar>
             
@@ -86,19 +95,19 @@
                 
                 <!-- Layout Toggles -->
                 <ToggleButton fx:id="sidebarToggleBtn" onAction="#handleToggleSidebar" styleClass="modern-toggle-btn">
-                   <tooltip><Tooltip text="Toggle Sidebar (F9)"/></tooltip>
+                   <tooltip><Tooltip text="%action.toggle_sidebar"/></tooltip>
                    <graphic>
                        <FontIcon iconLiteral="fth-sidebar" styleClass="feather-icon"/>
                    </graphic>
                 </ToggleButton>
                 <ToggleButton fx:id="notesPanelToggleBtn" onAction="#handleToggleNotesPanel" styleClass="modern-toggle-btn">
-                   <tooltip><Tooltip text="Toggle Notes List (F8)"/></tooltip>
+                   <tooltip><Tooltip text="%action.toggle_notes_list"/></tooltip>
                     <graphic>
                        <FontIcon iconLiteral="fth-list" styleClass="feather-icon"/>
                    </graphic>
                 </ToggleButton>
                 <Button fx:id="layoutSwitchBtn" onAction="#handleViewLayoutSwitch" styleClass="toolbar-btn">
-                   <tooltip><Tooltip text="Switch Layout Columns"/></tooltip>
+                   <tooltip><Tooltip text="%action.switch_layout"/></tooltip>
                     <graphic>
                        <FontIcon iconLiteral="fth-columns" styleClass="feather-icon"/>
                    </graphic>
@@ -108,19 +117,19 @@
 
                 <!-- File Actions -->
                 <Button fx:id="newNoteBtn" onAction="#handleNewNote" styleClass="toolbar-btn toolbar-btn-primary">
-                    <tooltip><Tooltip text="New Note (Ctrl+N)"/></tooltip>
+                    <tooltip><Tooltip text="%action.new_note"/></tooltip>
                     <graphic>
                         <FontIcon iconLiteral="fth-file-plus" styleClass="feather-icon"/>
                     </graphic>
                 </Button>
                 <Button fx:id="newFolderBtn" onAction="#handleNewFolder" styleClass="toolbar-btn">
-                    <tooltip><Tooltip text="New Folder"/></tooltip>
+                    <tooltip><Tooltip text="%action.new_folder"/></tooltip>
                     <graphic>
                         <FontIcon iconLiteral="fth-folder-plus" styleClass="feather-icon"/>
                     </graphic>
                 </Button>
                 <Button fx:id="newTagBtn" onAction="#handleNewTag" styleClass="toolbar-btn">
-                    <tooltip><Tooltip text="New Tag"/></tooltip>
+                    <tooltip><Tooltip text="%action.new_tag"/></tooltip>
                     <graphic>
                        <FontIcon iconLiteral="fth-hash" styleClass="feather-icon"/>
                    </graphic>
@@ -129,13 +138,13 @@
                 <Separator fx:id="toolbarSeparator2" orientation="VERTICAL" styleClass="toolbar-separator"/>
                 
                 <Button fx:id="saveBtn" onAction="#handleSave" styleClass="toolbar-btn">
-                    <tooltip><Tooltip text="Save (Ctrl+S)"/></tooltip>
+                    <tooltip><Tooltip text="%action.save"/></tooltip>
                     <graphic>
                         <FontIcon iconLiteral="fth-save" styleClass="feather-icon"/>
                     </graphic>
                 </Button>
                 <Button fx:id="deleteBtn" onAction="#handleDelete" styleClass="toolbar-btn toolbar-btn-danger">
-                    <tooltip><Tooltip text="Delete"/></tooltip>
+                    <tooltip><Tooltip text="%action.delete"/></tooltip>
                     <graphic>
                         <FontIcon iconLiteral="fth-trash-2" styleClass="feather-icon-danger"/>
                     </graphic>
@@ -143,19 +152,19 @@
                 <Separator fx:id="toolbarSeparator3" orientation="VERTICAL" styleClass="toolbar-separator"/>
                 
                 <!-- Search Box -->
-                <TextField fx:id="searchField" promptText="Search notes..." prefWidth="240" styleClass="search-field"/>
+                <TextField fx:id="searchField" promptText="%app.search.placeholder" prefWidth="240" styleClass="search-field"/>
                 
                 <Region HBox.hgrow="ALWAYS"/>
                 
                 <!-- View toggle buttons (List/Grid) -->
                 <ToggleButton fx:id="listViewButton" onAction="#handleListView" styleClass="modern-toggle-btn" selected="true">
-                    <tooltip><Tooltip text="List view"/></tooltip>
+                    <tooltip><Tooltip text="%action.list_view"/></tooltip>
                     <graphic>
                         <FontIcon iconLiteral="fth-align-justify" styleClass="feather-icon"/>
                     </graphic>
                 </ToggleButton>
                 <ToggleButton fx:id="gridViewButton" onAction="#handleGridView" styleClass="modern-toggle-btn">
-                    <tooltip><Tooltip text="Grid view"/></tooltip>
+                    <tooltip><Tooltip text="%action.grid_view"/></tooltip>
                     <graphic>
                         <FontIcon iconLiteral="fth-grid" styleClass="feather-icon"/>
                     </graphic>
@@ -163,7 +172,7 @@
 
                 <!-- Overflow Menu Button -->
                 <MenuButton fx:id="toolbarOverflowBtn" styleClass="modern-toggle-btn" visible="false" managed="false">
-                    <tooltip><Tooltip text="More actions"/></tooltip>
+                    <tooltip><Tooltip text="%action.more_actions"/></tooltip>
                     <graphic>
                         <FontIcon iconLiteral="fth-more-horizontal" styleClass="feather-icon"/>
                     </graphic>
@@ -179,23 +188,23 @@
             <VBox fx:id="sidebarPane" styleClass="sidebar" minWidth="200">
                 <!-- Navigation Tabs -->
                 <TabPane fx:id="navigationTabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS" styleClass="sidebar-tabs">
-                    <Tab text="Folders" closable="false">
+                    <Tab text="%tab.folders" closable="false">
                         <TreeView fx:id="folderTreeView" showRoot="true" styleClass="sidebar-tree"/>
                     </Tab>
                     
-                    <Tab text="Tags" closable="false">
+                    <Tab text="%tab.tags" closable="false">
                         <ListView fx:id="tagListView" styleClass="sidebar-list"/>
                     </Tab>
                     
-                    <Tab text="Recent" closable="false">
+                    <Tab text="%tab.recent" closable="false">
                         <ListView fx:id="recentNotesListView" styleClass="sidebar-list"/>
                     </Tab>
                     
-                    <Tab text="Favorites" closable="false">
+                    <Tab text="%tab.favorites" closable="false">
                         <ListView fx:id="favoritesListView" styleClass="sidebar-list"/>
                     </Tab>
                     
-                    <Tab text="Trash" closable="false">
+                    <Tab text="%tab.trash" closable="false">
                         <ListView fx:id="trashListView" styleClass="sidebar-list"/>
                     </Tab>
                 </TabPane>
@@ -221,11 +230,11 @@
                         <padding>
                             <Insets top="12" right="12" bottom="12" left="12"/>
                         </padding>
-                        <Label fx:id="notesPanelTitleLabel" text="Notes" styleClass="panel-title"/>
+                        <Label fx:id="notesPanelTitleLabel" text="%panel.notes.title" styleClass="panel-title"/>
                         <Region HBox.hgrow="ALWAYS"/>
                         <ComboBox fx:id="sortComboBox" prefWidth="120" styleClass="sort-combo"/>
                         <Button fx:id="refreshBtn" onAction="#handleRefresh" styleClass="icon-btn">
-                            <tooltip><Tooltip text="Refresh list"/></tooltip>
+                            <tooltip><Tooltip text="%tooltip.refresh_list"/></tooltip>
                             <graphic>
                                 <FontIcon iconLiteral="fth-refresh-cw" styleClass="feather-icon"/>
                             </graphic>
@@ -242,12 +251,12 @@
                         <padding>
                             <Insets top="10" right="16" bottom="10" left="16"/>
                         </padding>
-                        <TextField fx:id="noteTitleField" promptText="Note title..." HBox.hgrow="ALWAYS" styleClass="title-field"/>
+                        <TextField fx:id="noteTitleField" promptText="%panel.editor.title_placeholder" HBox.hgrow="ALWAYS" styleClass="title-field"/>
                         <Separator orientation="VERTICAL" styleClass="header-separator"/>
                          
                         <!-- Tags Toggle UI -->
                          <ToggleButton fx:id="toggleTagsBtn" onAction="#handleToggleTags" styleClass="modern-toggle-btn" selected="true">
-                            <tooltip><Tooltip text="Toggle Tags Bar"/></tooltip>
+                            <tooltip><Tooltip text="%tooltip.toggle_tags"/></tooltip>
                             <graphic>
                                 <FontIcon iconLiteral="fth-hash" styleClass="feather-icon"/>
                             </graphic>
@@ -256,30 +265,30 @@
                         <Separator orientation="VERTICAL" styleClass="header-separator"/>
                         
                         <!-- View Mode Toggle -->
-                        <ToggleButton fx:id="editorOnlyButton" text="Edit" onAction="#handleEditorOnlyMode" styleClass="modern-toggle-btn">
-                            <tooltip><Tooltip text="Editor only (Alt+1)"/></tooltip>
+                        <ToggleButton fx:id="editorOnlyButton" text="%action.editor_only" onAction="#handleEditorOnlyMode" styleClass="modern-toggle-btn">
+                            <tooltip><Tooltip text="%tooltip.editor_only"/></tooltip>
                         </ToggleButton>
-                        <ToggleButton fx:id="splitViewButton" text="Split" onAction="#handleSplitViewMode" styleClass="modern-toggle-btn">
-                            <tooltip><Tooltip text="Split view (Alt+2)"/></tooltip>
+                        <ToggleButton fx:id="splitViewButton" text="%action.split_view" onAction="#handleSplitViewMode" styleClass="modern-toggle-btn">
+                            <tooltip><Tooltip text="%tooltip.split_view"/></tooltip>
                         </ToggleButton>
-                        <ToggleButton fx:id="previewOnlyButton" text="Read" onAction="#handlePreviewOnlyMode" styleClass="modern-toggle-btn">
-                            <tooltip><Tooltip text="Preview only (Alt+3)"/></tooltip>
+                        <ToggleButton fx:id="previewOnlyButton" text="%action.preview_only" onAction="#handlePreviewOnlyMode" styleClass="modern-toggle-btn">
+                            <tooltip><Tooltip text="%tooltip.preview_only"/></tooltip>
                         </ToggleButton>
                         <Separator orientation="VERTICAL" styleClass="header-separator"/>
                         <ToggleButton fx:id="pinButton" onAction="#handleTogglePin" styleClass="modern-toggle-btn">
-                            <tooltip><Tooltip text="Pin note"/></tooltip>
+                            <tooltip><Tooltip text="%tooltip.pin_note"/></tooltip>
                             <graphic>
                                 <FontIcon iconLiteral="fth-map-pin" styleClass="feather-icon"/>
                             </graphic>
                         </ToggleButton>
                         <ToggleButton fx:id="favoriteButton" onAction="#handleToggleFavorite" styleClass="modern-toggle-btn">
-                            <tooltip><Tooltip text="Add to favorites"/></tooltip>
+                            <tooltip><Tooltip text="%tooltip.add_favorite"/></tooltip>
                             <graphic>
                                 <FontIcon iconLiteral="fth-star" styleClass="feather-icon"/>
                             </graphic>
                         </ToggleButton>
                         <ToggleButton fx:id="infoButton" onAction="#handleToggleRightPanel" styleClass="modern-toggle-btn">
-                            <tooltip><Tooltip text="Toggle right panel (Ctrl+.)"/></tooltip>
+                            <tooltip><Tooltip text="%tooltip.toggle_right_panel"/></tooltip>
                             <graphic>
                                 <FontIcon iconLiteral="fth-menu" styleClass="feather-icon"/>
                             </graphic>
@@ -389,10 +398,10 @@
                 <padding>
                     <Insets top="12" right="12" bottom="12" left="16"/>
                 </padding>
-                <Label text="Panel" styleClass="panel-title"/>
+                <Label text="%panel.right.title" styleClass="panel-title"/>
                 <Region HBox.hgrow="ALWAYS"/>
                 <Button fx:id="closeRightPanelBtn" text="×" onAction="#handleCloseRightPanel" styleClass="panel-close-btn">
-                    <tooltip><Tooltip text="Close panel"/></tooltip>
+                    <tooltip><Tooltip text="%tooltip.close_panel"/></tooltip>
                 </Button>
             </HBox>
             
@@ -407,37 +416,37 @@
                     <VBox fx:id="noteInfoSection" styleClass="panel-section">
                         <HBox fx:id="noteInfoHeader" alignment="CENTER_LEFT" styleClass="section-header">
                             <Label text="▼" fx:id="noteInfoCollapseIcon" styleClass="collapse-icon"/>
-                            <Label text="📄 Note Info" styleClass="section-title"/>
+                            <Label text="%section.note_info" styleClass="section-title"/>
                         </HBox>
                         <VBox fx:id="noteInfoContent" spacing="12" styleClass="section-content">
                             <padding>
                                 <Insets top="8" left="8"/>
                             </padding>
                             <VBox spacing="2">
-                                <Label text="CREATED" styleClass="info-label"/>
+                                <Label text="%info.created" styleClass="info-label"/>
                                 <Label fx:id="infoCreatedLabel" text="-" styleClass="info-value"/>
                             </VBox>
                             <VBox spacing="2">
-                                <Label text="MODIFIED" styleClass="info-label"/>
+                                <Label text="%info.modified" styleClass="info-label"/>
                                 <Label fx:id="infoModifiedLabel" text="-" styleClass="info-value"/>
                             </VBox>
                             <HBox spacing="24">
                                 <VBox spacing="2">
-                                    <Label text="Words" styleClass="info-label"/>
+                                    <Label text="%info.words" styleClass="info-label"/>
                                     <Label fx:id="infoWordsLabel" text="0" styleClass="info-value"/>
                                 </VBox>
                                 <VBox spacing="2">
-                                    <Label text="Chars" styleClass="info-label"/>
+                                    <Label text="%info.chars" styleClass="info-label"/>
                                     <Label fx:id="infoCharsLabel" text="0" styleClass="info-value"/>
                                 </VBox>
                             </HBox>
                             <VBox spacing="2">
-                                <Label text="LOCATION" styleClass="info-label"/>
+                                <Label text="%info.location" styleClass="info-label"/>
                                 <Label fx:id="infoLatitudeLabel" text="Lat: -" styleClass="info-value-small"/>
                                 <Label fx:id="infoLongitudeLabel" text="Lon: -" styleClass="info-value-small"/>
                             </VBox>
                             <VBox spacing="2">
-                                <Label text="METADATA" styleClass="info-label"/>
+                                <Label text="%info.metadata" styleClass="info-label"/>
                                 <Label fx:id="infoAuthorLabel" text="Author: -" styleClass="info-value-small"/>
                                 <Label fx:id="infoSourceUrlLabel" text="URL: -" styleClass="info-value-small" wrapText="true"/>
                             </VBox>
