@@ -37,7 +37,7 @@ public class Note extends LeafModel implements Serializable {
 		this.content = content;
 	}
 
-	public Note(Integer id, String title, String content) {
+	public Note(String id, String title, String content) {
 		super(id, title, null, null);
 		this.content = content;
 	}
@@ -47,7 +47,7 @@ public class Note extends LeafModel implements Serializable {
 		this.content = content;
 	}
 
-	public Note(Integer id, String title, String content, String createdDate, String modifiedDate) {
+	public Note(String id, String title, String content, String createdDate, String modifiedDate) {
 		super(id, title, createdDate, modifiedDate);
 		this.content = content;
 	}
@@ -66,7 +66,7 @@ public class Note extends LeafModel implements Serializable {
 		this.sourceApplication = source_application;
 	}
 
-	public Note(Integer id, String title, String content, String createdDate, String modifiedDate, Double latitude,
+	public Note(String id, String title, String content, String createdDate, String modifiedDate, Double latitude,
 			Double longitude,
 			String author, String source_url, String source, String source_application) {
 		this(title, content, createdDate, modifiedDate, latitude, longitude, author, source_url, source,

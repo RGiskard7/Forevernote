@@ -95,9 +95,16 @@ public class NoteService {
      * @param content The note content (Markdown)
      * @return The created note with its generated ID
      */
+    /**
+     * Creates a new note with the given title and content.
+     * 
+     * @param title   The note title
+     * @param content The note content (Markdown)
+     * @return The created note with its generated ID
+     */
     public Note createNote(String title, String content) {
         Note note = new Note(title, content);
-        int noteId = noteDAO.createNote(note);
+        String noteId = noteDAO.createNote(note);
         note.setId(noteId);
         logger.info("Created note: " + title + " (ID: " + noteId + ")");
         return note;
@@ -126,7 +133,7 @@ public class NoteService {
      * @param id The note ID
      * @return Optional containing the note if found
      */
-    public Optional<Note> getNoteById(int id) {
+    public Optional<Note> getNoteById(String id) {
         Note note = noteDAO.getNoteById(id);
         return Optional.ofNullable(note);
     }
@@ -149,7 +156,7 @@ public class NoteService {
      * 
      * @param noteId The ID of the note to move to trash
      */
-    public void moveToTrash(int noteId) {
+    public void moveToTrash(String noteId) {
         noteDAO.deleteNote(noteId);
         logger.info("Moved note to trash, ID: " + noteId);
     }
@@ -159,7 +166,7 @@ public class NoteService {
      * 
      * @param noteId The ID of the note to delete permanently
      */
-    public void permanentlyDeleteNote(int noteId) {
+    public void permanentlyDeleteNote(String noteId) {
         noteDAO.permanentlyDeleteNote(noteId);
         logger.info("Permanently deleted note ID: " + noteId);
     }
@@ -169,7 +176,7 @@ public class NoteService {
      * 
      * @param noteId The ID of the note to restore
      */
-    public void restoreNote(int noteId) {
+    public void restoreNote(String noteId) {
         noteDAO.restoreNote(noteId);
         logger.info("Restored note from trash, ID: " + noteId);
     }
@@ -197,11 +204,11 @@ public class NoteService {
     /**
      * Legacy delete method, now acts as moveToTrash.
      * 
-     * @deprecated Use {@link #moveToTrash(int)} or
-     *             {@link #permanentlyDeleteNote(int)}
+     * @deprecated Use {@link #moveToTrash(String)} or
+     *             {@link #permanentlyDeleteNote(String)}
      */
     @Deprecated
-    public void deleteNote(int noteId) {
+    public void deleteNote(String noteId) {
         moveToTrash(noteId);
     }
 

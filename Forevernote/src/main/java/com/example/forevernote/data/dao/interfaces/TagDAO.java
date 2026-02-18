@@ -6,20 +6,21 @@ import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.Tag;
 
 /**
- * This interface defines the contract for data access operations related to tags.
+ * This interface defines the contract for data access operations related to
+ * tags.
  * It provides methods for creating, retrieving, updating, and deleting tags,
  * as well as managing their relationships with notes.
  */
 public interface TagDAO {
 
-	// CRUD Operations
+    // CRUD Operations
     /**
      * Creates a new tag in the database.
      *
      * @param tag The tag to be created.
      * @return The generated ID of the created tag.
      */
-    public int createTag(Tag tag);
+    public String createTag(Tag tag);
 
     /**
      * Updates an existing tag in the database.
@@ -33,15 +34,15 @@ public interface TagDAO {
      *
      * @param id The ID of the tag to be deleted.
      */
-    public void deleteTag(int id);
-    
+    public void deleteTag(String id);
+
     /**
      * Retrieves a tag by its unique identifier.
      *
      * @param id The ID of the tag to retrieve.
      * @return The tag with the specified ID, or null if not found.
      */
-    public Tag getTagById(int id);
+    public Tag getTagById(String id);
 
     // Retrieval Methods
     /**
@@ -57,7 +58,7 @@ public interface TagDAO {
      * @param tagId The ID of the tag.
      * @return A list of notes that have the specified tag.
      */
-    public List<Note> fetchAllNotesWithTag(int tagId);
+    public List<Note> fetchAllNotesWithTag(String tagId);
 
     // Utility Methods
     /**

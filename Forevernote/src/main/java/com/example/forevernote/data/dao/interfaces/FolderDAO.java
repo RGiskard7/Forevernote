@@ -6,182 +6,183 @@ import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.Folder;
 
 /**
- * This interface defines the contract for data access operations related to folders (notebooks).
- * It provides methods for creating, updating, deleting, and retrieving folders, 
+ * This interface defines the contract for data access operations related to
+ * folders (notebooks).
+ * It provides methods for creating, updating, deleting, and retrieving folders,
  * as well as managing folder hierarchy and associated notes.
  */
 public interface FolderDAO {
 
-	// CRUD Operations
+    // CRUD Operations
     /**
      * Creates a new folder in the database.
      *
      * @param folder The folder to be created.
      * @return The generated ID of the created folder.
      */
-	public int createFolder(Folder folder);
-	
+    public String createFolder(Folder folder);
+
     /**
      * Updates an existing folder.
      *
      * @param folder The folder containing updated data.
      */
-	public void updateFolder(Folder folder);
-	
+    public void updateFolder(Folder folder);
+
     /**
      * Deletes a folder by its ID.
      *
      * @param id The ID of the folder to be deleted.
      */
-	public void deleteFolder(int id);
-	
+    public void deleteFolder(String id);
+
     /**
      * Retrieves a folder by its unique ID.
      *
      * @param id The ID of the folder.
      * @return The corresponding Folder object, or null if not found.
      */
-	public Folder getFolderById(int id);
-	
-	// Retrieval Methods
+    public Folder getFolderById(String id);
+
+    // Retrieval Methods
     /**
      * Retrieves a folder that contains a specific note.
      *
      * @param noteId The ID of the note.
      * @return The Folder that contains the given note, or null if not found.
      */
-	public Folder getFolderByNoteId(int noteId);
-	
+    public Folder getFolderByNoteId(String noteId);
+
     /**
      * Fetches all folders as a flat list.
      *
      * @return A list of all folders.
      */
-	public List<Folder> fetchAllFoldersAsList();
-	
+    public List<Folder> fetchAllFoldersAsList();
+
     /**
      * Fetches all folders in a hierarchical tree structure.
      *
      * @return The root folder containing all subfolders.
      */
-	public Folder fetchAllFoldersAsTree();
-	
-	// Note Management
-	//public void addNote(int folderId, int noteId);
+    public Folder fetchAllFoldersAsTree();
+
+    // Note Management
+    // public void addNote(String folderId, String noteId);
     /**
      * Adds a note to a folder.
      *
      * @param folder The folder to which the note should be added.
-     * @param note The note to be added.
+     * @param note   The note to be added.
      */
-	public void addNote(Folder folder, Note note);
-	
-	//public void removeNote(int folderId, int noteId);
-	
+    public void addNote(Folder folder, Note note);
+
+    // public void removeNote(String folderId, String noteId);
+
     /**
      * Removes a note from a folder.
      *
      * @param folder The folder from which the note should be removed.
-     * @param note The note to be removed.
+     * @param note   The note to be removed.
      */
-	public void removeNote(Folder folder, Note note);
-	
+    public void removeNote(Folder folder, Note note);
+
     /**
      * Loads all notes associated with a given folder.
      *
      * @param folder The folder whose notes should be loaded.
      */
-	public void loadNotes(Folder folder);
-	
-	//public void addSubFolder(int parentId, int subFolderId);
-	
-	// Folder Hierarchy Management
+    public void loadNotes(Folder folder);
+
+    // public void addSubFolder(String parentId, String subFolderId);
+
+    // Folder Hierarchy Management
     /**
      * Adds a subfolder to a parent folder.
      *
-     * @param parent The parent folder.
+     * @param parent    The parent folder.
      * @param subFolder The subfolder to be added.
      */
-	public void addSubFolder(Folder parent, Folder subFolder);
-	
-	//public void removeSubFolder(int parentId, int subFolderId);
-	
+    public void addSubFolder(Folder parent, Folder subFolder);
+
+    // public void removeSubFolder(String parentId, String subFolderId);
+
     /**
      * Removes a subfolder from a parent folder.
      *
      * @param parentFolder The parent folder.
-     * @param subFolder The subfolder to be removed.
+     * @param subFolder    The subfolder to be removed.
      */
-	public void removeSubFolder(Folder parentFolder, Folder subFolder);
-	
+    public void removeSubFolder(Folder parentFolder, Folder subFolder);
+
     /**
      * Loads all subfolders of a given folder.
      *
      * @param folder The folder whose subfolders should be loaded.
      */
-	public void loadSubFolders(Folder folder); 
-	
+    public void loadSubFolders(Folder folder);
+
     /**
      * Loads subfolders up to a specified depth.
      *
-     * @param folder The folder whose subfolders should be loaded.
+     * @param folder   The folder whose subfolders should be loaded.
      * @param maxDepth The maximum depth to load.
      */
-	public void loadSubFolders(Folder folder, int maxDepth);
-	
+    public void loadSubFolders(Folder folder, int maxDepth);
+
     /**
      * Loads all parent folders of a given folder up to a specified depth.
      *
-     * @param folder The folder whose parent folders should be loaded.
+     * @param folder   The folder whose parent folders should be loaded.
      * @param maxDepth The maximum depth to load.
      */
-	public void loadParentFolders(Folder folder, int maxDepth); 
-	
+    public void loadParentFolders(Folder folder, int maxDepth);
+
     /**
      * Loads all parent folders of a given folder.
      *
      * @param folder The folder whose parent folders should be loaded.
      */
-	public void loadParentFolders(Folder folder);
-	
+    public void loadParentFolders(Folder folder);
+
     /**
      * Loads the immediate parent folder of a given folder.
      *
      * @param folder The folder whose parent folder should be loaded.
      */
-	public void loadParentFolder(Folder folder);
-	
-	// Parent Folder Retrieval
+    public void loadParentFolder(Folder folder);
+
+    // Parent Folder Retrieval
     /**
      * Retrieves the parent folder of a given folder by its ID.
      *
      * @param folderId The ID of the folder.
      * @return The parent folder, or null if there is no parent.
      */
-	public Folder getParentFolder(int folderId);
-	
+    public Folder getParentFolder(String folderId);
+
     /**
      * Retrieves the parent folder of a given folder object.
      *
      * @param folder The folder whose parent is to be retrieved.
      * @return The parent folder, or null if there is no parent.
      */
-	public Folder getParentFolder(Folder folder);
-	
-	// Other Utility Methods
+    public Folder getParentFolder(Folder folder);
+
+    // Other Utility Methods
     /**
      * Retrieves the full path of a folder based on its ID.
      *
      * @param idFolder The ID of the folder.
      * @return The full path as a string.
      */
-	public String getPathFolder(int idFolder);
-	
+    public String getPathFolder(String idFolder);
+
     /**
      * Checks whether a folder exists with a given title.
      *
      * @param title The title to check.
      * @return True if a folder with the given title exists, false otherwise.
      */
-	public boolean existsByTitle(String title);
+    public boolean existsByTitle(String title);
 }

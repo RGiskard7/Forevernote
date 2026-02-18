@@ -77,6 +77,8 @@
                     </Menu>
                     <SeparatorMenuItem/>
                     <MenuItem text="%menu.preferences" onAction="#handlePreferences"/>
+                    <SeparatorMenuItem/>
+                    <MenuItem text="%pref.storage" onAction="#handleSwitchStorage"/>
                 </Menu>
                 
                 <Menu text="%menu.help">

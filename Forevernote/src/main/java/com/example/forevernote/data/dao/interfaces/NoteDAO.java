@@ -21,7 +21,7 @@ public interface NoteDAO {
      * @param note The note to be created.
      * @return The generated ID of the created note.
      */
-    public int createNote(Note note);
+    public String createNote(Note note);
 
     /**
      * Retrieves a note by its unique ID.
@@ -29,7 +29,7 @@ public interface NoteDAO {
      * @param id The ID of the note.
      * @return The corresponding Note object, or null if not found.
      */
-    public Note getNoteById(int id);
+    public Note getNoteById(String id);
 
     /**
      * Updates an existing note.
@@ -43,21 +43,21 @@ public interface NoteDAO {
      *
      * @param id The ID of the note to be deleted.
      */
-    public void deleteNote(int id);
+    public void deleteNote(String id);
 
     /**
      * Permanently deletes a note by its ID.
      * 
      * @param id The ID of the note to be deleted permanently.
      */
-    public void permanentlyDeleteNote(int id);
+    public void permanentlyDeleteNote(String id);
 
     /**
      * Restores a note from the trash.
      * 
      * @param id The ID of the note to be restored.
      */
-    public void restoreNote(int id);
+    public void restoreNote(String id);
 
     /**
      * Fetches all notes that are in the trash (soft deleted).
@@ -80,7 +80,7 @@ public interface NoteDAO {
      * @param folderId The ID of the folder.
      * @return A list of notes inside the specified folder.
      */
-    public List<Note> fetchNotesByFolderId(int folderId);
+    public List<Note> fetchNotesByFolderId(String folderId);
 
     /**
      * Loads all notes that belong to a specific folder into the folder object.
@@ -96,7 +96,7 @@ public interface NoteDAO {
      * @return The Folder object that contains the given note, or null if the note
      *         is not inside a folder.
      */
-    public Folder getFolderOfNote(int noteId);
+    public Folder getFolderOfNote(String noteId);
 
     // Tag Management
     /**
@@ -105,7 +105,7 @@ public interface NoteDAO {
      * @param noteId The ID of the note.
      * @param tagId  The ID of the tag to be assigned.
      */
-    public void addTag(int noteId, int tagId);
+    public void addTag(String noteId, String tagId);
 
     /**
      * Assigns a tag to a note.
@@ -121,7 +121,7 @@ public interface NoteDAO {
      * @param noteId The ID of the note.
      * @param tagId  The ID of the tag to be removed.
      */
-    public void removeTag(int noteId, int tagId);
+    public void removeTag(String noteId, String tagId);
 
     /**
      * Removes a tag from a note.
@@ -137,7 +137,7 @@ public interface NoteDAO {
      * @param noteId The ID of the note.
      * @return A list of tags assigned to the note.
      */
-    public List<Tag> fetchTags(int noteId);
+    public List<Tag> fetchTags(String noteId);
 
     /**
      * Loads all tags assigned to a specific note into the note object.
@@ -152,5 +152,5 @@ public interface NoteDAO {
      * @param tagId The ID of the tag.
      * @return A list of notes that have the specified tag.
      */
-    public List<Note> fetchNotesByTagId(int tagId);
+    public List<Note> fetchNotesByTagId(String tagId);
 }

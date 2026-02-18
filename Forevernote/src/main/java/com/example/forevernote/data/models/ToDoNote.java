@@ -9,34 +9,34 @@ public class ToDoNote extends Note {
 	private String toDoDue = null;
 	private String toDoCompleted = null;
 
-    /**
-     * Constructs a ToDoNote with all attributes.
-     *
-     * @param id The unique identifier of the ToDoNote.
-     * @param title The title of the ToDoNote.
-     * @param content The content of the ToDoNote.
-     * @param createdDate The creation date of the ToDoNote.
-     * @param modifiedDate The last modification date of the ToDoNote.
-     * @param toDoDue The due date of the ToDo task.
-     * @param toDoDueCompleted The completion date of the ToDo task.
-     */
-	public ToDoNote(int id, String title, String content, String createdDate, String modifiedDate, 
+	/**
+	 * Constructs a ToDoNote with all attributes.
+	 *
+	 * @param id               The unique identifier of the ToDoNote.
+	 * @param title            The title of the ToDoNote.
+	 * @param content          The content of the ToDoNote.
+	 * @param createdDate      The creation date of the ToDoNote.
+	 * @param modifiedDate     The last modification date of the ToDoNote.
+	 * @param toDoDue          The due date of the ToDo task.
+	 * @param toDoDueCompleted The completion date of the ToDo task.
+	 */
+	public ToDoNote(String id, String title, String content, String createdDate, String modifiedDate,
 			String toDoDue, String toDoDueCompleted) {
 		super(id, title, content, createdDate, modifiedDate);
 		this.toDoDue = toDoDue;
 		this.toDoCompleted = toDoDueCompleted;
 	}
-	
-    /**
-     * Constructs a ToDoNote without To-Do specific attributes.
-     *
-     * @param id The unique identifier of the ToDoNote.
-     * @param title The title of the ToDoNote.
-     * @param content The content of the ToDoNote.
-     * @param createdDate The creation date of the ToDoNote.
-     * @param modifiedDate The last modification date of the ToDoNote.
-     */
-	public ToDoNote(int id, String title, String content, String createdDate, String modifiedDate) {
+
+	/**
+	 * Constructs a ToDoNote without To-Do specific attributes.
+	 *
+	 * @param id           The unique identifier of the ToDoNote.
+	 * @param title        The title of the ToDoNote.
+	 * @param content      The content of the ToDoNote.
+	 * @param createdDate  The creation date of the ToDoNote.
+	 * @param modifiedDate The last modification date of the ToDoNote.
+	 */
+	public ToDoNote(String id, String title, String content, String createdDate, String modifiedDate) {
 		super(id, title, content, createdDate, modifiedDate);
 	}
 

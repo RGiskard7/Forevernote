@@ -12,12 +12,12 @@ import com.example.forevernote.data.dao.interfaces.TagDAO;
  * This class defines the contract for DAO factory implementations.
  */
 public abstract class FactoryDAO {
-	
+
     /**
      * Constant representing the SQLite factory type.
      */
-	public static final int SQLITE_FACTORY = 1;
-	
+    public static final int SQLITE_FACTORY = 1;
+
     /**
      * Retrieves an instance of NoteDAO.
      *
@@ -30,7 +30,7 @@ public abstract class FactoryDAO {
      *
      * @return A FolderDAO instance.
      */
-    public abstract  FolderDAO getFolderDAO();
+    public abstract FolderDAO getFolderDAO();
 
     /**
      * Retrieves an instance of TagDAO.
@@ -40,19 +40,50 @@ public abstract class FactoryDAO {
     public abstract TagDAO getLabelDAO();
 
     /**
-     * Factory method to obtain a concrete implementation of FactoryDAO based on the given key.
+     * Factory method to obtain a concrete implementation of FactoryDAO based on the
+     * given key.
      *
-     * @param keyFactory   The factory type identifier.
-     * @param connection   The database connection to be used.
+     * @param keyFactory The factory type identifier.
+     * @param connection The database connection to be used.
+     * @return A specific implementation of FactoryDAO.
+     * @throws IllegalArgumentException if an unsupported factory type is provided.
+     */
+    /**
+     * Constant representing the File System factory type.
+     */
+    public static final int FILE_SYSTEM_FACTORY = 2;
+
+    /**
+     * Factory method to obtain a concrete implementation of FactoryDAO based on the
+     * given key.
+     *
+     * @param keyFactory The factory type identifier.
+     * @param connection The database connection to be used.
      * @return A specific implementation of FactoryDAO.
      * @throws IllegalArgumentException if an unsupported factory type is provided.
      */
     public static FactoryDAO getFactory(int keyFactory, Connection connection) {
-        switch(keyFactory) {
+        switch (keyFactory) {
             case SQLITE_FACTORY:
                 return new FactoryDAOSQLite(connection);
             default:
                 throw new IllegalArgumentException("Unsupported factory type");
+        }
+    }
+
+    /**
+     * Factory method to obtain a File System factory.
+     * 
+     * @param keyFactory The factory type (must be FILE_SYSTEM_FACTORY).
+     * @param rootPath   The root directory path.
+     * @return A FactoryDAOFileSystem instance.
+     */
+    public static FactoryDAO getFactory(int keyFactory, String rootPath) {
+        switch (keyFactory) {
+            case FILE_SYSTEM_FACTORY:
+                return new com.example.forevernote.data.dao.FactoryDAOFileSystem(rootPath);
+            default:
+                throw new IllegalArgumentException("Unsupported factory type for path argument");
         }
     }
 }

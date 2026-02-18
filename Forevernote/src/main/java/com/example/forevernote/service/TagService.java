@@ -16,24 +16,26 @@ import com.example.forevernote.data.models.Tag;
  * Service layer for tag-related business logic.
  * Provides a clean API for tag operations and note-tag relationships.
  * 
- * <p>This service handles:</p>
+ * <p>
+ * This service handles:
+ * </p>
  * <ul>
- *   <li>CRUD operations for tags</li>
- *   <li>Tag-note relationship management</li>
- *   <li>Tag search and filtering</li>
- *   <li>Tag usage statistics</li>
+ * <li>CRUD operations for tags</li>
+ * <li>Tag-note relationship management</li>
+ * <li>Tag search and filtering</li>
+ * <li>Tag usage statistics</li>
  * </ul>
  * 
  * @author Edu Díaz (RGiskard7)
  * @since 1.1.0
  */
 public class TagService {
-    
+
     private static final Logger logger = LoggerConfig.getLogger(TagService.class);
-    
+
     private final TagDAO tagDAO;
     private final NoteDAO noteDAO;
-    
+
     /**
      * Creates a new TagService with the required DAOs.
      * 
@@ -45,9 +47,16 @@ public class TagService {
         this.noteDAO = noteDAO;
         logger.info("TagService initialized");
     }
-    
+
     // ==================== CRUD Operations ====================
-    
+
+    /**
+     * Creates a new tag.
+     * 
+     * @param title The tag title
+     * @return The created tag with its generated ID
+     * @throws IllegalArgumentException if a tag with this name already exists
+     */
     /**
      * Creates a new tag.
      * 
@@ -59,21 +68,21 @@ public class TagService {
         if (title == null || title.trim().isEmpty()) {
             throw new IllegalArgumentException("Tag title cannot be null or empty");
         }
-        
+
         String trimmedTitle = title.trim();
-        
+
         // Check if tag already exists
         if (tagExists(trimmedTitle)) {
             throw new IllegalArgumentException("Tag '" + trimmedTitle + "' already exists");
         }
-        
+
         Tag tag = new Tag(trimmedTitle);
-        int tagId = tagDAO.createTag(tag);
+        String tagId = tagDAO.createTag(tag);
         tag.setId(tagId);
         logger.info("Created tag: " + trimmedTitle + " (ID: " + tagId + ")");
         return tag;
     }
-    
+
     /**
      * Gets or creates a tag by title.
      * If the tag exists, returns it. If not, creates a new one.
@@ -85,28 +94,28 @@ public class TagService {
         if (title == null || title.trim().isEmpty()) {
             throw new IllegalArgumentException("Tag title cannot be null or empty");
         }
-        
+
         String trimmedTitle = title.trim();
         Optional<Tag> existing = getTagByTitle(trimmedTitle);
-        
+
         if (existing.isPresent()) {
             return existing.get();
         }
-        
+
         return createTag(trimmedTitle);
     }
-    
+
     /**
      * Retrieves a tag by its ID.
      * 
      * @param id The tag ID
      * @return Optional containing the tag if found
      */
-    public Optional<Tag> getTagById(int id) {
+    public Optional<Tag> getTagById(String id) {
         Tag tag = tagDAO.getTagById(id);
         return Optional.ofNullable(tag);
     }
-    
+
     /**
      * Retrieves a tag by its title.
      * 
@@ -117,12 +126,12 @@ public class TagService {
         if (title == null) {
             return Optional.empty();
         }
-        
+
         return getAllTags().stream()
-            .filter(t -> t.getTitle().equalsIgnoreCase(title.trim()))
-            .findFirst();
+                .filter(t -> t.getTitle().equalsIgnoreCase(title.trim()))
+                .findFirst();
     }
-    
+
     /**
      * Updates an existing tag.
      * 
@@ -135,7 +144,7 @@ public class TagService {
         tagDAO.updateTag(tag);
         logger.info("Updated tag: " + tag.getTitle());
     }
-    
+
     /**
      * Renames a tag.
      * 
@@ -147,32 +156,32 @@ public class TagService {
         if (tag == null || newName == null || newName.trim().isEmpty()) {
             throw new IllegalArgumentException("Tag and new name cannot be null or empty");
         }
-        
+
         String trimmedName = newName.trim();
-        
+
         // Check if new name already exists (excluding current tag)
         Optional<Tag> existing = getTagByTitle(trimmedName);
         if (existing.isPresent() && !existing.get().getId().equals(tag.getId())) {
             throw new IllegalArgumentException("Tag '" + trimmedName + "' already exists");
         }
-        
+
         tag.setTitle(trimmedName);
         updateTag(tag);
     }
-    
+
     /**
      * Deletes a tag by its ID.
      * This will remove the tag from all notes.
      * 
      * @param tagId The ID of the tag to delete
      */
-    public void deleteTag(int tagId) {
+    public void deleteTag(String tagId) {
         tagDAO.deleteTag(tagId);
         logger.info("Deleted tag ID: " + tagId);
     }
-    
+
     // ==================== Retrieval Methods ====================
-    
+
     /**
      * Fetches all tags.
      * 
@@ -181,7 +190,7 @@ public class TagService {
     public List<Tag> getAllTags() {
         return tagDAO.fetchAllTags();
     }
-    
+
     /**
      * Fetches all tags sorted by title.
      * 
@@ -189,10 +198,10 @@ public class TagService {
      */
     public List<Tag> getAllTagsSorted() {
         return getAllTags().stream()
-            .sorted((a, b) -> a.getTitle().compareToIgnoreCase(b.getTitle()))
-            .collect(Collectors.toList());
+                .sorted((a, b) -> a.getTitle().compareToIgnoreCase(b.getTitle()))
+                .collect(Collectors.toList());
     }
-    
+
     /**
      * Searches tags by title prefix.
      * 
@@ -203,15 +212,15 @@ public class TagService {
         if (prefix == null || prefix.trim().isEmpty()) {
             return getAllTags();
         }
-        
+
         String searchLower = prefix.toLowerCase().trim();
         return getAllTags().stream()
-            .filter(t -> t.getTitle().toLowerCase().startsWith(searchLower))
-            .collect(Collectors.toList());
+                .filter(t -> t.getTitle().toLowerCase().startsWith(searchLower))
+                .collect(Collectors.toList());
     }
-    
+
     // ==================== Note-Tag Relationships ====================
-    
+
     /**
      * Gets all notes that have a specific tag.
      * 
@@ -224,7 +233,7 @@ public class TagService {
         }
         return tagDAO.fetchAllNotesWithTag(tag.getId());
     }
-    
+
     /**
      * Gets all tags for a specific note.
      * 
@@ -237,7 +246,7 @@ public class TagService {
         }
         return noteDAO.fetchTags(note.getId());
     }
-    
+
     /**
      * Gets tags that are NOT assigned to a note (for adding new tags).
      * 
@@ -247,13 +256,13 @@ public class TagService {
     public List<Tag> getAvailableTagsForNote(Note note) {
         List<Tag> allTags = getAllTags();
         List<Tag> noteTags = getTagsForNote(note);
-        
+
         return allTags.stream()
-            .filter(tag -> noteTags.stream().noneMatch(nt -> nt.getId().equals(tag.getId())))
-            .sorted((a, b) -> a.getTitle().compareToIgnoreCase(b.getTitle()))
-            .collect(Collectors.toList());
+                .filter(tag -> noteTags.stream().noneMatch(nt -> nt.getId().equals(tag.getId())))
+                .sorted((a, b) -> a.getTitle().compareToIgnoreCase(b.getTitle()))
+                .collect(Collectors.toList());
     }
-    
+
     /**
      * Adds a tag to a note.
      * 
@@ -264,18 +273,18 @@ public class TagService {
         if (note == null || tag == null) {
             throw new IllegalArgumentException("Note and tag cannot be null");
         }
-        
+
         // Check if already has tag
         List<Tag> currentTags = getTagsForNote(note);
         if (currentTags.stream().anyMatch(t -> t.getId().equals(tag.getId()))) {
             logger.info("Note already has tag: " + tag.getTitle());
             return;
         }
-        
+
         noteDAO.addTag(note, tag);
         logger.info("Added tag '" + tag.getTitle() + "' to note: " + note.getTitle());
     }
-    
+
     /**
      * Removes a tag from a note.
      * 
@@ -289,9 +298,9 @@ public class TagService {
         noteDAO.removeTag(note, tag);
         logger.info("Removed tag '" + tag.getTitle() + "' from note: " + note.getTitle());
     }
-    
+
     // ==================== Statistics ====================
-    
+
     /**
      * Gets the total count of tags.
      * 
@@ -300,7 +309,7 @@ public class TagService {
     public int getTagCount() {
         return getAllTags().size();
     }
-    
+
     /**
      * Gets the count of notes that have a specific tag.
      * 
@@ -310,7 +319,7 @@ public class TagService {
     public int getNoteCountForTag(Tag tag) {
         return getNotesWithTag(tag).size();
     }
-    
+
     /**
      * Gets tags sorted by usage (most used first).
      * 
@@ -321,7 +330,7 @@ public class TagService {
         tags.sort((a, b) -> getNoteCountForTag(b) - getNoteCountForTag(a));
         return tags;
     }
-    
+
     /**
      * Gets the most used tags.
      * 
@@ -330,12 +339,12 @@ public class TagService {
      */
     public List<Tag> getMostUsedTags(int limit) {
         return getTagsByUsage().stream()
-            .limit(limit)
-            .collect(Collectors.toList());
+                .limit(limit)
+                .collect(Collectors.toList());
     }
-    
+
     // ==================== Utility Methods ====================
-    
+
     /**
      * Checks if a tag with the given title exists.
      * 
@@ -345,7 +354,7 @@ public class TagService {
     public boolean tagExists(String title) {
         return tagDAO.existsByTitle(title);
     }
-    
+
     /**
      * Validates a tag title.
      * 

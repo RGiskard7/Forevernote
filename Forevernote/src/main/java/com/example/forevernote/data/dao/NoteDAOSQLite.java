@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -30,11 +31,11 @@ import com.example.forevernote.exceptions.InvalidParameterException;
 public class NoteDAOSQLite implements NoteDAO {
 
 	// SQL Queries
-	private static final String INSERT_NOTE_SQL = "INSERT INTO notes (title, content, created_date, modified_date, "
+	private static final String INSERT_NOTE_SQL = "INSERT INTO notes (note_id, title, content, created_date, modified_date, "
 			+ "latitude, longitude, author, source_url, source, source_application, is_todo, todo_due, todo_completed, is_favorite, is_pinned, is_deleted, deleted_date) "
-			+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+			+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-	private static final String INSERT_TAG_NOTE_SQL = "INSERT INTO tagsNotes (tag_id, note_id, added_date) VALUES (?, ?, ?)";
+	private static final String INSERT_TAG_NOTE_SQL = "INSERT INTO tagsNotes (id, tag_id, note_id, added_date) VALUES (?, ?, ?, ?)";
 
 	private static final String SELECT_NOTE_BY_ID_SQL = "SELECT * FROM notes LEFT JOIN folders ON notes.parent_id = folders.folder_id "
 			+ "WHERE note_id = ? AND is_deleted = 0";
@@ -75,51 +76,48 @@ public class NoteDAOSQLite implements NoteDAO {
 
 	// CRUD Methods
 	@Override
-	public int createNote(Note note) {
-		int newId = -1;
+	public String createNote(Note note) {
+		String newId = null;
 
 		if (note == null) {
 			throw new InvalidParameterException("Note object cannot be null");
 		}
 
-		try (PreparedStatement pstmt = connection.prepareStatement(INSERT_NOTE_SQL,
-				Statement.RETURN_GENERATED_KEYS)) {
+		if (note.getId() == null || note.getId().isEmpty()) {
+			note.setId(UUID.randomUUID().toString());
+		}
+		newId = note.getId();
 
-			pstmt.setString(1, note.getTitle());
-			pstmt.setString(2, note.getContent());
-			pstmt.setString(3, DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
-			pstmt.setString(4, note.getModifiedDate());
-			pstmt.setDouble(5, note.getLatitude() != null ? note.getLatitude() : 0.0);
-			pstmt.setDouble(6, note.getLongitude() != null ? note.getLongitude() : 0.0);
-			pstmt.setString(7, note.getAuthor());
-			pstmt.setString(8, note.getSourceUrl());
-			pstmt.setString(9, note.getSource());
-			pstmt.setString(10, note.getSourceApplication());
+		try (PreparedStatement pstmt = connection.prepareStatement(INSERT_NOTE_SQL)) {
+
+			pstmt.setString(1, newId);
+			pstmt.setString(2, note.getTitle());
+			pstmt.setString(3, note.getContent());
+			pstmt.setString(4, DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
+			pstmt.setString(5, note.getModifiedDate());
+			pstmt.setDouble(6, note.getLatitude() != null ? note.getLatitude() : 0.0);
+			pstmt.setDouble(7, note.getLongitude() != null ? note.getLongitude() : 0.0);
+			pstmt.setString(8, note.getAuthor());
+			pstmt.setString(9, note.getSourceUrl());
+			pstmt.setString(10, note.getSource());
+			pstmt.setString(11, note.getSourceApplication());
 
 			if (note instanceof ToDoNote) {
-				pstmt.setInt(11, 1); // is_todo
-				pstmt.setString(12, ((ToDoNote) note).getToDoDue());
-				pstmt.setString(13, ((ToDoNote) note).getToDoCompleted());
+				pstmt.setInt(12, 1); // is_todo
+				pstmt.setString(13, ((ToDoNote) note).getToDoDue());
+				pstmt.setString(14, ((ToDoNote) note).getToDoCompleted());
 			} else {
-				pstmt.setInt(11, 0);
-				pstmt.setString(12, null);
+				pstmt.setInt(12, 0);
 				pstmt.setString(13, null);
+				pstmt.setString(14, null);
 			}
 
-			pstmt.setInt(14, note.isFavorite() ? 1 : 0); // is_favorite
-			pstmt.setInt(15, note.isPinned() ? 1 : 0); // is_pinned
-			pstmt.setInt(16, note.isDeleted() ? 1 : 0); // is_deleted
-			pstmt.setString(17, note.getDeletedDate()); // deleted_date
+			pstmt.setInt(15, note.isFavorite() ? 1 : 0); // is_favorite
+			pstmt.setInt(16, note.isPinned() ? 1 : 0); // is_pinned
+			pstmt.setInt(17, note.isDeleted() ? 1 : 0); // is_deleted
+			pstmt.setString(18, note.getDeletedDate()); // deleted_date
 
 			pstmt.executeUpdate();
-
-			// Obtener el ID generado
-			try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
-				if (generatedKeys.next()) {
-					newId = generatedKeys.getInt(1); // Asigna el ID de la nueva nota
-					note.setId(newId);
-				}
-			}
 
 			connection.commit(); // Confirmar transacción
 		} catch (SQLException e) {
@@ -129,21 +127,22 @@ public class NoteDAOSQLite implements NoteDAO {
 			} catch (SQLException rollbackEx) {
 				logger.log(Level.SEVERE, "Error rolling back transaction: " + rollbackEx.getMessage(), rollbackEx);
 			}
+			return null;
 		}
 
-		return newId; // Retorna el ID de la nueva nota o -1 si hubo un error
+		return newId; // Retorna el ID de la nueva nota
 	}
 
 	@Override
-	public Note getNoteById(int id) {
+	public Note getNoteById(String id) {
 		Note note = null;
 
-		if (id <= 0) {
-			throw new IllegalArgumentException("Note ID must be greater than zero");
+		if (id == null || id.isEmpty()) {
+			throw new IllegalArgumentException("Note ID cannot be null or empty");
 		}
 
 		try (PreparedStatement pstmt = connection.prepareStatement(SELECT_NOTE_BY_ID_SQL)) {
-			pstmt.setInt(1, id);
+			pstmt.setString(1, id);
 
 			try (ResultSet rs = pstmt.executeQuery()) {
 				// Process the result set
@@ -170,7 +169,7 @@ public class NoteDAOSQLite implements NoteDAO {
 			pstmt.setString(3, DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
 			pstmt.setInt(4, note.isFavorite() ? 1 : 0);
 			pstmt.setInt(5, note.isPinned() ? 1 : 0);
-			pstmt.setInt(6, note.getId());
+			pstmt.setString(6, note.getId());
 			pstmt.executeUpdate();
 			connection.commit();
 
@@ -185,14 +184,14 @@ public class NoteDAOSQLite implements NoteDAO {
 	}
 
 	@Override
-	public void deleteNote(int id) {
-		if (id <= 0) {
-			throw new IllegalArgumentException("Note ID must be greater than zero");
+	public void deleteNote(String id) {
+		if (id == null || id.isEmpty()) {
+			throw new IllegalArgumentException("Note ID cannot be null or empty");
 		}
 
 		try (PreparedStatement pstmt = connection.prepareStatement(SOFT_DELETE_NOTE_SQL)) {
 			pstmt.setString(1, DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
-			pstmt.setInt(2, id);
+			pstmt.setString(2, id);
 			pstmt.executeUpdate();
 			connection.commit();
 
@@ -206,13 +205,14 @@ public class NoteDAOSQLite implements NoteDAO {
 		}
 	}
 
-	public void permanentlyDeleteNote(int id) {
-		if (id <= 0) {
-			throw new IllegalArgumentException("Note ID must be greater than zero");
+	@Override
+	public void permanentlyDeleteNote(String id) {
+		if (id == null || id.isEmpty()) {
+			throw new IllegalArgumentException("Note ID cannot be null or empty");
 		}
 
 		try (PreparedStatement pstmt = connection.prepareStatement(DELETE_NOTE_SQL)) {
-			pstmt.setInt(1, id);
+			pstmt.setString(1, id);
 			pstmt.executeUpdate();
 			connection.commit();
 
@@ -226,13 +226,14 @@ public class NoteDAOSQLite implements NoteDAO {
 		}
 	}
 
-	public void restoreNote(int id) {
-		if (id <= 0) {
-			throw new IllegalArgumentException("Note ID must be greater than zero");
+	@Override
+	public void restoreNote(String id) {
+		if (id == null || id.isEmpty()) {
+			throw new IllegalArgumentException("Note ID cannot be null or empty");
 		}
 
 		try (PreparedStatement pstmt = connection.prepareStatement(RESTORE_NOTE_SQL)) {
-			pstmt.setInt(1, id);
+			pstmt.setString(1, id);
 			pstmt.executeUpdate();
 			connection.commit();
 
@@ -246,6 +247,7 @@ public class NoteDAOSQLite implements NoteDAO {
 		}
 	}
 
+	@Override
 	public List<Note> fetchTrashNotes() {
 		List<Note> list = new ArrayList<>();
 		try (Statement stmt = connection.createStatement()) {
@@ -262,15 +264,15 @@ public class NoteDAOSQLite implements NoteDAO {
 
 	// Retrieval Methods
 	@Override
-	public List<Note> fetchNotesByFolderId(int folderId) {
-		if (folderId <= 0) {
+	public List<Note> fetchNotesByFolderId(String folderId) {
+		if (folderId == null || folderId.isEmpty()) {
 			throw new InvalidParameterException("Invalid folder ID or provided list is null");
 		}
 
 		List<Note> list = new ArrayList<>();
 
 		try (PreparedStatement pstmt = connection.prepareStatement(SELECT_NOTES_BY_FOLDER_ID_SQL)) {
-			pstmt.setInt(1, folderId);
+			pstmt.setString(1, folderId);
 
 			try (ResultSet rs = pstmt.executeQuery()) {
 				while (rs.next()) {
@@ -291,7 +293,7 @@ public class NoteDAOSQLite implements NoteDAO {
 		}
 
 		try (PreparedStatement pstmt = connection.prepareStatement(SELECT_NOTES_BY_FOLDER_ID_SQL)) {
-			pstmt.setInt(1, folder.getId());
+			pstmt.setString(1, folder.getId());
 
 			try (ResultSet rs = pstmt.executeQuery()) {
 				while (rs.next()) {
@@ -323,22 +325,23 @@ public class NoteDAOSQLite implements NoteDAO {
 	}
 
 	@Override
-	public Folder getFolderOfNote(int noteId) {
+	public Folder getFolderOfNote(String noteId) {
 		FolderDAO folderDAO = new FolderDAOSQLite(connection);
 		return folderDAO.getFolderByNoteId(noteId);
 	}
 
 	// Tag Management Methods
 	@Override
-	public void addTag(int noteId, int tagId) {
-		if (noteId <= 0 || tagId <= 0) {
-			throw new IllegalArgumentException("Note ID and tag ID must be greater than zero");
+	public void addTag(String noteId, String tagId) {
+		if (noteId == null || noteId.isEmpty() || tagId == null || tagId.isEmpty()) {
+			throw new IllegalArgumentException("Note ID and tag ID must not be null or empty");
 		}
 
 		try (PreparedStatement pstmt = connection.prepareStatement(INSERT_TAG_NOTE_SQL)) {
-			pstmt.setInt(1, tagId);
-			pstmt.setInt(2, noteId);
-			pstmt.setString(3, DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
+			pstmt.setString(1, UUID.randomUUID().toString()); // tagsNotes ID
+			pstmt.setString(2, tagId);
+			pstmt.setString(3, noteId);
+			pstmt.setString(4, DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
 			pstmt.executeUpdate();
 			connection.commit();
 
@@ -362,14 +365,14 @@ public class NoteDAOSQLite implements NoteDAO {
 	}
 
 	@Override
-	public void removeTag(int noteId, int tagId) {
-		if (tagId <= 0 || noteId <= 0) {
-			throw new IllegalArgumentException("Note ID and tag ID must be greater than zero");
+	public void removeTag(String noteId, String tagId) {
+		if (tagId == null || tagId.isEmpty() || noteId == null || noteId.isEmpty()) {
+			throw new IllegalArgumentException("Note ID and tag ID must not be null or empty");
 		}
 
 		try (PreparedStatement pstmt = connection.prepareStatement(DELETE_TAG_NOTE_SQL)) {
-			pstmt.setInt(1, tagId);
-			pstmt.setInt(2, noteId);
+			pstmt.setString(1, tagId);
+			pstmt.setString(2, noteId);
 			pstmt.executeUpdate();
 			connection.commit();
 
@@ -393,19 +396,19 @@ public class NoteDAOSQLite implements NoteDAO {
 	}
 
 	@Override
-	public List<Tag> fetchTags(int noteId) {
-		if (noteId <= 0) {
+	public List<Tag> fetchTags(String noteId) {
+		if (noteId == null || noteId.isEmpty()) {
 			throw new InvalidParameterException("Invalid note ID");
 		}
 
 		List<Tag> list = new ArrayList<>();
 
 		try (PreparedStatement pstmt = connection.prepareStatement(SELECT_ALL_TAGS_NOTE_SQL)) {
-			pstmt.setInt(1, noteId);
+			pstmt.setString(1, noteId);
 
 			try (ResultSet rs = pstmt.executeQuery()) {
 				while (rs.next()) {
-					int id = rs.getInt("tag_id");
+					String id = rs.getString("tag_id");
 					String title = rs.getString("title");
 					String createdDate = rs.getString("created_date");
 					String modifiedDate = rs.getString("modified_date");
@@ -431,15 +434,15 @@ public class NoteDAOSQLite implements NoteDAO {
 	}
 
 	@Override
-	public List<Note> fetchNotesByTagId(int tagId) {
-		if (tagId <= 0) {
+	public List<Note> fetchNotesByTagId(String tagId) {
+		if (tagId == null || tagId.isEmpty()) {
 			throw new InvalidParameterException("Invalid tag ID");
 		}
 
 		List<Note> list = new ArrayList<>();
 
 		try (PreparedStatement pstmt = connection.prepareStatement(SELECT_NOTES_BY_TAG_ID_SQL)) {
-			pstmt.setInt(1, tagId);
+			pstmt.setString(1, tagId);
 
 			try (ResultSet rs = pstmt.executeQuery()) {
 				while (rs.next()) {
@@ -458,7 +461,7 @@ public class NoteDAOSQLite implements NoteDAO {
 		Note note = null;
 
 		if (rs != null) {
-			int noteId = rs.getInt("note_id");
+			String noteId = rs.getString("note_id");
 			String title = rs.getString("title");
 			String content = rs.getString("content");
 			String createdDate = rs.getString("created_date");

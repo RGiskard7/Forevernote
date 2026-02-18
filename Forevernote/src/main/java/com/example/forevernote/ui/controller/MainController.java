@@ -445,11 +445,39 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     /**
      * Initialize database connections and DAOs.
      */
+    /**
+     * Initialize database connections and DAOs.
+     */
     private void initializeDatabase() {
         try {
-            SQLiteDB db = SQLiteDB.getInstance();
-            connection = db.openConnection();
-            factoryDAO = FactoryDAO.getFactory(FactoryDAO.SQLITE_FACTORY, connection);
+            // Determine storage type from AppConfig (defaulting to SQLite for now, but
+            // could be "filesystem")
+            // For now, let's auto-detect or use SQLite default.
+            // Ideally AppConfig should have getStorageType()
+
+            // To enable FileSystem mode, we can check a system property or config file
+            Preferences prefs = Preferences.userNodeForPackage(MainController.class);
+            String storageType = prefs.get("storage_type", System.getProperty("forevernote.storage", "sqlite"));
+
+            if ("filesystem".equalsIgnoreCase(storageType)) {
+                String customPath = prefs.get("filesystem_path", "");
+                String dataDir;
+                if (customPath != null && !customPath.isEmpty() && new File(customPath).exists()) {
+                    dataDir = customPath;
+                    logger.info("Using Custom File System Storage at " + dataDir);
+                } else {
+                    dataDir = com.example.forevernote.AppDataDirectory.getDataDirectory();
+                    logger.info("Using Default File System Storage at " + dataDir);
+                }
+
+                factoryDAO = FactoryDAO.getFactory(FactoryDAO.FILE_SYSTEM_FACTORY, dataDir);
+            } else {
+                SQLiteDB db = SQLiteDB.getInstance();
+                connection = db.openConnection();
+                factoryDAO = FactoryDAO.getFactory(FactoryDAO.SQLITE_FACTORY, connection);
+                logger.info("Initialized SQLite Storage");
+            }
+
             folderDAO = factoryDAO.getFolderDAO();
             noteDAO = factoryDAO.getNoteDAO();
             tagDAO = factoryDAO.getLabelDAO();
@@ -464,6 +492,73 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         } catch (Exception e) {
             logger.severe("Failed to initialize database: " + e.getMessage());
             throw new RuntimeException("Database initialization failed", e);
+        }
+    }
+
+    @FXML
+    public void handleSwitchStorage() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(getString("pref.storage"));
+        alert.setHeaderText(getString("pref.storage.header"));
+        alert.setContentText(getString("pref.storage.content"));
+
+        ButtonType sqliteBtn = new ButtonType(getString("pref.storage.sqlite"));
+        ButtonType fsDefaultBtn = new ButtonType(getString("pref.storage.filesystem_default"));
+        ButtonType fsCustomBtn = new ButtonType(getString("pref.storage.filesystem_custom"));
+        ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        alert.getButtonTypes().setAll(sqliteBtn, fsDefaultBtn, fsCustomBtn, cancelBtn);
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() != cancelBtn) {
+            String newType = "sqlite";
+            String customPath = "";
+            boolean changed = false;
+
+            Preferences prefs = Preferences.userNodeForPackage(MainController.class);
+            String currentType = prefs.get("storage_type", "sqlite");
+            String currentPath = prefs.get("filesystem_path", "");
+
+            if (result.get() == sqliteBtn) {
+                newType = "sqlite";
+                changed = !newType.equals(currentType);
+            } else if (result.get() == fsDefaultBtn) {
+                newType = "filesystem";
+                customPath = ""; // Empty means default
+                changed = !newType.equals(currentType) || !customPath.equals(currentPath);
+            } else if (result.get() == fsCustomBtn) {
+                javafx.stage.DirectoryChooser directoryChooser = new javafx.stage.DirectoryChooser();
+                directoryChooser.setTitle(getString("pref.storage.browse"));
+
+                // Set initial directory if exists
+                if (!currentPath.isEmpty()) {
+                    File initialDir = new File(currentPath);
+                    if (initialDir.exists()) {
+                        directoryChooser.setInitialDirectory(initialDir);
+                    }
+                }
+
+                File selectedDirectory = directoryChooser.showDialog(menuBar.getScene().getWindow());
+                if (selectedDirectory != null) {
+                    newType = "filesystem";
+                    customPath = selectedDirectory.getAbsolutePath();
+                    changed = !newType.equals(currentType) || !customPath.equals(currentPath);
+                } else {
+                    // User cancelled directory selection
+                    return;
+                }
+            }
+
+            if (changed) {
+                prefs.put("storage_type", newType);
+                prefs.put("filesystem_path", customPath);
+
+                Alert restartAlert = new Alert(Alert.AlertType.INFORMATION);
+                restartAlert.setTitle(getString("app.restart_required"));
+                restartAlert.setHeaderText(null);
+                restartAlert.setContentText(getString("app.restart_storage_message"));
+                restartAlert.showAndWait();
+            }
         }
     }
 
@@ -505,39 +600,30 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     /**
      * Get the count of notes in a folder (including subfolders recursively).
      */
+    /**
+     * Get the count of notes in a folder.
+     * Optimization: Recursive counting is extremely slow for FileSystem large
+     * vaults.
+     * We will only count ALL notes for the Root. For subfolders, we return -1
+     * (hidden) or 0 to save performance.
+     */
     private int getNoteCountForFolder(Folder folder) {
         try {
             if (folder == null)
                 return 0;
 
-            // "All Notes" (Root folder) usually has null ID or special title
-            // We check for null ID as the most reliable indicator for the virtual root
+            // "All Notes" check
             if (folder.getId() == null || folder.getTitle().equals("All Notes")
-                    || folder.getTitle().equals("Todas las Notas")) {
+                    || folder.getTitle().equals("Todas las Notas") || "ROOT".equals(folder.getId())) {
                 List<Note> allNotes = noteDAO.fetchAllNotes();
                 return allNotes != null ? allNotes.size() : 0;
             }
 
-            // Get notes directly in this folder
-            folderDAO.loadNotes(folder);
-            int count = 0;
-            for (Component child : folder.getChildren()) {
-                if (child instanceof Note) {
-                    count++;
-                }
-            }
-
-            // Add notes from subfolders recursively
-            folderDAO.loadSubFolders(folder);
-            for (Component child : folder.getChildren()) {
-                if (child instanceof Folder) {
-                    count += getNoteCountForFolder((Folder) child);
-                }
-            }
-
-            return count;
+            // For other folders, return 0 to avoid massive FS recursion lag.
+            // If users REALLY want counts, we can implement an async background counter
+            // later.
+            return 0;
         } catch (Exception e) {
-            logger.warning("Error counting notes for folder " + folder.getTitle() + ": " + e.getMessage());
             return 0;
         }
     }
@@ -754,7 +840,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     Folder targetFolder = cell.getItem();
                     if (targetFolder != null && !targetFolder.getTitle().equals("All Notes")) {
                         try {
-                            int noteId = Integer.parseInt(db.getString().substring(5));
+                            String noteId = db.getString().substring(5);
                             Note note = noteDAO.getNoteById(noteId);
                             if (note != null) {
                                 folderDAO.addNote(targetFolder, note);
@@ -2419,12 +2505,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             Folder loadedFolder = folderDAO.getFolderById(folder.getId());
             if (loadedFolder != null) {
                 currentFolder = loadedFolder;
-                folderDAO.loadNotes(currentFolder);
 
-                List<Note> notes = currentFolder.getChildren().stream()
-                        .filter(c -> c instanceof Note)
-                        .map(c -> (Note) c)
-                        .toList();
+                // DATA ACCESS FIX: Explicitly use NoteDAO to fetch notes for the folder
+                // This ensures we get the latest file list directly from disk (via our
+                // optimized method)
+                List<Note> notes = noteDAO.fetchNotesByFolderId(currentFolder.getId());
+
+                // Add notes to the folder object implicitly for UI consistency if needed,
+                // but primarily use the returned list for the ListView.
+                currentFolder.getChildren().removeIf(c -> c instanceof Note);
+                currentFolder.addAll(new ArrayList<>(notes));
 
                 notesListView.getItems().setAll(notes);
                 sortNotes(sortComboBox.getValue());
@@ -2496,9 +2586,20 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
         }
 
-        currentNote = note;
-        noteTitleField.setText(note.getTitle() != null ? note.getTitle() : "");
-        noteContentArea.setText(note.getContent() != null ? note.getContent() : "");
+        // OPTIMIZATION: The note object passed from the list might be a "lightweight"
+        // note without content.
+        // We MUST reload the full note data from the DAO using the ID to get the
+        // content.
+        Note fullNote = noteDAO.getNoteById(note.getId());
+        if (fullNote != null) {
+            currentNote = fullNote;
+        } else {
+            // Fallback if load fails (shouldn't happen if file exists)
+            currentNote = note;
+        }
+
+        noteTitleField.setText(currentNote.getTitle() != null ? currentNote.getTitle() : "");
+        noteContentArea.setText(currentNote.getContent() != null ? currentNote.getContent() : "");
 
         // Load tags
         loadNoteTags(note);
@@ -2555,7 +2656,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 removeBtn.setTooltip(new Tooltip("Remove tag from note"));
 
                 // Store tag ID to ensure it's accessible when removing
-                final int tagId = tag.getId();
+                final String tagId = tag.getId();
                 final String tagTitle = tag.getTitle();
                 removeBtn.setOnAction(e -> {
                     Tag tagToRemove = new Tag(tagId, tagTitle, null, null);
@@ -3383,7 +3484,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 } else {
                     // Create new tag
                     tag = new Tag(tagName);
-                    int tagId = tagDAO.createTag(tag);
+                    String tagId = tagDAO.createTag(tag);
                     tag.setId(tagId);
                 }
 
@@ -3505,12 +3606,27 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private void handleNewNote(ActionEvent event) {
         try {
             Note newNote = new Note(getString("action.new_note"), "");
-            int noteId = noteDAO.createNote(newNote);
+
+            // Fix: If a folder is selected, prepare the ID with the folder path
+            if (currentFolder != null && currentFolder.getId() != null &&
+                    !"ROOT".equals(currentFolder.getId()) &&
+                    !currentFolder.getTitle().equals("All Notes")) {
+
+                String pathSeparator = File.separator;
+                String folderPath = currentFolder.getId();
+                String safeTitle = newNote.getTitle().replaceAll("[^a-zA-Z0-9\\.\\-_ ]", "_");
+
+                // We set an ID like "Folder/New Note" so NoteDAOFileSystem detects the parent
+                // folder
+                newNote.setId(folderPath + pathSeparator + safeTitle);
+            }
+
+            String noteId = noteDAO.createNote(newNote);
             newNote.setId(noteId);
 
-            if (currentFolder != null) {
-                folderDAO.addNote(currentFolder, newNote);
-            }
+            // With FS DAO and our fix, the file is already in the right place.
+            // We don't need to manually add it to the Folder object's children list
+            // because refreshNotesList() will re-fetch from disk correctly.
 
             notesListView.getItems().add(0, newNote);
             notesListView.getSelectionModel().select(newNote);
@@ -3550,7 +3666,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             try {
                 Folder newFolder = new Folder(result.get().trim());
-                int folderId = folderDAO.createFolder(newFolder);
+                String folderId = folderDAO.createFolder(newFolder);
                 newFolder.setId(folderId);
 
                 // Only add as subfolder if currentFolder is set and not "All Notes"
@@ -3593,7 +3709,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             try {
                 Folder newSubfolder = new Folder(result.get().trim());
-                int folderId = folderDAO.createFolder(newSubfolder);
+                String folderId = folderDAO.createFolder(newSubfolder);
                 newSubfolder.setId(folderId);
 
                 folderDAO.addSubFolder(currentFolder, newSubfolder);
@@ -3605,6 +3721,63 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 logger.severe("Failed to create subfolder: " + e.getMessage());
                 updateStatus(getString("status.subfolder_error"));
             }
+        }
+    }
+
+    @FXML
+    private void handleImport(ActionEvent event) {
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Import Notes");
+        fileChooser.getExtensionFilters().addAll(
+                new FileChooser.ExtensionFilter("Supported Files", "*.md", "*.txt", "*.markdown"),
+                new FileChooser.ExtensionFilter("Markdown Files", "*.md", "*.markdown"),
+                new FileChooser.ExtensionFilter("Text Files", "*.txt"),
+                new FileChooser.ExtensionFilter("All Files", "*.*"));
+
+        List<File> files = fileChooser.showOpenMultipleDialog(mainSplitPane.getScene().getWindow());
+        if (files != null && !files.isEmpty()) {
+            int imported = 0;
+            int failed = 0;
+
+            for (File file : files) {
+                try {
+                    String content = Files.readString(file.toPath());
+                    String title = file.getName();
+                    // Remove extension from title
+                    int dotIndex = title.lastIndexOf('.');
+                    if (dotIndex > 0) {
+                        title = title.substring(0, dotIndex);
+                    }
+
+                    // Create new note
+                    Note newNote = new Note(title, content);
+                    String noteId = noteDAO.createNote(newNote);
+                    newNote.setId(noteId);
+
+                    // Add to current folder if selected
+                    if (currentFolder != null && currentFolder.getId() != null) {
+                        folderDAO.addNote(currentFolder, newNote);
+                    }
+
+                    imported++;
+                } catch (Exception e) {
+                    logger.warning("Failed to import file " + file.getName() + ": " + e.getMessage());
+                    failed++;
+                }
+            }
+
+            // Refresh lists
+            refreshNotesList();
+            loadRecentNotes();
+
+            // Show result
+            String message = java.text.MessageFormat.format(getString("status.imported_notes"), imported);
+            if (failed > 0) {
+                message += "\n" + java.text.MessageFormat.format(getString("status.import_failed_count"), failed);
+            }
+            updateStatus(message);
+            showAlert(Alert.AlertType.INFORMATION, getString("status.import_complete"),
+                    getString("dialog.import_finished"), message);
         }
     }
 
@@ -3778,63 +3951,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
 
         System.exit(0);
-    }
-
-    @FXML
-    private void handleImport(ActionEvent event) {
-        FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Import Notes");
-        fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Supported Files", "*.md", "*.txt", "*.markdown"),
-                new FileChooser.ExtensionFilter("Markdown Files", "*.md", "*.markdown"),
-                new FileChooser.ExtensionFilter("Text Files", "*.txt"),
-                new FileChooser.ExtensionFilter("All Files", "*.*"));
-
-        List<File> files = fileChooser.showOpenMultipleDialog(mainSplitPane.getScene().getWindow());
-        if (files != null && !files.isEmpty()) {
-            int imported = 0;
-            int failed = 0;
-
-            for (File file : files) {
-                try {
-                    String content = Files.readString(file.toPath());
-                    String title = file.getName();
-                    // Remove extension from title
-                    int dotIndex = title.lastIndexOf('.');
-                    if (dotIndex > 0) {
-                        title = title.substring(0, dotIndex);
-                    }
-
-                    // Create new note
-                    Note newNote = new Note(title, content);
-                    int noteId = noteDAO.createNote(newNote);
-                    newNote.setId(noteId);
-
-                    // Add to current folder if selected
-                    if (currentFolder != null && currentFolder.getId() != null) {
-                        folderDAO.addNote(currentFolder, newNote);
-                    }
-
-                    imported++;
-                } catch (Exception e) {
-                    logger.warning("Failed to import file " + file.getName() + ": " + e.getMessage());
-                    failed++;
-                }
-            }
-
-            // Refresh lists
-            refreshNotesList();
-            loadRecentNotes();
-
-            // Show result
-            String message = java.text.MessageFormat.format(getString("status.imported_notes"), imported);
-            if (failed > 0) {
-                message += "\n" + java.text.MessageFormat.format(getString("status.import_failed_count"), failed);
-            }
-            updateStatus(message);
-            showAlert(Alert.AlertType.INFORMATION, getString("status.import_complete"),
-                    getString("dialog.import_finished"), message);
-        }
     }
 
     @FXML

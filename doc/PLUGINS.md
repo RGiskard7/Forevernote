@@ -981,3 +981,13 @@ To share your plugin with the community:
 ---
 
 For questions or issues, please refer to the main documentation or create an issue in the repository.
+
+## Troubleshooting Plugins
+
+If a plugin fails to load or behaves unexpectedly:
+
+1.  **Check Logs**: Look at the application logs (console output) for errors during startup.
+    -   "Failed to load plugin: [Name]" usually indicates a missing dependency or exception in `initialize()`.
+2.  **Verify JAR Structure**: Ensure your JAR file contains the `plugin.properties` file (if used) or that the class implementing `Plugin` is correctly referenced.
+3.  **Dependency Conflicts**: If your plugin uses external libraries, ensure they are included in your JAR (uber-jar) or don't conflict with Forevernote's core libraries.
+4.  **UI Thread**: Remember to wrap UI updates in `Platform.runLater()` to avoid threading runtime exceptions.

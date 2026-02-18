@@ -15,26 +15,29 @@ import com.example.forevernote.data.models.interfaces.Component;
 
 /**
  * Service layer for folder-related business logic.
- * Provides a clean API for folder operations, including hierarchical management.
+ * Provides a clean API for folder operations, including hierarchical
+ * management.
  * 
- * <p>This service handles:</p>
+ * <p>
+ * This service handles:
+ * </p>
  * <ul>
- *   <li>CRUD operations for folders</li>
- *   <li>Folder hierarchy management (parent-child relationships)</li>
- *   <li>Note assignment to folders</li>
- *   <li>Folder tree traversal</li>
+ * <li>CRUD operations for folders</li>
+ * <li>Folder hierarchy management (parent-child relationships)</li>
+ * <li>Note assignment to folders</li>
+ * <li>Folder tree traversal</li>
  * </ul>
  * 
  * @author Edu Díaz (RGiskard7)
  * @since 1.1.0
  */
 public class FolderService {
-    
+
     private static final Logger logger = LoggerConfig.getLogger(FolderService.class);
-    
+
     private final FolderDAO folderDAO;
     private final NoteDAO noteDAO;
-    
+
     /**
      * Creates a new FolderService with the required DAOs.
      * 
@@ -46,9 +49,15 @@ public class FolderService {
         this.noteDAO = noteDAO;
         logger.info("FolderService initialized");
     }
-    
+
     // ==================== CRUD Operations ====================
-    
+
+    /**
+     * Creates a new folder in the root.
+     * 
+     * @param title The folder title
+     * @return The created folder with its generated ID
+     */
     /**
      * Creates a new folder in the root.
      * 
@@ -57,12 +66,12 @@ public class FolderService {
      */
     public Folder createFolder(String title) {
         Folder folder = new Folder(title);
-        int folderId = folderDAO.createFolder(folder);
+        String folderId = folderDAO.createFolder(folder);
         folder.setId(folderId);
         logger.info("Created folder: " + title + " (ID: " + folderId + ")");
         return folder;
     }
-    
+
     /**
      * Creates a new subfolder under a parent folder.
      * 
@@ -78,18 +87,18 @@ public class FolderService {
         }
         return subfolder;
     }
-    
+
     /**
      * Retrieves a folder by its ID.
      * 
      * @param id The folder ID
      * @return Optional containing the folder if found
      */
-    public Optional<Folder> getFolderById(int id) {
+    public Optional<Folder> getFolderById(String id) {
         Folder folder = folderDAO.getFolderById(id);
         return Optional.ofNullable(folder);
     }
-    
+
     /**
      * Updates an existing folder.
      * 
@@ -102,7 +111,7 @@ public class FolderService {
         folderDAO.updateFolder(folder);
         logger.info("Updated folder: " + folder.getTitle());
     }
-    
+
     /**
      * Renames a folder.
      * 
@@ -116,20 +125,20 @@ public class FolderService {
         folder.setTitle(newName.trim());
         updateFolder(folder);
     }
-    
+
     /**
      * Deletes a folder by its ID.
      * Notes in the folder will be moved to root (no parent).
      * 
      * @param folderId The ID of the folder to delete
      */
-    public void deleteFolder(int folderId) {
+    public void deleteFolder(String folderId) {
         folderDAO.deleteFolder(folderId);
         logger.info("Deleted folder ID: " + folderId);
     }
-    
+
     // ==================== Retrieval Methods ====================
-    
+
     /**
      * Fetches all folders as a flat list.
      * 
@@ -138,7 +147,7 @@ public class FolderService {
     public List<Folder> getAllFolders() {
         return folderDAO.fetchAllFoldersAsList();
     }
-    
+
     /**
      * Fetches only root folders (folders without a parent).
      * 
@@ -147,13 +156,13 @@ public class FolderService {
     public List<Folder> getRootFolders() {
         List<Folder> allFolders = getAllFolders();
         return allFolders.stream()
-            .filter(folder -> {
-                Folder parent = folderDAO.getParentFolder(folder.getId());
-                return parent == null;
-            })
-            .collect(Collectors.toList());
+                .filter(folder -> {
+                    Folder parent = folderDAO.getParentFolder(folder.getId());
+                    return parent == null;
+                })
+                .collect(Collectors.toList());
     }
-    
+
     /**
      * Fetches subfolders of a parent folder.
      * 
@@ -164,14 +173,14 @@ public class FolderService {
         if (parentFolder == null || parentFolder.getId() == null) {
             return new ArrayList<>();
         }
-        
+
         folderDAO.loadSubFolders(parentFolder);
         return parentFolder.getChildren().stream()
-            .filter(c -> c instanceof Folder)
-            .map(c -> (Folder) c)
-            .collect(Collectors.toList());
+                .filter(c -> c instanceof Folder)
+                .map(c -> (Folder) c)
+                .collect(Collectors.toList());
     }
-    
+
     /**
      * Gets the parent folder of a folder.
      * 
@@ -185,7 +194,7 @@ public class FolderService {
         Folder parent = folderDAO.getParentFolder(folder.getId());
         return Optional.ofNullable(parent);
     }
-    
+
     /**
      * Loads the complete folder hierarchy starting from root.
      * 
@@ -198,7 +207,7 @@ public class FolderService {
         }
         return rootFolders;
     }
-    
+
     /**
      * Recursively loads subfolders.
      * 
@@ -212,9 +221,9 @@ public class FolderService {
             }
         }
     }
-    
+
     // ==================== Note Management ====================
-    
+
     /**
      * Gets all notes in a folder.
      * 
@@ -227,7 +236,7 @@ public class FolderService {
         }
         return noteDAO.fetchNotesByFolderId(folder.getId());
     }
-    
+
     /**
      * Adds a note to a folder.
      * 
@@ -241,7 +250,7 @@ public class FolderService {
         folderDAO.addNote(folder, note);
         logger.info("Added note '" + note.getTitle() + "' to folder: " + folder.getTitle());
     }
-    
+
     /**
      * Moves a note to a different folder.
      * 
@@ -252,7 +261,7 @@ public class FolderService {
         if (note == null) {
             throw new IllegalArgumentException("Note cannot be null");
         }
-        
+
         // Remove from current folder and add to new one
         if (newFolder != null) {
             folderDAO.addNote(newFolder, note);
@@ -262,9 +271,9 @@ public class FolderService {
             logger.info("Moved note '" + note.getTitle() + "' to root");
         }
     }
-    
+
     // ==================== Path Methods ====================
-    
+
     /**
      * Gets the full path of a folder (e.g., "/Parent/Child/Current").
      * 
@@ -277,7 +286,7 @@ public class FolderService {
         }
         return folder.getPath();
     }
-    
+
     /**
      * Gets the breadcrumb path as a list of folders from root to current.
      * 
@@ -287,17 +296,17 @@ public class FolderService {
     public List<Folder> getBreadcrumbPath(Folder folder) {
         List<Folder> path = new ArrayList<>();
         Folder current = folder;
-        
+
         while (current != null) {
             path.add(0, current);
             current = folderDAO.getParentFolder(current.getId());
         }
-        
+
         return path;
     }
-    
+
     // ==================== Utility Methods ====================
-    
+
     /**
      * Checks if a folder name already exists at root level.
      * 
@@ -306,9 +315,9 @@ public class FolderService {
      */
     public boolean folderExistsAtRoot(String name) {
         return getRootFolders().stream()
-            .anyMatch(f -> f.getTitle().equalsIgnoreCase(name));
+                .anyMatch(f -> f.getTitle().equalsIgnoreCase(name));
     }
-    
+
     /**
      * Checks if a subfolder name already exists under a parent.
      * 
@@ -318,9 +327,9 @@ public class FolderService {
      */
     public boolean subfolderExists(String name, Folder parent) {
         return getSubfolders(parent).stream()
-            .anyMatch(f -> f.getTitle().equalsIgnoreCase(name));
+                .anyMatch(f -> f.getTitle().equalsIgnoreCase(name));
     }
-    
+
     /**
      * Gets the total count of folders.
      * 
@@ -329,7 +338,7 @@ public class FolderService {
     public int getFolderCount() {
         return getAllFolders().size();
     }
-    
+
     /**
      * Gets the count of notes in a folder.
      * 
