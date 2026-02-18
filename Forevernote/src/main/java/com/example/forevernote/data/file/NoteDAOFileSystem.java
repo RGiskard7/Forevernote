@@ -36,6 +36,8 @@ public class NoteDAOFileSystem implements NoteDAO {
 
     // Cache to map Note ID (Relative Path) -> Absolute Path
     private final Map<String, Path> idToPathMap = new ConcurrentHashMap<>();
+    // Cache to map Note ID -> Note object (Lightweight)
+    private final Map<String, Note> cachedNotes = new ConcurrentHashMap<>();
 
     public NoteDAOFileSystem(String rootDirectory) {
         this.rootPath = Paths.get(rootDirectory);
@@ -52,12 +54,19 @@ public class NoteDAOFileSystem implements NoteDAO {
 
     private void refreshCache() {
         idToPathMap.clear();
+        cachedNotes.clear();
         try (Stream<Path> walk = Files.walk(rootPath)) {
+            // Using parallel stream for faster initial load of thousands of headers
             walk.filter(Files::isRegularFile)
-                    .filter(p -> p.toString().endsWith(".md"))
+                    .filter(p -> p.toString().endsWith(".md") && !p.getFileName().toString().startsWith("."))
+                    .parallel()
                     .forEach(path -> {
                         String relativePath = rootPath.relativize(path).toString();
                         idToPathMap.put(relativePath, path);
+                        // Accessing created note immediately creates race condition if not thread safe
+                        // NoteDAOFileSystem methods are synchronized or use concurrent maps
+                        Note note = createLightweightNote(relativePath, path);
+                        cachedNotes.put(relativePath, note);
                     });
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to walk directory for cache refresh", e);
@@ -65,16 +74,77 @@ public class NoteDAOFileSystem implements NoteDAO {
     }
 
     private Note createLightweightNote(String id, Path path) {
-        // Create Note object WITHOUT reading file content
+        // Create Note object
         String filename = path.getFileName().toString();
         String title = filename.endsWith(".md") ? filename.substring(0, filename.length() - 3) : filename;
-
-        // Note constructor: id, title, content
-        // We set content to empty string or null contextually. Using empty string for
-        // safety.
         Note note = new Note(id, title, "");
-        // We don't know dates or preview without reading.
+
+        // Lightweight Header Reading: Read only frontmatter to get metadata
+        if (Files.exists(path)) {
+            try (java.io.BufferedReader reader = Files.newBufferedReader(path)) {
+                String line = reader.readLine();
+                if (line != null && line.trim().equals("---")) {
+                    // Frontmatter detected
+                    while ((line = reader.readLine()) != null) {
+                        line = line.trim();
+                        if (line.equals("---") || line.equals("..."))
+                            break; // End of frontmatter
+
+                        if (line.startsWith("favorite:")) {
+                            note.setFavorite("true".equalsIgnoreCase(getValue(line)));
+                        } else if (line.startsWith("pinned:")) {
+                            note.setPinned("true".equalsIgnoreCase(getValue(line)));
+                        } else if (line.startsWith("deleted:")) {
+                            note.setDeleted("true".equalsIgnoreCase(getValue(line)));
+                        } else if (line.startsWith("tags:")) {
+                            String tagsVal = getValue(line);
+                            // Format: tags: [tag1, tag2]
+                            if (tagsVal.startsWith("[") && tagsVal.endsWith("]")) {
+                                tagsVal = tagsVal.substring(1, tagsVal.length() - 1);
+                                String[] parts = tagsVal.split(",");
+                                for (String part : parts) {
+                                    if (!part.trim().isEmpty()) {
+                                        com.example.forevernote.data.models.Tag t = new com.example.forevernote.data.models.Tag(
+                                                part.trim());
+                                        t.setId(part.trim());
+                                        note.addTag(t);
+                                    }
+                                }
+                            } else if (!tagsVal.isEmpty()) {
+                                // Maybe comma separated without brackets
+                                if (tagsVal.contains(",")) {
+                                    String[] parts = tagsVal.split(",");
+                                    for (String part : parts) {
+                                        if (!part.trim().isEmpty()) {
+                                            com.example.forevernote.data.models.Tag t = new com.example.forevernote.data.models.Tag(
+                                                    part.trim());
+                                            t.setId(part.trim());
+                                            note.addTag(t);
+                                        }
+                                    }
+                                } else {
+                                    com.example.forevernote.data.models.Tag t = new com.example.forevernote.data.models.Tag(
+                                            tagsVal.trim());
+                                    t.setId(tagsVal.trim());
+                                    note.addTag(t);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                // Ignore read errors for lightweight load
+            }
+        }
         return note;
+    }
+
+    private String getValue(String line) {
+        int idx = line.indexOf(':');
+        if (idx > 0 && idx < line.length() - 1) {
+            return line.substring(idx + 1).trim();
+        }
+        return "";
     }
 
     @Override
@@ -124,6 +194,7 @@ public class NoteDAOFileSystem implements NoteDAO {
             String fileContent = FrontmatterHandler.generate(note);
             Files.writeString(filePath, fileContent, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             idToPathMap.put(relativePath, filePath);
+            cachedNotes.put(relativePath, note);
             return relativePath;
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to write note file: " + filePath, e);
@@ -191,12 +262,16 @@ public class NoteDAOFileSystem implements NoteDAO {
             if (!Files.exists(newPath)) {
                 try {
                     Files.move(path, newPath);
-                    // Update ID map
-                    idToPathMap.remove(note.getId());
+                    // Update ID map and Cache
+                    String oldId = note.getId();
+                    idToPathMap.remove(oldId);
+                    cachedNotes.remove(oldId);
+
                     String newId = rootPath.relativize(newPath).toString();
                     idToPathMap.put(newId, newPath);
                     note.setId(newId); // Update object ID
                     path = newPath;
+                    cachedNotes.put(newId, note);
                 } catch (IOException e) {
                     logger.warning("Failed to rename note file during update: " + e.getMessage());
                 }
@@ -208,6 +283,7 @@ public class NoteDAOFileSystem implements NoteDAO {
         try {
             String fileContent = FrontmatterHandler.generate(note);
             Files.writeString(path, fileContent, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            cachedNotes.put(note.getId(), note);
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to update note file: " + path, e);
         }
@@ -225,6 +301,7 @@ public class NoteDAOFileSystem implements NoteDAO {
                     String fileContent = FrontmatterHandler.generate(note);
                     Files.writeString(path, fileContent, StandardOpenOption.CREATE,
                             StandardOpenOption.TRUNCATE_EXISTING);
+                    cachedNotes.put(id, note);
                 }
             } catch (IOException e) {
                 logger.log(Level.SEVERE, "Failed to delete (soft) note file: " + path, e);
@@ -239,6 +316,7 @@ public class NoteDAOFileSystem implements NoteDAO {
             try {
                 Files.delete(path);
                 idToPathMap.remove(id);
+                cachedNotes.remove(id);
             } catch (IOException e) {
                 logger.log(Level.SEVERE, "Failed to delete note file: " + path, e);
             }
@@ -262,31 +340,30 @@ public class NoteDAOFileSystem implements NoteDAO {
 
     @Override
     public List<Note> fetchNotesByFolderId(String folderId) {
-        List<Note> notes = new ArrayList<>();
-        Path folderPath;
-
-        if (folderId == null || folderId.equals("ROOT") || folderId.isEmpty()) {
-            folderPath = rootPath;
-        } else {
-            // Folder ID is the relative path, so resolve against root
-            folderPath = rootPath.resolve(folderId);
+        if (cachedNotes.isEmpty()) {
+            refreshCache();
         }
 
-        if (Files.exists(folderPath) && Files.isDirectory(folderPath)) {
-            try (Stream<Path> stream = Files.list(folderPath)) {
-                stream.filter(Files::isRegularFile)
-                        .filter(p -> {
-                            String name = p.getFileName().toString().toLowerCase();
-                            return name.endsWith(".md") && !name.startsWith(".");
-                        })
-                        .forEach(p -> {
-                            String relativePath = rootPath.relativize(p).toString();
-                            // Update cache lazily if needed, or rely on disk source of truth
-                            idToPathMap.put(relativePath, p);
-                            notes.add(createLightweightNote(relativePath, p));
-                        });
-            } catch (IOException e) {
-                logger.warning("Failed to list notes in folder: " + folderPath);
+        List<Note> notes = new ArrayList<>();
+        String prefix = (folderId == null || folderId.equals("ROOT")) ? "" : folderId + File.separator;
+
+        for (Note note : cachedNotes.values()) {
+            String id = note.getId();
+
+            if (folderId == null || folderId.equals("ROOT")) {
+                // Root folder: direct children have no separator
+                if (!id.contains(File.separator)) {
+                    notes.add(note);
+                }
+            } else {
+                // Subfolder: must start with folder path + separator, and have no further
+                // separators
+                if (id.startsWith(prefix)) {
+                    String remaining = id.substring(prefix.length());
+                    if (!remaining.contains(File.separator)) {
+                        notes.add(note);
+                    }
+                }
             }
         }
         return notes;
@@ -302,10 +379,10 @@ public class NoteDAOFileSystem implements NoteDAO {
 
     @Override
     public List<Note> fetchAllNotes() {
-        // Return lightweight notes!
-        return idToPathMap.entrySet().stream()
-                .map(e -> createLightweightNote(e.getKey(), e.getValue()))
-                .collect(Collectors.toList());
+        if (cachedNotes.isEmpty()) {
+            refreshCache();
+        }
+        return new ArrayList<>(cachedNotes.values());
     }
 
     @Override
@@ -347,13 +424,16 @@ public class NoteDAOFileSystem implements NoteDAO {
 
     @Override
     public List<Note> fetchNotesByTagId(String tagId) {
-        // Optimization needed: Tag Index.
-        // For now: slow scan.
+        if (cachedNotes.isEmpty()) {
+            refreshCache();
+        }
         List<Note> all = new ArrayList<>();
-        for (String id : idToPathMap.keySet()) {
-            Note n = getNoteById(id); // Reads file!
-            if (n != null && n.getTags().stream().anyMatch(t -> t.getTitle().equals(tagId))) {
-                all.add(n);
+        for (Note n : cachedNotes.values()) {
+            for (com.example.forevernote.data.models.Tag t : n.getTags()) {
+                if (t.getTitle().equals(tagId)) {
+                    all.add(n);
+                    break;
+                }
             }
         }
         return all;
