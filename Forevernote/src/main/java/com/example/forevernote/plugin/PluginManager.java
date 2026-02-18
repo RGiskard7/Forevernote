@@ -18,33 +18,35 @@ import com.example.forevernote.ui.components.CommandPalette;
 /**
  * Manages the lifecycle and state of all plugins.
  * 
- * <p>Responsibilities:</p>
+ * <p>
+ * Responsibilities:
+ * </p>
  * <ul>
- *   <li>Register and unregister plugins</li>
- *   <li>Initialize and shutdown plugins</li>
- *   <li>Enable and disable plugins</li>
- *   <li>Track plugin states</li>
- *   <li>Resolve plugin dependencies</li>
+ * <li>Register and unregister plugins</li>
+ * <li>Initialize and shutdown plugins</li>
+ * <li>Enable and disable plugins</li>
+ * <li>Track plugin states</li>
+ * <li>Resolve plugin dependencies</li>
  * </ul>
  * 
  * @author Edu Díaz (RGiskard7)
  * @since 1.2.0
  */
 public class PluginManager {
-    
+
     private static final Logger logger = LoggerConfig.getLogger(PluginManager.class);
-    
+
     /**
      * Plugin states.
      */
     public enum PluginState {
-        REGISTERED,    // Plugin is registered but not initialized
-        INITIALIZED,    // Plugin is initialized and ready
-        ENABLED,        // Plugin is enabled and active
-        DISABLED,       // Plugin is disabled
-        ERROR          // Plugin encountered an error
+        REGISTERED, // Plugin is registered but not initialized
+        INITIALIZED, // Plugin is initialized and ready
+        ENABLED, // Plugin is enabled and active
+        DISABLED, // Plugin is disabled
+        ERROR // Plugin encountered an error
     }
-    
+
     private final NoteService noteService;
     private final FolderService folderService;
     private final TagService tagService;
@@ -52,21 +54,22 @@ public class PluginManager {
     private final CommandPalette commandPalette;
     private final PluginMenuRegistry menuRegistry;
     private final SidePanelRegistry sidePanelRegistry;
-    
+    private final PreviewEnhancerRegistry previewEnhancerRegistry;
+
     // Plugin storage
     private final Map<String, Plugin> plugins = new HashMap<>();
     private final Map<String, PluginState> pluginStates = new HashMap<>();
     private final Map<String, PluginContext> pluginContexts = new HashMap<>();
-    
+
     /**
      * Creates a new PluginManager.
      * 
-     * @param noteService The note service
-     * @param folderService The folder service
-     * @param tagService The tag service
-     * @param eventBus The event bus
-     * @param commandPalette The command palette
-     * @param menuRegistry The menu registry
+     * @param noteService       The note service
+     * @param folderService     The folder service
+     * @param tagService        The tag service
+     * @param eventBus          The event bus
+     * @param commandPalette    The command palette
+     * @param menuRegistry      The menu registry
      * @param sidePanelRegistry The side panel registry
      */
     public PluginManager(
@@ -76,7 +79,8 @@ public class PluginManager {
             EventBus eventBus,
             CommandPalette commandPalette,
             PluginMenuRegistry menuRegistry,
-            SidePanelRegistry sidePanelRegistry) {
+            SidePanelRegistry sidePanelRegistry,
+            PreviewEnhancerRegistry previewEnhancerRegistry) {
         this.noteService = noteService;
         this.folderService = folderService;
         this.tagService = tagService;
@@ -84,8 +88,9 @@ public class PluginManager {
         this.commandPalette = commandPalette;
         this.menuRegistry = menuRegistry;
         this.sidePanelRegistry = sidePanelRegistry;
+        this.previewEnhancerRegistry = previewEnhancerRegistry;
     }
-    
+
     /**
      * Registers a plugin.
      * 
@@ -97,25 +102,25 @@ public class PluginManager {
             logger.warning("Attempted to register null plugin");
             return false;
         }
-        
+
         String pluginId = plugin.getId();
         if (pluginId == null || pluginId.isEmpty()) {
             logger.warning("Plugin has invalid ID");
             return false;
         }
-        
+
         if (plugins.containsKey(pluginId)) {
             logger.warning("Plugin already registered: " + pluginId);
             return false;
         }
-        
+
         plugins.put(pluginId, plugin);
         pluginStates.put(pluginId, PluginState.REGISTERED);
         logger.info("Registered plugin: " + plugin.getName() + " (" + pluginId + ")");
-        
+
         return true;
     }
-    
+
     /**
      * Unregisters a plugin.
      * 
@@ -126,15 +131,15 @@ public class PluginManager {
         if (pluginId == null || !plugins.containsKey(pluginId)) {
             return false;
         }
-        
+
         // Shutdown plugin first
         shutdownPlugin(pluginId);
-        
+
         // Remove plugin
         plugins.remove(pluginId);
         pluginStates.remove(pluginId);
         pluginContexts.remove(pluginId);
-        
+
         // Remove UI components
         if (menuRegistry != null) {
             menuRegistry.removePluginMenuItems(pluginId);
@@ -142,11 +147,11 @@ public class PluginManager {
         if (sidePanelRegistry != null) {
             sidePanelRegistry.removeAllSidePanels(pluginId);
         }
-        
+
         logger.info("Unregistered plugin: " + pluginId);
         return true;
     }
-    
+
     /**
      * Initializes a plugin.
      * 
@@ -159,13 +164,13 @@ public class PluginManager {
             logger.warning("Plugin not found: " + pluginId);
             return false;
         }
-        
+
         PluginState currentState = pluginStates.get(pluginId);
         if (currentState == PluginState.INITIALIZED || currentState == PluginState.ENABLED) {
             logger.fine("Plugin already initialized: " + pluginId);
             return true;
         }
-        
+
         // Check dependencies
         String[] dependencies = plugin.getDependencies();
         for (String depId : dependencies) {
@@ -180,32 +185,32 @@ public class PluginManager {
                 return false;
             }
         }
-        
+
         try {
             // Create context
             PluginContext context = new PluginContext(
-                pluginId,
-                noteService,
-                folderService,
-                tagService,
-                eventBus,
-                commandPalette,
-                menuRegistry,
-                sidePanelRegistry
-            );
+                    pluginId,
+                    noteService,
+                    folderService,
+                    tagService,
+                    eventBus,
+                    commandPalette,
+                    menuRegistry,
+                    sidePanelRegistry,
+                    previewEnhancerRegistry);
             pluginContexts.put(pluginId, context);
-            
+
             // Initialize plugin
             plugin.initialize(context);
-            
+
             pluginStates.put(pluginId, PluginState.INITIALIZED);
             logger.info("Initialized plugin: " + plugin.getName() + " (" + pluginId + ")");
-            
+
             // Enable if plugin is enabled by default
             if (plugin.isEnabled()) {
                 enablePlugin(pluginId);
             }
-            
+
             return true;
         } catch (Exception e) {
             logger.severe("Failed to initialize plugin " + pluginId + ": " + e.getMessage());
@@ -213,7 +218,7 @@ public class PluginManager {
             return false;
         }
     }
-    
+
     /**
      * Initializes all registered plugins in priority order.
      */
@@ -221,15 +226,15 @@ public class PluginManager {
         // Sort by priority
         List<Plugin> sortedPlugins = new ArrayList<>(plugins.values());
         sortedPlugins.sort((a, b) -> Integer.compare(a.getPriority(), b.getPriority()));
-        
+
         // Initialize in order
         for (Plugin plugin : sortedPlugins) {
             initializePlugin(plugin.getId());
         }
-        
+
         logger.info("Initialized " + plugins.size() + " plugin(s)");
     }
-    
+
     /**
      * Shuts down a plugin.
      * 
@@ -240,7 +245,7 @@ public class PluginManager {
         if (plugin == null) {
             return;
         }
-        
+
         try {
             plugin.shutdown();
             pluginStates.put(pluginId, PluginState.DISABLED);
@@ -249,7 +254,7 @@ public class PluginManager {
             logger.warning("Error shutting down plugin " + pluginId + ": " + e.getMessage());
         }
     }
-    
+
     /**
      * Shuts down all plugins.
      */
@@ -259,7 +264,7 @@ public class PluginManager {
         }
         logger.info("Shut down all plugins");
     }
-    
+
     /**
      * Enables a plugin.
      * 
@@ -271,24 +276,24 @@ public class PluginManager {
         if (plugin == null) {
             return false;
         }
-        
+
         PluginState currentState = pluginStates.get(pluginId);
         if (currentState == PluginState.ENABLED) {
             return true;
         }
-        
+
         // Initialize if not already initialized
         if (currentState == PluginState.REGISTERED) {
             if (!initializePlugin(pluginId)) {
                 return false;
             }
         }
-        
+
         pluginStates.put(pluginId, PluginState.ENABLED);
         logger.info("Enabled plugin: " + pluginId);
         return true;
     }
-    
+
     /**
      * Disables a plugin.
      * 
@@ -300,9 +305,9 @@ public class PluginManager {
         if (plugin == null) {
             return false;
         }
-        
+
         pluginStates.put(pluginId, PluginState.DISABLED);
-        
+
         // Remove UI components
         if (menuRegistry != null) {
             menuRegistry.removePluginMenuItems(pluginId);
@@ -310,11 +315,11 @@ public class PluginManager {
         if (sidePanelRegistry != null) {
             sidePanelRegistry.removeAllSidePanels(pluginId);
         }
-        
+
         logger.info("Disabled plugin: " + pluginId);
         return true;
     }
-    
+
     /**
      * Checks if a plugin is enabled.
      * 
@@ -325,7 +330,7 @@ public class PluginManager {
         PluginState state = pluginStates.get(pluginId);
         return state == PluginState.ENABLED || state == PluginState.INITIALIZED;
     }
-    
+
     /**
      * Gets the state of a plugin.
      * 
@@ -335,7 +340,7 @@ public class PluginManager {
     public PluginState getPluginState(String pluginId) {
         return pluginStates.get(pluginId);
     }
-    
+
     /**
      * Gets a plugin by ID.
      * 
@@ -345,7 +350,7 @@ public class PluginManager {
     public Optional<Plugin> getPlugin(String pluginId) {
         return Optional.ofNullable(plugins.get(pluginId));
     }
-    
+
     /**
      * Gets all registered plugins.
      * 
@@ -354,7 +359,7 @@ public class PluginManager {
     public List<Plugin> getAllPlugins() {
         return new ArrayList<>(plugins.values());
     }
-    
+
     /**
      * Gets all enabled plugins.
      * 
@@ -362,10 +367,10 @@ public class PluginManager {
      */
     public List<Plugin> getEnabledPlugins() {
         return plugins.values().stream()
-            .filter(p -> isPluginEnabled(p.getId()))
-            .collect(Collectors.toList());
+                .filter(p -> isPluginEnabled(p.getId()))
+                .collect(Collectors.toList());
     }
-    
+
     /**
      * Gets all disabled plugins.
      * 
@@ -373,10 +378,10 @@ public class PluginManager {
      */
     public List<Plugin> getDisabledPlugins() {
         return plugins.values().stream()
-            .filter(p -> !isPluginEnabled(p.getId()))
-            .collect(Collectors.toList());
+                .filter(p -> !isPluginEnabled(p.getId()))
+                .collect(Collectors.toList());
     }
-    
+
     /**
      * Gets the number of registered plugins.
      * 
@@ -385,7 +390,7 @@ public class PluginManager {
     public int getPluginCount() {
         return plugins.size();
     }
-    
+
     /**
      * Gets plugin information as a string.
      * 
@@ -397,7 +402,7 @@ public class PluginManager {
         if (plugin == null) {
             return "Plugin not found: " + pluginId;
         }
-        
+
         PluginState state = pluginStates.get(pluginId);
         StringBuilder info = new StringBuilder();
         info.append("Name: ").append(plugin.getName()).append("\n");
@@ -410,7 +415,7 @@ public class PluginManager {
         if (!plugin.getDescription().isEmpty()) {
             info.append("Description: ").append(plugin.getDescription()).append("\n");
         }
-        
+
         return info.toString();
     }
 }

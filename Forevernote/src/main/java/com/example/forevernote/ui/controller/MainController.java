@@ -58,6 +58,8 @@ import com.example.forevernote.plugin.Plugin;
 import com.example.forevernote.plugin.PluginManager;
 import com.example.forevernote.plugin.PluginMenuRegistry;
 import com.example.forevernote.plugin.SidePanelRegistry;
+import com.example.forevernote.plugin.PreviewEnhancer;
+import com.example.forevernote.plugin.PreviewEnhancerRegistry;
 import com.example.forevernote.service.FolderService;
 import com.example.forevernote.service.NoteService;
 import com.example.forevernote.service.TagService;
@@ -88,7 +90,7 @@ import javafx.stage.FileChooser;
  * register
  * menu items and UI panels dynamically (Obsidian-style).
  */
-public class MainController implements PluginMenuRegistry, SidePanelRegistry {
+public class MainController implements PluginMenuRegistry, SidePanelRegistry, PreviewEnhancerRegistry {
 
     private static final Logger logger = LoggerConfig.getLogger(MainController.class);
 
@@ -230,6 +232,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     private MenuButton toolbarOverflowBtn;
     @FXML
     private Separator toolbarSeparator1;
+
+    // Preview Enhancers
+    private final Map<String, PreviewEnhancer> previewEnhancers = new HashMap<>();
     @FXML
     private Separator toolbarSeparator2;
     @FXML
@@ -505,8 +510,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             if (folder == null)
                 return 0;
 
-            // "All Notes" shows total count
-            if (folder.getTitle().equals("All Notes")) {
+            // "All Notes" (Root folder) usually has null ID or special title
+            // We check for null ID as the most reliable indicator for the virtual root
+            if (folder.getId() == null || folder.getTitle().equals("All Notes")
+                    || folder.getTitle().equals("Todas las Notas")) {
                 List<Note> allNotes = noteDAO.fetchAllNotes();
                 return allNotes != null ? allNotes.size() : 0;
             }
@@ -671,7 +678,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         Label iconLabel = new Label("");
                         iconLabel.getStyleClass().setAll("folder-cell-icon"); // Use setAll to clear previous classes
 
-                        if (folder.getTitle().equals("All Notes")) {
+                        String rootTitle = getString("app.all_notes");
+                        boolean isRoot = folder.getTitle().equals("All Notes") || folder.getTitle().equals(rootTitle)
+                                || folder.getId() == null;
+
+                        if (isRoot) {
                             iconLabel.setText("[=]");
                             iconLabel.getStyleClass().add("folder-all-notes");
                         } else {
@@ -683,7 +694,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
 
                         int noteCount = 0;
                         try {
-                            if (!folder.getTitle().equals("All Notes")) {
+                            if (!isRoot) {
                                 noteCount = getNoteCountForFolder(folder);
                             } else {
                                 noteCount = noteDAO.fetchAllNotes().size();
@@ -697,7 +708,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         Label nameLabel = new Label(folder.getTitle());
                         nameLabel.getStyleClass().add("folder-cell-name");
 
-                        if (noteCount > 0) {
+                        if (noteCount > 0 || isRoot) {
                             Label countLabel = new Label("(" + noteCount + ")");
                             countLabel.getStyleClass().add("folder-cell-count");
                             container.getChildren().addAll(iconLabel, nameLabel, countLabel);
@@ -709,7 +720,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         setText(null);
 
                         // Context Menu
-                        if (!folder.getTitle().equals("All Notes")) {
+                        if (!isRoot) {
                             setContextMenu(createFolderContextMenu(folder));
                         } else {
                             setContextMenu(null);
@@ -1028,7 +1039,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
             // Pass 'this' as both PluginMenuRegistry and SidePanelRegistry so plugins can
             // register UI components
             pluginManager = new PluginManager(noteService, folderService, tagService, eventBus, commandPalette, this,
-                    this);
+                    this, this);
 
             // Load plugins from plugins/ directory (completely decoupled - no hardcoded
             // plugins)
@@ -1489,6 +1500,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
      */
     private void loadExternalPlugins() {
         try {
+            // Register built-in plugins
+            pluginManager.registerPlugin(new com.example.forevernote.plugin.mermaid.MermaidPlugin());
+
             List<Plugin> externalPlugins = com.example.forevernote.plugin.PluginLoader.loadExternalPlugins();
             int registeredCount = 0;
 
@@ -3065,6 +3079,22 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
     /**
      * Update preview with syntax highlighting (highlight.js).
      */
+    @Override
+    public void registerPreviewEnhancer(String pluginId, PreviewEnhancer enhancer) {
+        if (pluginId != null && enhancer != null) {
+            previewEnhancers.put(pluginId, enhancer);
+            Platform.runLater(this::updatePreview);
+        }
+    }
+
+    @Override
+    public void unregisterPreviewEnhancer(String pluginId) {
+        if (pluginId != null) {
+            previewEnhancers.remove(pluginId);
+            Platform.runLater(this::updatePreview);
+        }
+    }
+
     private void updatePreview() {
         if (currentNote != null && previewWebView != null) {
             String content = noteContentArea.getText();
@@ -3084,6 +3114,21 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         ? "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css"
                         : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs.min.css";
 
+                // Collect injections from plugins
+                StringBuilder headInjections = new StringBuilder();
+                StringBuilder bodyInjections = new StringBuilder();
+
+                for (PreviewEnhancer enhancer : previewEnhancers.values()) {
+                    String head = enhancer.getHeadInjections();
+                    if (head != null && !head.isEmpty()) {
+                        headInjections.append(head).append("\n");
+                    }
+                    String body = enhancer.getBodyInjections();
+                    if (body != null && !body.isEmpty()) {
+                        bodyInjections.append(body).append("\n");
+                    }
+                }
+
                 // Create a complete HTML document with theme-aware styling and syntax
                 // highlighting
                 String fullHtml = "<!DOCTYPE html>\n" +
@@ -3093,7 +3138,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n" +
                         "    <link rel=\"stylesheet\" href=\"" + highlightTheme + "\">\n" +
                         "    <script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js\"></script>\n"
-                        +
+                        + headInjections.toString() + "\n" +
                         "    <style>\n" +
                         "        @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=JetBrains+Mono:wght@400;500&display=swap');\n"
                         +
@@ -3217,6 +3262,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry {
                         "        hljs.highlightElement(block);\n" +
                         "    });\n" +
                         "</script>\n" +
+                        bodyInjections.toString() + "\n" +
                         "</body>\n" +
                         "</html>";
 

@@ -25,9 +25,9 @@ import javafx.scene.control.Alert;
  * @since 1.2.0
  */
 public class PluginContext {
-    
+
     private static final Logger logger = LoggerConfig.getLogger(PluginContext.class);
-    
+
     private final String pluginId;
     private final NoteService noteService;
     private final FolderService folderService;
@@ -36,17 +36,18 @@ public class PluginContext {
     private final CommandPalette commandPalette;
     private final PluginMenuRegistry menuRegistry;
     private final SidePanelRegistry sidePanelRegistry;
-    
+    private final PreviewEnhancerRegistry previewEnhancerRegistry;
+
     /**
      * Creates a new PluginContext.
      * 
-     * @param pluginId The ID of the plugin using this context
-     * @param noteService The note service
-     * @param folderService The folder service
-     * @param tagService The tag service
-     * @param eventBus The event bus
-     * @param commandPalette The command palette
-     * @param menuRegistry The menu registry for registering menu items
+     * @param pluginId          The ID of the plugin using this context
+     * @param noteService       The note service
+     * @param folderService     The folder service
+     * @param tagService        The tag service
+     * @param eventBus          The event bus
+     * @param commandPalette    The command palette
+     * @param menuRegistry      The menu registry for registering menu items
      * @param sidePanelRegistry The side panel registry for registering UI panels
      */
     public PluginContext(
@@ -57,7 +58,8 @@ public class PluginContext {
             EventBus eventBus,
             CommandPalette commandPalette,
             PluginMenuRegistry menuRegistry,
-            SidePanelRegistry sidePanelRegistry) {
+            SidePanelRegistry sidePanelRegistry,
+            PreviewEnhancerRegistry previewEnhancerRegistry) {
         this.pluginId = pluginId;
         this.noteService = noteService;
         this.folderService = folderService;
@@ -66,8 +68,9 @@ public class PluginContext {
         this.commandPalette = commandPalette;
         this.menuRegistry = menuRegistry;
         this.sidePanelRegistry = sidePanelRegistry;
+        this.previewEnhancerRegistry = previewEnhancerRegistry;
     }
-    
+
     /**
      * Gets the note service.
      * 
@@ -76,7 +79,7 @@ public class PluginContext {
     public NoteService getNoteService() {
         return noteService;
     }
-    
+
     /**
      * Gets the folder service.
      * 
@@ -85,7 +88,7 @@ public class PluginContext {
     public FolderService getFolderService() {
         return folderService;
     }
-    
+
     /**
      * Gets the tag service.
      * 
@@ -94,7 +97,7 @@ public class PluginContext {
     public TagService getTagService() {
         return tagService;
     }
-    
+
     /**
      * Gets the event bus.
      * 
@@ -103,7 +106,7 @@ public class PluginContext {
     public EventBus getEventBus() {
         return eventBus;
     }
-    
+
     /**
      * Gets the command palette.
      * 
@@ -112,35 +115,34 @@ public class PluginContext {
     public CommandPalette getCommandPalette() {
         return commandPalette;
     }
-    
+
     /**
      * Registers a command in the Command Palette.
      * 
-     * @param name The command name
+     * @param name        The command name
      * @param description The command description
-     * @param action The action to execute
+     * @param action      The action to execute
      */
     public void registerCommand(String name, String description, Runnable action) {
         registerCommand(name, description, null, action);
     }
-    
+
     /**
      * Registers a command in the Command Palette with a keyboard shortcut.
      * 
-     * @param name The command name
+     * @param name        The command name
      * @param description The command description
-     * @param shortcut The keyboard shortcut (e.g., "Ctrl+Shift+W")
-     * @param action The action to execute
+     * @param shortcut    The keyboard shortcut (e.g., "Ctrl+Shift+W")
+     * @param action      The action to execute
      */
     public void registerCommand(String name, String description, String shortcut, Runnable action) {
         if (commandPalette != null) {
             commandPalette.addCommand(new CommandPalette.Command(
-                name, description, shortcut != null ? shortcut : "", ">", "Plugins", action
-            ));
+                    name, description, shortcut != null ? shortcut : "", ">", "Plugins", action));
             logger.fine("Plugin " + pluginId + " registered command: " + name);
         }
     }
-    
+
     /**
      * Unregisters a command from the Command Palette.
      * 
@@ -152,32 +154,32 @@ public class PluginContext {
             logger.fine("Plugin " + pluginId + " unregistered command: " + commandName);
         }
     }
-    
+
     /**
      * Registers a menu item in a category.
      * 
      * @param category The menu category (e.g., "Core", "Productivity", "AI")
      * @param itemName The menu item name
-     * @param action The action to execute
+     * @param action   The action to execute
      */
     public void registerMenuItem(String category, String itemName, Runnable action) {
         registerMenuItem(category, itemName, null, action);
     }
-    
+
     /**
      * Registers a menu item in a category with a keyboard shortcut.
      * 
      * @param category The menu category
      * @param itemName The menu item name
      * @param shortcut The keyboard shortcut
-     * @param action The action to execute
+     * @param action   The action to execute
      */
     public void registerMenuItem(String category, String itemName, String shortcut, Runnable action) {
         if (menuRegistry != null) {
             menuRegistry.registerMenuItem(pluginId, category, itemName, shortcut, action);
         }
     }
-    
+
     /**
      * Adds a separator in a menu category.
      * 
@@ -188,32 +190,32 @@ public class PluginContext {
             menuRegistry.addMenuSeparator(pluginId, category);
         }
     }
-    
+
     /**
      * Registers a side panel in the right sidebar.
      * 
      * @param panelId The unique panel ID
-     * @param title The panel title
+     * @param title   The panel title
      * @param content The panel content (JavaFX Node)
      */
     public void registerSidePanel(String panelId, String title, Node content) {
         registerSidePanel(panelId, title, content, null);
     }
-    
+
     /**
      * Registers a side panel with an icon.
      * 
      * @param panelId The unique panel ID
-     * @param title The panel title
+     * @param title   The panel title
      * @param content The panel content
-     * @param icon The icon (emoji or text)
+     * @param icon    The icon (emoji or text)
      */
     public void registerSidePanel(String panelId, String title, Node content, String icon) {
         if (sidePanelRegistry != null) {
             sidePanelRegistry.registerSidePanel(pluginId, panelId, title, content, icon);
         }
     }
-    
+
     /**
      * Removes a side panel.
      * 
@@ -224,7 +226,7 @@ public class PluginContext {
             sidePanelRegistry.removeSidePanel(pluginId, panelId);
         }
     }
-    
+
     /**
      * Shows or hides the plugin panels section.
      * 
@@ -235,7 +237,7 @@ public class PluginContext {
             sidePanelRegistry.setPluginPanelsVisible(visible);
         }
     }
-    
+
     /**
      * Checks if the plugin panels section is visible.
      * 
@@ -247,13 +249,13 @@ public class PluginContext {
         }
         return false;
     }
-    
+
     /**
      * Subscribes to an event type.
      * 
-     * @param <T> The event type
+     * @param <T>       The event type
      * @param eventType The event class
-     * @param handler The event handler
+     * @param handler   The event handler
      * @return The subscription (can be used to unsubscribe)
      */
     public <T extends AppEvent> EventBus.Subscription subscribe(Class<T> eventType, Consumer<T> handler) {
@@ -262,7 +264,7 @@ public class PluginContext {
         }
         return null;
     }
-    
+
     /**
      * Publishes an event.
      * 
@@ -273,7 +275,7 @@ public class PluginContext {
             eventBus.publish(event);
         }
     }
-    
+
     /**
      * Requests to open a note in the editor.
      * 
@@ -286,7 +288,7 @@ public class PluginContext {
             });
         }
     }
-    
+
     /**
      * Requests a refresh of the notes list.
      */
@@ -297,12 +299,12 @@ public class PluginContext {
             });
         }
     }
-    
+
     /**
      * Shows an information dialog.
      * 
-     * @param title The dialog title
-     * @param header The dialog header
+     * @param title   The dialog title
+     * @param header  The dialog header
      * @param content The dialog content
      */
     public void showInfo(String title, String header, String content) {
@@ -314,11 +316,11 @@ public class PluginContext {
             alert.showAndWait();
         });
     }
-    
+
     /**
      * Shows an error dialog.
      * 
-     * @param title The dialog title
+     * @param title   The dialog title
      * @param message The error message
      */
     public void showError(String title, String message) {
@@ -330,7 +332,7 @@ public class PluginContext {
             alert.showAndWait();
         });
     }
-    
+
     /**
      * Logs a message.
      * 
@@ -339,11 +341,11 @@ public class PluginContext {
     public void log(String message) {
         logger.info("[" + pluginId + "] " + message);
     }
-    
+
     /**
      * Logs an error.
      * 
-     * @param message The error message
+     * @param message   The error message
      * @param throwable The exception
      */
     public void logError(String message, Throwable throwable) {
@@ -352,7 +354,7 @@ public class PluginContext {
             logger.severe("[" + pluginId + "] Exception: " + throwable.getMessage());
         }
     }
-    
+
     /**
      * Gets the plugin ID.
      * 
@@ -360,5 +362,26 @@ public class PluginContext {
      */
     public String getPluginId() {
         return pluginId;
+    }
+
+    /**
+     * Registers a preview enhancer.
+     * This allows the plugin to inject CSS/JS into the note preview.
+     * 
+     * @param enhancer The preview enhancer
+     */
+    public void registerPreviewEnhancer(PreviewEnhancer enhancer) {
+        if (previewEnhancerRegistry != null) {
+            previewEnhancerRegistry.registerPreviewEnhancer(pluginId, enhancer);
+        }
+    }
+
+    /**
+     * Unregisters the preview enhancer.
+     */
+    public void unregisterPreviewEnhancer() {
+        if (previewEnhancerRegistry != null) {
+            previewEnhancerRegistry.unregisterPreviewEnhancer(pluginId);
+        }
     }
 }

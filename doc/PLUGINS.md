@@ -16,7 +16,7 @@ Forevernote includes a robust plugin system that allows extending the applicatio
 
 **Important:** The core application is completely decoupled from plugins. All menu items are registered dynamically by plugins during initialization.
 
-## Plugin Manager (Obsidian-style UI)
+## Plugin Manager
 
 Access the Plugin Manager via:
 - **Ctrl+P** then search "Plugins: Manage Plugins"
@@ -34,16 +34,16 @@ The Plugin Manager provides:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                      Plugin Layer                           │
-│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌─────────────┐ │
-│  │ WordCount │ │DailyNotes │ │ Templates │ │ AutoBackup  │ │
-│  └───────────┘ └───────────┘ └───────────┘ └─────────────┘ │
-│  ┌───────────┐ ┌─────────────────────────────────────────┐ │
-│  │ReadingTime│ │       Table of Contents                 │ │
-│  └───────────┘ └─────────────────────────────────────────┘ │
+│  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌─────────────┐  │
+│  │ WordCount │ │DailyNotes │ │ Templates │ │ AutoBackup  │  │
+│  └───────────┘ └───────────┘ └───────────┘ └─────────────┘  │
+│  ┌───────────┐ ┌─────────────────────────────────────────┐  │
+│  │ReadingTime│ │       Table of Contents                 │  │
+│  └───────────┘ └─────────────────────────────────────────┘  │
 ├─────────────────────────────────────────────────────────────┤
 │                    Plugin Manager                           │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │ Registration | Lifecycle | Dependencies | State Mgmt   ││
+│  │ Registration | Lifecycle | Dependencies | State Mgmt    ││
 │  └─────────────────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────────────────┤
 │                    Plugin Context                           │
