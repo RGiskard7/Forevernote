@@ -70,6 +70,11 @@ import com.example.forevernote.ui.components.QuickSwitcher;
 import javafx.stage.Stage;
 
 import java.util.logging.Logger;
+import java.util.Collections;
+import java.util.stream.Collectors;
+import java.io.File;
+import java.util.prefs.Preferences;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
@@ -88,7 +93,7 @@ import javafx.stage.FileChooser;
  * Handles all UI interactions and manages the application state.
  * Implements PluginMenuRegistry and SidePanelRegistry to allow plugins to
  * register
- * menu items and UI panels dynamically (Obsidian-style).
+ * menu items and UI panels dynamically (Modern-style).
  */
 public class MainController implements PluginMenuRegistry, SidePanelRegistry, PreviewEnhancerRegistry {
 
@@ -141,6 +146,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     // Navigation components
     @FXML
     private TreeView<Folder> folderTreeView;
+    // Special tree items
+    private TreeItem<Folder> vaultRootItem;
+    private TreeItem<Folder> allNotesItem;
     @FXML
     private ListView<String> tagListView;
     @FXML
@@ -193,7 +201,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private Label wordCountLabel;
 
-    // Editor/Preview panes (Obsidian-style)
+    // Editor/Preview panes (Modern-style)
     @FXML
     private VBox editorPane;
     @FXML
@@ -274,7 +282,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private Button closeRightPanelBtn;
 
-    // Right panel (Obsidian-style with collapsible sections)
+    // Right panel (Modern-style with collapsible sections)
     @FXML
     private VBox rightPanel;
     @FXML
@@ -503,11 +511,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         alert.setContentText(getString("pref.storage.content"));
 
         ButtonType sqliteBtn = new ButtonType(getString("pref.storage.sqlite"));
-        ButtonType fsDefaultBtn = new ButtonType(getString("pref.storage.filesystem_default"));
-        ButtonType fsCustomBtn = new ButtonType(getString("pref.storage.filesystem_custom"));
+        ButtonType filesystemBtn = new ButtonType(getString("pref.storage.filesystem"));
         ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
 
-        alert.getButtonTypes().setAll(sqliteBtn, fsDefaultBtn, fsCustomBtn, cancelBtn);
+        alert.getButtonTypes().setAll(sqliteBtn, filesystemBtn, cancelBtn);
 
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() != cancelBtn) {
@@ -522,11 +529,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             if (result.get() == sqliteBtn) {
                 newType = "sqlite";
                 changed = !newType.equals(currentType);
-            } else if (result.get() == fsDefaultBtn) {
-                newType = "filesystem";
-                customPath = ""; // Empty means default
-                changed = !newType.equals(currentType) || !customPath.equals(currentPath);
-            } else if (result.get() == fsCustomBtn) {
+            } else if (result.get() == filesystemBtn) {
                 javafx.stage.DirectoryChooser directoryChooser = new javafx.stage.DirectoryChooser();
                 directoryChooser.setTitle(getString("pref.storage.browse"));
 
@@ -536,6 +539,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     if (initialDir.exists()) {
                         directoryChooser.setInitialDirectory(initialDir);
                     }
+                } else {
+                    directoryChooser.setInitialDirectory(new File(System.getProperty("user.home")));
                 }
 
                 File selectedDirectory = directoryChooser.showDialog(menuBar.getScene().getWindow());
@@ -566,28 +571,63 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      * Initialize the folder tree view.
      */
     private void initializeFolderTree() {
-        // Create a visible root folder for "All Notes" (like Evernote/Joplin/Obsidian)
-        String rootTitle = getString("app.all_notes");
-        Folder rootFolder = new Folder(rootTitle, null, null);
-        TreeItem<Folder> rootItem = new TreeItem<>(rootFolder);
-        rootItem.setExpanded(true);
-        folderTreeView.setRoot(rootItem);
-        folderTreeView.setShowRoot(true);
+        // Create an invisible root container to hold "All Notes" and "Vault Root"
+        // side-by-side
+        Folder invisibleRoot = new Folder("INVISIBLE_ROOT", null, null);
+        TreeItem<Folder> rootContainer = new TreeItem<>(invisibleRoot);
+        folderTreeView.setRoot(rootContainer);
+        folderTreeView.setShowRoot(false);
+
+        // 1. Add "All Notes" virtual folder
+        // Use a special ID to identify it
+        Folder allNotesFolder = new Folder(getString("app.all_notes"), null, null);
+        allNotesFolder.setId("ALL_NOTES_VIRTUAL");
+        allNotesItem = new TreeItem<>(allNotesFolder);
+        // Add icon if possible (using CSS class or graphic)
+        // allNotesItem.setGraphic(new ImageView(...)); // Setup efficiently later
+        rootContainer.getChildren().add(allNotesItem);
+
+        // 2. Add Vault Root folder
+        // Determine Vault Name
+        String vaultName = "My Vault";
+        Preferences prefs = Preferences.userNodeForPackage(MainController.class);
+        String path = prefs.get("filesystem_path", "");
+        if (!path.isEmpty()) {
+            File f = new File(path);
+            if (f.exists()) {
+                vaultName = f.getName();
+            }
+        } else if ("sqlite".equals(prefs.get("storage_type", "sqlite"))) {
+            vaultName = "My Notes";
+        }
+
+        Folder vaultFolder = new Folder(vaultName, null, null);
+        vaultFolder.setId("ROOT"); // Map to DAO root logic
+        vaultRootItem = new TreeItem<>(vaultFolder);
+        vaultRootItem.setExpanded(true);
+        rootContainer.getChildren().add(vaultRootItem);
 
         // Handle folder selection
         folderTreeView.getSelectionModel().selectedItemProperty().addListener(
                 (observable, oldValue, newValue) -> {
                     if (newValue != null && newValue.getValue() != null) {
                         Folder selectedFolder = newValue.getValue();
-                        if (selectedFolder.getTitle().equals(rootTitle) ||
-                                selectedFolder.getTitle().equals("All Notes") ||
-                                selectedFolder.getTitle().endsWith("All Notes")) {
-                            currentFolder = null;
+                        String id = selectedFolder.getId();
+
+                        if ("ALL_NOTES_VIRTUAL".equals(id)) {
+                            // "All Notes": Show everything recursive (virtual view)
+                            currentFolder = null; // No physical folder selected
                             loadAllNotes();
+                        } else if ("ROOT".equals(id)) {
+                            // "Vault Root": Show notes physically in root folder only
+                            currentFolder = selectedFolder;
+                            handleFolderSelection(selectedFolder);
                         } else {
+                            // Regular subfolder
                             handleFolderSelection(selectedFolder);
                         }
                     } else {
+                        // Deselection
                         currentFolder = null;
                         loadAllNotes();
                     }
@@ -1189,7 +1229,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     /**
-     * Shows the Plugin Manager dialog (Obsidian-style).
+     * Shows the Plugin Manager dialog (Modern-style).
      */
     public void showPluginManager() {
         if (pluginManagerDialog != null) {
@@ -1349,7 +1389,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         return pluginManager != null && pluginManager.isPluginEnabled(pluginId);
     }
 
-    // ==================== SIDE PANEL REGISTRY IMPLEMENTATION (Obsidian-style UI)
+    // ==================== SIDE PANEL REGISTRY IMPLEMENTATION (Modern-style UI)
     // ====================
 
     /**
@@ -1810,7 +1850,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     /**
-     * Initialize view mode toggle buttons (Obsidian-style).
+     * Initialize view mode toggle buttons (Modern-style).
      */
     private void initializeViewModeButtons() {
         // Create toggle group for editor/preview view modes
@@ -2416,8 +2456,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      */
     private void loadFolders() {
         try {
-            TreeItem<Folder> root = folderTreeView.getRoot();
-            root.getChildren().clear();
+            // We load folders into the vaultRootItem, NOT the invisible root of the
+            // TreeView
+            if (vaultRootItem == null) {
+                // Should have been initialized
+                return;
+            }
+            vaultRootItem.getChildren().clear();
 
             // Only load root folders (folders with parent_id IS NULL)
             // We need to check parent_id directly from database since getParent() may not
@@ -2426,21 +2471,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             List<Folder> rootFolders = new ArrayList<>();
 
             for (Folder folder : allFolders) {
-                // Check if folder has a parent by querying the database
+                // Check if folder has a parent by querying the database/FS
                 Folder parent = folderDAO.getParentFolder(folder.getId());
-                if (parent == null) {
+                if (parent == null || (parent.getId() != null && parent.getId().equals("ROOT"))) {
                     // This is a root folder
                     rootFolders.add(folder);
                 }
             }
 
+            // Sort root folders
+            Collections.sort(rootFolders, (f1, f2) -> f1.getTitle().compareToIgnoreCase(f2.getTitle()));
+
             for (Folder folder : rootFolders) {
                 TreeItem<Folder> folderItem = new TreeItem<>(folder);
-                root.getChildren().add(folderItem);
+                vaultRootItem.getChildren().add(folderItem);
                 loadSubFolders(folderItem, folder);
             }
 
-            logger.info("Loaded " + rootFolders.size() + " root folders");
+            logger.info("Loaded " + rootFolders.size() + " root folders into vault root");
         } catch (Exception e) {
             logger.severe("Failed to load folders: " + e.getMessage());
             updateStatus(getString("status.error_loading_folders"));

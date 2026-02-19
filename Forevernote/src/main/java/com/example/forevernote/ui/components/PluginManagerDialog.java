@@ -24,7 +24,7 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
 /**
- * Plugin Manager Dialog - Obsidian-style plugin management interface.
+ * Plugin Manager Dialog - Modern-style plugin management interface.
  * 
  * <p>Provides a visual interface to:</p>
  * <ul>
@@ -191,7 +191,7 @@ public class PluginManagerDialog {
     }
     
     /**
-     * Creates a card for a plugin (Obsidian-style).
+     * Creates a card for a plugin (Modern-style).
      */
     private VBox createPluginCard(Plugin plugin) {
         String cardBg = isDarkTheme ? "#2d2d2d" : "#f8f8f8";
@@ -233,7 +233,7 @@ public class PluginManagerDialog {
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
         
-        // Toggle button (Obsidian-style switch)
+        // Toggle button (Modern-style switch)
         ToggleButton toggleBtn = createToggleSwitch(isEnabled, enabledColor, disabledColor);
         toggleBtn.setSelected(isEnabled);
         toggleBtn.setOnAction(e -> togglePlugin(plugin.getId(), toggleBtn.isSelected()));
@@ -275,7 +275,7 @@ public class PluginManagerDialog {
     }
     
     /**
-     * Creates an Obsidian-style toggle switch.
+     * Creates an Modern-style toggle switch.
      */
     private ToggleButton createToggleSwitch(boolean isOn, String enabledColor, String disabledColor) {
         ToggleButton toggle = new ToggleButton();

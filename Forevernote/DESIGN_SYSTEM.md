@@ -1,6 +1,6 @@
 # Forevernote Design System
 
-Este documento describe la guía de estilo, componentes y coherencia visual de Forevernote para asegurar que futuras modificaciones respeten la estética "Obsidian/Modern" de la aplicación en sus versiones clara y oscura.
+Este documento describe la guía de estilo, componentes y coherencia visual de Forevernote para asegurar que futuras modificaciones respeten la estética "Modern" de la aplicación en sus versiones clara y oscura.
 
 ## 1. Sistema de Colores (CSS Variables)
 

@@ -314,7 +314,7 @@
                         <VBox fx:id="editorPane" styleClass="editor-pane">
                             <TextArea fx:id="noteContentArea" promptText="Start writing in Markdown..." wrapText="true" VBox.vgrow="ALWAYS" styleClass="editor-area"/>
                             
-                            <!-- Editor Toolbar (Obsidian-style) - Scrollable for responsiveness -->
+                            <!-- Editor Toolbar (Modern-style) - Scrollable for responsiveness -->
                             <HBox styleClass="format-toolbar-container">
                                 <ScrollPane hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" fitToHeight="true" styleClass="format-toolbar-scroll" HBox.hgrow="ALWAYS">
                                     <HBox alignment="CENTER_LEFT" spacing="4" styleClass="format-toolbar">

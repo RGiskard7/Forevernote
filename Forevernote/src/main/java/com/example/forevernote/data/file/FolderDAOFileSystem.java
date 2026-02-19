@@ -55,6 +55,7 @@ public class FolderDAOFileSystem implements FolderDAO {
         try (Stream<Path> walk = Files.walk(rootPath)) {
             walk.filter(Files::isDirectory)
                     .filter(p -> !p.equals(rootPath))
+                    .filter(p -> !p.getFileName().toString().startsWith(".")) // Ignore hidden folders
                     .forEach(path -> {
                         String relativePath = rootPath.relativize(path).toString();
                         idToPathMap.put(relativePath, path);
@@ -183,6 +184,8 @@ public class FolderDAOFileSystem implements FolderDAO {
     @Override
     public List<Folder> fetchAllFoldersAsList() {
         return idToPathMap.entrySet().stream()
+                .filter(e -> !e.getKey().equals("ROOT") && !e.getKey().isEmpty()) // Exclude ROOT
+                .filter(e -> !e.getValue().getFileName().toString().startsWith(".")) // Exclude hidden
                 .map(e -> new Folder(e.getKey(), e.getValue().getFileName().toString()))
                 .collect(Collectors.toList());
     }
@@ -236,6 +239,7 @@ public class FolderDAOFileSystem implements FolderDAO {
 
         try (Stream<Path> stream = Files.list(path)) {
             stream.filter(Files::isDirectory)
+                    .filter(p -> !p.getFileName().toString().startsWith(".")) // Ignore hidden
                     .forEach(p -> {
                         String startPath = rootPath.relativize(p).toString();
                         Folder sub = new Folder(startPath, p.getFileName().toString());

@@ -18,7 +18,7 @@
 <div align="center">
   <strong>A lightweight desktop application for managing notes with hierarchical organization through folders and tags.</strong>
   <br>
-  Built with Java and JavaFX, featuring SQLite for persistent storage, Markdown support with live preview, and a modern, intuitive user interface inspired by Obsidian.
+   Built with Java and JavaFX, featuring SQLite for persistent storage or File System Vaults, Markdown support with live preview, and a modern, intuitive user interface.
 </div>
 
 ## Table of Contents
@@ -40,17 +40,19 @@
 
 ### Core Features
 
+- **Store anywhere**: Choose between SQLite database or Local File System (Vault) storage
 - **Note Management**: Create, edit, and delete notes with titles and content
-- **Folder Organization**: Organize notes hierarchically using notebooks/folders with visible "All Notes" root
+- **Folder Organization**: Organize notes hierarchically using folders
 - **Tags**: Categorize and search notes using tags with full tag management interface
 - **Markdown Support**: Write notes in Markdown with live preview and emoji support
 - **Rich Text Formatting**: Bold, italic, underline, links, images, todo lists, and numbered lists
 - **Search**: Global search across all notes (titles and content)
 - **Auto-refresh**: Notes list automatically updates on save/delete operations
+- **Trash Support**: Deleted notes are moved to a `.trash` folder (File System mode)
 
 ### User Interface
 
-- **Obsidian-style Interface**: Split view editor with toggle between editor-only, split, and preview-only modes
+- **Modern Interface**: Split view editor with toggle between editor-only, split, and preview-only modes
 - **Dual View Modes**: Switch between list view and grid view for notes
 - **Drag & Drop**: Drag notes between folders for easy organization
 - **Resizable Panels**: All panels (sidebar, notes list, editor) are fully resizable
@@ -77,7 +79,7 @@
 
 ### Plugin System
 
-- **Extensible Architecture**: Obsidian-style plugin system with external plugin support
+- **Extensible Architecture**: Robust plugin system with external plugin support
 - **Dynamic Plugin Loading**: Plugins loaded from `plugins/` directory as JAR files
 - **Dynamic Menu Registration**: Plugins register their own menu items in categorized submenus
 - **UI Modification**: Plugins can add custom UI panels to the sidebar (e.g., Calendar, Outline)

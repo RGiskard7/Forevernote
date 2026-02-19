@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
+
 import java.util.stream.Stream;
 
 import com.example.forevernote.config.LoggerConfig;
@@ -58,7 +58,9 @@ public class NoteDAOFileSystem implements NoteDAO {
         try (Stream<Path> walk = Files.walk(rootPath)) {
             // Using parallel stream for faster initial load of thousands of headers
             walk.filter(Files::isRegularFile)
-                    .filter(p -> p.toString().endsWith(".md") && !p.getFileName().toString().startsWith("."))
+                    .filter(p -> p.toString().endsWith(".md"))
+                    .filter(p -> !p.toString().contains(File.separator + ".")) // Exclude hidden files and folders
+                                                                               // (.trash, .git)
                     .parallel()
                     .forEach(path -> {
                         String relativePath = rootPath.relativize(path).toString();
@@ -291,51 +293,114 @@ public class NoteDAOFileSystem implements NoteDAO {
 
     @Override
     public void deleteNote(String id) {
-        Path path = idToPathMap.get(id);
-        if (path != null && Files.exists(path)) {
+        Path sourcePath = idToPathMap.get(id);
+        if (sourcePath != null && Files.exists(sourcePath)) {
             try {
-                Note note = getNoteById(id);
-                if (note != null) {
-                    note.setDeleted(true);
-                    note.setDeletedDate(DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
-                    String fileContent = FrontmatterHandler.generate(note);
-                    Files.writeString(path, fileContent, StandardOpenOption.CREATE,
-                            StandardOpenOption.TRUNCATE_EXISTING);
-                    cachedNotes.put(id, note);
+                // Determine trash folder
+                Path trashDir = rootPath.resolve(".trash");
+                if (!Files.exists(trashDir)) {
+                    Files.createDirectories(trashDir);
                 }
-            } catch (IOException e) {
-                logger.log(Level.SEVERE, "Failed to delete (soft) note file: " + path, e);
-            }
-        }
-    }
 
-    @Override
-    public void permanentlyDeleteNote(String id) {
-        Path path = idToPathMap.get(id);
-        if (path != null) {
-            try {
-                Files.delete(path);
+                String filename = sourcePath.getFileName().toString();
+                Path targetPath = trashDir.resolve(filename);
+
+                // Avoid collision in trash
+                if (Files.exists(targetPath)) {
+                    String name = filename.substring(0, filename.length() - 3); // remove .md
+                    targetPath = trashDir.resolve(name + "_" + System.currentTimeMillis() + ".md");
+                }
+
+                Files.move(sourcePath, targetPath);
+
+                // Remove from cache so it disappears from list
                 idToPathMap.remove(id);
                 cachedNotes.remove(id);
-            } catch (IOException e) {
-                logger.log(Level.SEVERE, "Failed to delete note file: " + path, e);
-            }
-        }
-    }
 
-    @Override
-    public void restoreNote(String id) {
-        Note note = getNoteById(id);
-        if (note != null && note.isDeleted()) {
-            note.setDeleted(false);
-            note.setDeletedDate(null);
-            updateNote(note);
+            } catch (IOException e) {
+                logger.log(Level.SEVERE, "Failed to move note to trash: " + sourcePath, e);
+            }
         }
     }
 
     @Override
     public List<Note> fetchTrashNotes() {
-        return fetchAllNotes().stream().filter(Note::isDeleted).collect(Collectors.toList());
+        List<Note> deletedNotes = new ArrayList<>();
+        Path trashPath = rootPath.resolve(".trash");
+        if (Files.exists(trashPath) && Files.isDirectory(trashPath)) {
+            try (Stream<Path> stream = Files.list(trashPath)) {
+                stream.filter(Files::isRegularFile)
+                        .filter(p -> p.toString().endsWith(".md"))
+                        .forEach(p -> {
+                            // Create note with special ID for trash items
+                            String trashId = ".trash" + File.separator + p.getFileName().toString();
+                            Note n = createLightweightNote(trashId, p);
+                            n.setDeleted(true);
+                            deletedNotes.add(n);
+                        });
+            } catch (IOException e) {
+                logger.warning("Error reading trash folder: " + e.getMessage());
+            }
+        }
+        return deletedNotes;
+    }
+
+    @Override
+    public void restoreNote(String id) {
+        // ID should be like .trash/note.md
+        try {
+            Path trashPath = rootPath.resolve(".trash");
+            // If ID contains separator, get filename, else assume it is filename
+            String filename = Paths.get(id).getFileName().toString();
+            Path source = trashPath.resolve(filename);
+
+            if (Files.exists(source)) {
+                Path target = rootPath.resolve(filename);
+                // Handle collision
+                if (Files.exists(target)) {
+                    String name = filename.substring(0, filename.length() - 3);
+                    target = rootPath.resolve(name + "_" + System.currentTimeMillis() + ".md");
+                }
+
+                Files.move(source, target);
+
+                // Update cache
+                String newId = rootPath.relativize(target).toString();
+                Note n = createLightweightNote(newId, target);
+                n.setDeleted(false);
+                n.setDeletedDate(null);
+
+                idToPathMap.put(newId, target);
+                cachedNotes.put(newId, n);
+            }
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Failed to restore note: " + id, e);
+        }
+    }
+
+    @Override
+    public void permanentlyDeleteNote(String id) {
+        try {
+            String filename = Paths.get(id).getFileName().toString();
+            Path trashPath = rootPath.resolve(".trash");
+            Path target = trashPath.resolve(filename);
+
+            if (Files.exists(target)) {
+                Files.delete(target);
+            } else {
+                // Formatting for check
+                Path path = idToPathMap.get(id);
+                if (path != null && Files.exists(path)) {
+                    Files.delete(path);
+                    idToPathMap.remove(id);
+                    cachedNotes.remove(id);
+                }
+            }
+            // Also remove from cache if somehow lingering
+            cachedNotes.remove(id);
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Failed to permanently delete note: " + id, e);
+        }
     }
 
     @Override
