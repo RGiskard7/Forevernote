@@ -71,7 +71,6 @@ import javafx.stage.Stage;
 
 import java.util.logging.Logger;
 import java.util.Collections;
-import java.util.stream.Collectors;
 import java.io.File;
 import java.util.prefs.Preferences;
 import java.util.Comparator;
@@ -79,10 +78,10 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.Optional;
-import java.util.prefs.Preferences;
 import java.sql.Connection;
-import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -146,17 +145,43 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     // Navigation components
     @FXML
     private TreeView<Folder> folderTreeView;
+    @FXML
+    private TextField filterFoldersField;
+
     // Special tree items
     private TreeItem<Folder> vaultRootItem;
     private TreeItem<Folder> allNotesItem;
+
+    private boolean folderSortAscending = true;
     @FXML
     private ListView<String> tagListView;
     @FXML
+    private TextField filterTagsField;
+    @FXML
     private ListView<String> recentNotesListView;
+    @FXML
+    private TextField filterRecentField;
     @FXML
     private ListView<String> favoritesListView;
     @FXML
-    private ListView<String> trashListView;
+    private TextField filterFavoritesField;
+    @FXML
+    private TreeView<Component> trashTreeView;
+    @FXML
+    private TextField filterTrashField;
+
+    // Master lists for filtering
+    private javafx.collections.ObservableList<String> masterTagsList = javafx.collections.FXCollections
+            .observableArrayList();
+    private javafx.collections.ObservableList<String> masterRecentList = javafx.collections.FXCollections
+            .observableArrayList();
+    private javafx.collections.ObservableList<String> masterFavoritesList = javafx.collections.FXCollections
+            .observableArrayList();
+
+    private boolean tagSortAscending = true;
+    private boolean recentSortAscending = true;
+    private boolean favoritesSortAscending = true;
+    private boolean trashSortAscending = true;
 
     // Layout State
     private boolean isStackedLayout = false;
@@ -433,7 +458,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             loadRecentNotes();
             loadTags();
             loadFavorites();
-            loadTrashNotes();
+            loadTrashTree();
 
             // Initialize keyboard shortcuts after scene is ready
             Platform.runLater(this::initializeKeyboardShortcuts);
@@ -633,8 +658,136 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     }
                 });
 
-        // Cell factory is set in setupFolderTreeDragAndDrop to include both D&D and
-        // context menus
+        // Initialize folders filter listener
+        if (filterFoldersField != null) {
+            filterFoldersField.textProperty().addListener((obs, oldVal, newVal) -> {
+                loadFolders();
+            });
+        }
+
+        // Initialize other lists and filters
+        setupFilteredList(tagListView, masterTagsList, filterTagsField);
+        setupFilteredList(recentNotesListView, masterRecentList, filterRecentField);
+        setupFilteredList(favoritesListView, masterFavoritesList, filterFavoritesField);
+        if (filterTrashField != null) {
+            filterTrashField.textProperty().addListener((obs, oldVal, newVal) -> loadTrashTree());
+        }
+    }
+
+    private void setupFilteredList(ListView<String> listView, javafx.collections.ObservableList<String> masterList,
+            TextField filterField) {
+        if (listView != null) {
+            javafx.collections.transformation.FilteredList<String> filteredList = new javafx.collections.transformation.FilteredList<>(
+                    masterList, p -> true);
+            listView.setItems(filteredList);
+
+            if (filterField != null) {
+                filterField.textProperty().addListener((observable, oldValue, newValue) -> {
+                    filteredList.setPredicate(item -> {
+                        if (newValue == null || newValue.isEmpty()) {
+                            return true;
+                        }
+                        String lowerCaseFilter = newValue.toLowerCase();
+                        if (item.toLowerCase().contains(lowerCaseFilter)) {
+                            return true;
+                        }
+                        return false;
+                    });
+                });
+            }
+        }
+    }
+
+    @FXML
+    private void handleSortTags(ActionEvent event) {
+        tagSortAscending = !tagSortAscending;
+        sortStringList(masterTagsList, tagSortAscending);
+    }
+
+    @FXML
+    private void handleSortRecent(ActionEvent event) {
+        recentSortAscending = !recentSortAscending;
+        sortStringList(masterRecentList, recentSortAscending);
+    }
+
+    @FXML
+    private void handleSortFavorites(ActionEvent event) {
+        favoritesSortAscending = !favoritesSortAscending;
+        sortStringList(masterFavoritesList, favoritesSortAscending);
+    }
+
+    @FXML
+    private void handleSortTrash(ActionEvent event) {
+        trashSortAscending = !trashSortAscending;
+        // sortStringList(masterTrashList, trashSortAscending);
+        // TODO: Implement sort for Trash TreeView
+        loadTrashTree();
+    }
+
+    private void sortStringList(javafx.collections.ObservableList<String> list, boolean ascending) {
+        if (list == null)
+            return;
+        Collections.sort(list, (s1, s2) -> ascending ? s1.compareToIgnoreCase(s2) : s2.compareToIgnoreCase(s1));
+    }
+
+    @FXML
+    private void handleEmptyTrash(ActionEvent event) {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(getString("dialog.empty_trash.title"));
+        alert.setHeaderText(getString("dialog.empty_trash.header"));
+        alert.setContentText(getString("dialog.empty_trash.content"));
+
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            try {
+                // Delete notes in trash root
+                List<Note> trashNotes = noteDAO.fetchTrashNotes();
+                for (Note n : trashNotes) {
+                    noteDAO.permanentlyDeleteNote(n.getId());
+                }
+
+                // Delete folders in trash root (recursively deletes content)
+                Folder trashRoot = folderDAO.fetchTrashFolders();
+                if (trashRoot != null) {
+                    for (Component c : trashRoot.getChildren()) {
+                        if (c instanceof Folder) {
+                            folderDAO.permanentlyDeleteFolder(c.getId());
+                        }
+                    }
+                }
+
+                loadTrashTree(); // Refresh
+                updateStatus("Trash emptied");
+            } catch (Exception e) {
+                logger.severe("Failed to empty trash: " + e.getMessage());
+                updateStatus("Error emitting trash");
+            }
+        }
+    }
+
+    @FXML
+    private void handleSortFolders(ActionEvent event) {
+        folderSortAscending = !folderSortAscending;
+        loadFolders();
+    }
+
+    @FXML
+    private void handleExpandAllFolders(ActionEvent event) {
+        expandCollapseRecursive(vaultRootItem, true);
+    }
+
+    @FXML
+    private void handleCollapseAllFolders(ActionEvent event) {
+        expandCollapseRecursive(vaultRootItem, false);
+    }
+
+    private void expandCollapseRecursive(TreeItem<Folder> item, boolean expand) {
+        if (item != null && !item.isLeaf()) {
+            item.setExpanded(expand);
+            for (TreeItem<Folder> child : item.getChildren()) {
+                expandCollapseRecursive(child, expand);
+            }
+        }
     }
 
     /**
@@ -2451,67 +2604,117 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
     }
 
-    /**
-     * Load folders into the tree view.
-     */
     private void loadFolders() {
         try {
-            // We load folders into the vaultRootItem, NOT the invisible root of the
-            // TreeView
-            if (vaultRootItem == null) {
-                // Should have been initialized
+            if (vaultRootItem == null)
                 return;
-            }
             vaultRootItem.getChildren().clear();
 
-            // Only load root folders (folders with parent_id IS NULL)
-            // We need to check parent_id directly from database since getParent() may not
-            // be loaded
             List<Folder> allFolders = folderDAO.fetchAllFoldersAsList();
-            List<Folder> rootFolders = new ArrayList<>();
 
+            // 1. Filter logic
+            String filter = (filterFoldersField != null && filterFoldersField.getText() != null)
+                    ? filterFoldersField.getText().toLowerCase().trim()
+                    : "";
+
+            Set<String> visibleIds = new HashSet<>();
+            if (!filter.isEmpty()) {
+                for (Folder f : allFolders) {
+                    if (f.getTitle().toLowerCase().contains(filter)) {
+                        visibleIds.add(f.getId());
+                        // Add ancestors to ensure path is visible
+                        Folder parent = f;
+                        // Prevent infinite loop with max depth check if needed, but structure should be
+                        // acyclic
+                        int safety = 0;
+                        while (safety++ < 100) {
+                            Folder p = folderDAO.getParentFolder(parent.getId());
+                            if (p == null || (p.getId() != null && "ROOT".equals(p.getId())))
+                                break;
+                            visibleIds.add(p.getId());
+                            parent = p;
+                        }
+                    }
+                }
+            }
+
+            // 2. Identify root folders (filtered)
+            List<Folder> rootFolders = new ArrayList<>();
             for (Folder folder : allFolders) {
-                // Check if folder has a parent by querying the database/FS
+                // If filtering active, skip if not visible
+                if (!filter.isEmpty() && !visibleIds.contains(folder.getId()))
+                    continue;
+
                 Folder parent = folderDAO.getParentFolder(folder.getId());
                 if (parent == null || (parent.getId() != null && parent.getId().equals("ROOT"))) {
-                    // This is a root folder
                     rootFolders.add(folder);
                 }
             }
 
-            // Sort root folders
-            Collections.sort(rootFolders, (f1, f2) -> f1.getTitle().compareToIgnoreCase(f2.getTitle()));
+            // 3. Sort
+            Comparator<Folder> comparator = (f1, f2) -> f1.getTitle().compareToIgnoreCase(f2.getTitle());
+            if (!folderSortAscending)
+                comparator = comparator.reversed();
+            Collections.sort(rootFolders, comparator);
 
+            // 4. Build Tree
             for (Folder folder : rootFolders) {
                 TreeItem<Folder> folderItem = new TreeItem<>(folder);
                 vaultRootItem.getChildren().add(folderItem);
-                loadSubFolders(folderItem, folder);
+                loadSubFolders(folderItem, folder, visibleIds, comparator, !filter.isEmpty());
+            }
+
+            // If filtered, expand all to show matches
+            if (!filter.isEmpty()) {
+                vaultRootItem.setExpanded(true);
+                expandCollapseRecursive(vaultRootItem, true);
+            } else {
+                vaultRootItem.setExpanded(true);
             }
 
             logger.info("Loaded " + rootFolders.size() + " root folders into vault root");
         } catch (Exception e) {
             logger.severe("Failed to load folders: " + e.getMessage());
+            e.printStackTrace();
             updateStatus(getString("status.error_loading_folders"));
         }
     }
 
     /**
-     * Load subfolders recursively.
+     * Load subfolders recursively with filter and sort.
      */
-    private void loadSubFolders(TreeItem<Folder> parentItem, Folder parentFolder) {
+    private void loadSubFolders(TreeItem<Folder> parentItem, Folder parentFolder, Set<String> visibleIds,
+            Comparator<Folder> comparator, boolean filterActive) {
         try {
+            // Reload children from DAO to be sure
             folderDAO.loadSubFolders(parentFolder);
+
+            List<Folder> children = new ArrayList<>();
             for (Component child : parentFolder.getChildren()) {
                 if (child instanceof Folder) {
-                    Folder childFolder = (Folder) child;
-                    TreeItem<Folder> childItem = new TreeItem<>(childFolder);
-                    parentItem.getChildren().add(childItem);
-                    loadSubFolders(childItem, childFolder);
+                    Folder f = (Folder) child;
+                    if (!filterActive || visibleIds.contains(f.getId())) {
+                        children.add(f);
+                    }
                 }
             }
+
+            Collections.sort(children, comparator);
+
+            for (Folder childFolder : children) {
+                TreeItem<Folder> childItem = new TreeItem<>(childFolder);
+                parentItem.getChildren().add(childItem);
+                loadSubFolders(childItem, childFolder, visibleIds, comparator, filterActive);
+            }
         } catch (Exception e) {
-            logger.warning("Failed to load subfolders for " + parentFolder.getTitle() + ": " + e.getMessage());
+            logger.warning("Error loading subfolders for " + parentFolder.getTitle() + ": " + e.getMessage());
         }
+    }
+
+    // Legacy method signature if called elsewhere (though it shouldn't be)
+    private void loadSubFolders(TreeItem<Folder> parentItem, Folder parentFolder) {
+        loadSubFolders(parentItem, parentFolder, null, (f1, f2) -> f1.getTitle().compareToIgnoreCase(f2.getTitle()),
+                false);
     }
 
     /**
@@ -2800,7 +3003,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     .map(Note::getTitle)
                     .toList();
 
-            recentNotesListView.getItems().setAll(recentTitles);
+            masterRecentList.clear();
+            masterRecentList.addAll(recentTitles);
 
             // Add listener only once
             if (!recentListenerAdded) {
@@ -2839,7 +3043,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     .toList();
 
             Platform.runLater(() -> {
-                favoritesListView.getItems().setAll(favoriteTitles);
+                masterFavoritesList.clear();
+                masterFavoritesList.addAll(favoriteTitles);
+                sortStringList(masterFavoritesList, favoritesSortAscending);
             });
 
             // Add listener only once
@@ -2894,129 +3100,221 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     /**
-     * Load trash notes.
+     * Load trash tree.
      */
-    private void loadTrashNotes() {
+    private void loadTrashTree() {
         try {
-            cachedTrashNotes = noteDAO.fetchTrashNotes();
+            // 1. Get trash root folder structure
+            Folder trashRoot = folderDAO.fetchTrashFolders();
 
-            List<String> trashTitles = cachedTrashNotes.stream()
-                    .map(Note::getTitle)
-                    .toList();
+            // 2. Get all notes recursively
+            List<Note> allTrashNotes = noteDAO.fetchTrashNotes();
 
-            trashListView.getItems().setAll(trashTitles);
+            // 3. Map folders by ID for easy lookup
+            java.util.Map<String, Folder> folderMap = new java.util.HashMap<>();
+            mapTrashFolders(trashRoot, folderMap);
 
-            // Add listener only once
+            // 4. Distribute notes to their parent folders
+            List<Component> rootNotes = new ArrayList<>();
+
+            for (Note n : allTrashNotes) {
+                String id = n.getId();
+                // ID is relative path: .trash/sub/note.md
+                java.nio.file.Path p = java.nio.file.Paths.get(id);
+                java.nio.file.Path parentPath = p.getParent();
+
+                boolean added = false;
+                if (parentPath != null) {
+                    String parentId = parentPath.toString();
+                    // Check if parent is root .trash
+                    if (parentId.equals(".trash") || parentId.endsWith(File.separator + ".trash")) {
+                        rootNotes.add(n);
+                        added = true;
+                    } else {
+                        // Find parent folder
+                        Folder parent = folderMap.get(parentId);
+                        if (parent != null) {
+                            parent.add(n);
+                            added = true;
+                        }
+                    }
+                }
+
+                if (!added) {
+                    rootNotes.add(n);
+                }
+            }
+
+            // Add root notes
+            trashRoot.addAll(rootNotes);
+
+            // 5. Build Tree
+            TreeItem<Component> rootItem = new TreeItem<>(trashRoot);
+            buildTrashTreeRecursive(rootItem);
+
+            trashTreeView.setRoot(rootItem);
+            trashTreeView.setShowRoot(false);
+
+            trashTreeView.setCellFactory(tv -> new TreeCell<Component>() {
+                @Override
+                protected void updateItem(Component item, boolean empty) {
+                    super.updateItem(item, empty);
+                    if (empty || item == null) {
+                        setText(null);
+                        setGraphic(null);
+                    } else {
+                        HBox container = new HBox(6);
+                        container.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+
+                        if (item instanceof Folder) {
+                            Label iconLabel = new Label("");
+                            iconLabel.getStyleClass().setAll("folder-cell-icon");
+
+                            TreeItem<Component> ti = getTreeItem();
+                            boolean isExpanded = ti != null && ti.isExpanded();
+                            iconLabel.setText(isExpanded ? "[/]" : "[+]");
+                            iconLabel.getStyleClass().add(isExpanded ? "folder-expanded" : "folder-collapsed");
+
+                            Label nameLabel = new Label(item.getTitle());
+                            nameLabel.getStyleClass().add("folder-cell-name");
+
+                            container.getChildren().addAll(iconLabel, nameLabel);
+                        } else if (item instanceof Note) {
+                            FontIcon noteIcon = new FontIcon("fth-file-text");
+                            noteIcon.getStyleClass().add("feather-icon");
+
+                            Label nameLabel = new Label(item.getTitle());
+                            nameLabel.getStyleClass().add("folder-cell-name");
+
+                            container.getChildren().addAll(noteIcon, nameLabel);
+                        }
+
+                        setGraphic(container);
+                        setText(null);
+                    }
+                }
+            });
+
+            // 6. Listener
             if (!trashListenerAdded) {
                 trashListenerAdded = true;
-                trashListView.getSelectionModel().selectedItemProperty().addListener(
-                        (observable, oldValue, newValue) -> {
-                            if (newValue != null) {
-                                // Find and load the trash note from cached list
-                                Optional<Note> trashNote = cachedTrashNotes.stream()
-                                        .filter(n -> n.getTitle() != null && n.getTitle().equals(newValue))
-                                        .findFirst();
-                                if (trashNote.isPresent()) {
-                                    // Update context to show trash
-                                    currentFilterType = "trash";
-                                    currentFolder = null;
-                                    currentTag = null;
+                trashTreeView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
+                    handleTrashSelection(newVal);
+                });
 
-                                    // Clear current selection and showing list
-                                    // Use Platform.runLater for the entire UI update to avoid race conditions
-                                    // during selection
-                                    Platform.runLater(() -> {
-                                        notesListView.getSelectionModel().clearSelection();
-                                        notesListView.getItems().clear();
-
-                                        if (cachedTrashNotes != null && !cachedTrashNotes.isEmpty()) {
-                                            // Show all trash notes in the notes list
-                                            notesListView.getItems().addAll(cachedTrashNotes);
-                                            noteCountLabel.setText(cachedTrashNotes.size() + " notes in trash");
-
-                                            final Note noteToLoad = trashNote.get();
-                                            try {
-                                                int index = notesListView.getItems().indexOf(noteToLoad);
-                                                if (index >= 0 && index < notesListView.getItems().size()) {
-                                                    notesListView.getSelectionModel().select(index);
-                                                }
-                                                loadNoteInEditor(noteToLoad);
-                                            } catch (Exception e) {
-                                                loadNoteInEditor(noteToLoad);
-                                            }
-                                        }
-                                    });
-                                }
-                            }
-                        });
-
-                // Add context menu for Trash
                 ContextMenu trashMenu = new ContextMenu();
-                MenuItem restoreItem = new MenuItem("Restore Note");
-                restoreItem.setOnAction(e -> {
-                    String selected = trashListView.getSelectionModel().getSelectedItem();
-                    if (selected != null) {
-                        cachedTrashNotes.stream()
-                                .filter(n -> n.getTitle().equals(selected))
-                                .findFirst()
-                                .ifPresent(n -> {
-                                    noteDAO.restoreNote(n.getId());
-                                    loadTrashNotes();
-                                    refreshNotesList();
-                                    updateStatus(getString("status.note_restored"));
-                                });
-                    }
-                });
-
-                MenuItem deleteDefItem = new MenuItem("Delete Permanently");
-                deleteDefItem.setOnAction(e -> {
-                    String selected = trashListView.getSelectionModel().getSelectedItem();
-                    if (selected != null) {
-                        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-                        alert.setTitle("Delete Permanently");
-                        alert.setHeaderText("Delete this note permanently?");
-                        alert.setContentText("This action cannot be undone.");
-
-                        if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-                            cachedTrashNotes.stream()
-                                    .filter(n -> n.getTitle().equals(selected))
-                                    .findFirst()
-                                    .ifPresent(n -> {
-                                        noteDAO.permanentlyDeleteNote(n.getId());
-                                        loadTrashNotes();
-                                        updateStatus(getString("status.note_deleted_perm"));
-                                    });
-                        }
-                    }
-                });
-
-                MenuItem emptyTrashItem = new MenuItem("Empty Trash");
-                emptyTrashItem.setOnAction(e -> {
-                    if (cachedTrashNotes.isEmpty()) {
-                        return;
-                    }
-
-                    Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-                    alert.setTitle("Empty Trash");
-                    alert.setHeaderText("Empty the trash?");
-                    alert.setContentText(
-                            "All notes in the trash will be permanently deleted. This action cannot be undone.");
-
-                    if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-                        for (Note n : cachedTrashNotes) {
-                            noteDAO.permanentlyDeleteNote(n.getId());
-                        }
-                        loadTrashNotes();
-                        updateStatus(getString("status.trash_emptied"));
-                    }
-                });
-
-                trashMenu.getItems().addAll(restoreItem, new SeparatorMenuItem(), deleteDefItem,
-                        new SeparatorMenuItem(), emptyTrashItem);
-                trashListView.setContextMenu(trashMenu);
+                MenuItem restoreItem = new MenuItem(getString("action.restore"));
+                restoreItem.setOnAction(e -> handleRestoreTrashItem());
+                MenuItem deleteItem = new MenuItem(getString("action.delete_permanently"));
+                deleteItem.setOnAction(e -> handleDeleteTrashItem());
+                trashMenu.getItems().addAll(restoreItem, deleteItem);
+                trashTreeView.setContextMenu(trashMenu);
             }
+
         } catch (Exception e) {
-            logger.warning("Failed to load trash notes: " + e.getMessage());
+            logger.severe("Failed to load trash tree: " + e.getMessage());
+        }
+    }
+
+    private void mapTrashFolders(Folder folder, java.util.Map<String, Folder> map) {
+        if (folder.getId() != null)
+            map.put(folder.getId(), folder);
+        for (Component c : folder.getChildren()) {
+            if (c instanceof Folder) {
+                mapTrashFolders((Folder) c, map);
+            }
+        }
+    }
+
+    private void buildTrashTreeRecursive(TreeItem<Component> parentItem) {
+        if (parentItem.getValue() instanceof Folder) {
+            Folder folder = (Folder) parentItem.getValue();
+            for (Component child : folder.getChildren()) {
+                TreeItem<Component> childItem = new TreeItem<>(child);
+                parentItem.getChildren().add(childItem);
+                if (child instanceof Folder) {
+                    buildTrashTreeRecursive(childItem);
+                }
+            }
+        }
+    }
+
+    private void handleTrashSelection(TreeItem<Component> item) {
+        if (item == null)
+            return;
+        Component c = item.getValue();
+        currentFilterType = "trash";
+
+        Platform.runLater(() -> {
+            if (c instanceof Note) {
+                notesListView.getItems().setAll((Note) c);
+                loadNoteInEditor((Note) c);
+            } else if (c instanceof Folder) {
+                Folder f = (Folder) c;
+                List<Note> childNotes = new ArrayList<>();
+                for (Component child : f.getChildren()) {
+                    if (child instanceof Note) {
+                        childNotes.add((Note) child);
+                    }
+                }
+                notesListView.getItems().setAll(childNotes);
+
+                // Optionally clear editor or load first note if desired
+                if (!childNotes.isEmpty()) {
+                    // Auto-select first note logic could go here,
+                    // but for now let's just show the list.
+                    // Maybe clear editor?
+                }
+            }
+
+            // CRITICAL: Refresh Grid View if active
+            if (currentNotesViewMode == NotesViewMode.GRID) {
+                refreshGridView();
+            }
+        });
+    }
+
+    private void handleRestoreTrashItem() {
+        TreeItem<Component> selected = trashTreeView.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            Component c = selected.getValue();
+            try {
+                if (c instanceof Folder) {
+                    folderDAO.restoreFolder(c.getId());
+                } else if (c instanceof Note) {
+                    noteDAO.restoreNote(c.getId());
+                }
+                loadTrashTree();
+                updateStatus("Item restored");
+            } catch (Exception e) {
+                logger.severe("Restore failed: " + e.getMessage());
+                updateStatus("Error restoring item");
+            }
+        }
+    }
+
+    private void handleDeleteTrashItem() {
+        TreeItem<Component> selected = trashTreeView.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            Component c = selected.getValue();
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Delete Permanently");
+            alert.setHeaderText("Delete " + c.getTitle() + " permanently?");
+            alert.setContentText("This cannot be undone.");
+
+            if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
+                try {
+                    if (c instanceof Folder) {
+                        folderDAO.permanentlyDeleteFolder(c.getId());
+                    } else if (c instanceof Note) {
+                        noteDAO.permanentlyDeleteNote(c.getId());
+                    }
+                    loadTrashTree();
+                    updateStatus("Item deleted");
+                } catch (Exception e) {
+                    logger.severe("Delete failed: " + e.getMessage());
+                }
+            }
         }
     }
 
@@ -3026,7 +3324,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private void loadTags() {
         try {
             List<Tag> tags = tagDAO.fetchAllTags();
-            tagListView.getItems().clear();
+            // Do not clear listView directly if bound
+            // tagListView.getItems().clear();
 
             tagListView.setCellFactory(lv -> {
                 ListCell<String> cell = new ListCell<String>() {
@@ -3048,9 +3347,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 return cell;
             });
 
+            masterTagsList.clear(); // Update master list instead of ListView items directly
             for (Tag tag : tags) {
-                tagListView.getItems().add(tag.getTitle());
+                masterTagsList.add(tag.getTitle());
             }
+            // Sort tags A-Z by default or current sort
+            Collections.sort(masterTagsList,
+                    (s1, s2) -> tagSortAscending ? s1.compareToIgnoreCase(s2) : s2.compareToIgnoreCase(s1));
 
             tagListView.getSelectionModel().selectedItemProperty().addListener(
                     (observable, oldValue, newValue) -> {
@@ -3960,7 +4263,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 refreshNotesList();
                 loadRecentNotes();
                 loadFavorites();
-                loadTrashNotes();
+                loadTrashTree();
 
                 updateStatus(getString("status.note_moved_trash"));
             } catch (Exception e) {

@@ -185,4 +185,26 @@ public interface FolderDAO {
      * @return True if a folder with the given title exists, false otherwise.
      */
     public boolean existsByTitle(String title);
+
+    // Trash Management
+    /**
+     * Fetches all deleted folders in a hierarchical tree structure.
+     * 
+     * @return The root folder of the trash containing deleted subfolders and notes.
+     */
+    public Folder fetchTrashFolders();
+
+    /**
+     * Restores a deleted folder by its ID.
+     * 
+     * @param id The ID of the folder to restore.
+     */
+    public void restoreFolder(String id);
+
+    /**
+     * Permanently deletes a folder from trash.
+     * 
+     * @param id The ID of the folder to permanently delete.
+     */
+    public void permanentlyDeleteFolder(String id);
 }

@@ -328,14 +328,31 @@ public class NoteDAOFileSystem implements NoteDAO {
         List<Note> deletedNotes = new ArrayList<>();
         Path trashPath = rootPath.resolve(".trash");
         if (Files.exists(trashPath) && Files.isDirectory(trashPath)) {
-            try (Stream<Path> stream = Files.list(trashPath)) {
+            try (Stream<Path> stream = Files.walk(trashPath)) {
                 stream.filter(Files::isRegularFile)
                         .filter(p -> p.toString().endsWith(".md"))
+                        .filter(p -> !p.getFileName().toString().startsWith(".")) // Ignore hidden files
+                        .filter(p -> {
+                            // Ignore files in hidden directories
+                            Path rel = trashPath.relativize(p);
+                            if (rel.getParent() != null) {
+                                for (Path part : rel.getParent()) {
+                                    if (part.toString().startsWith("."))
+                                        return false;
+                                }
+                            }
+                            return true;
+                        })
                         .forEach(p -> {
-                            // Create note with special ID for trash items
-                            String trashId = ".trash" + File.separator + p.getFileName().toString();
+                            // Create note with ID relative to root (e.g. .trash/sub/note.md)
+                            String trashId = rootPath.relativize(p).toString();
                             Note n = createLightweightNote(trashId, p);
                             n.setDeleted(true);
+                            // Ensure title is just the filename without extension
+                            String name = p.getFileName().toString();
+                            if (name.endsWith(".md"))
+                                name = name.substring(0, name.length() - 3);
+                            // Setting title explicitly if needed, but createLightweightNote does it.
                             deletedNotes.add(n);
                         });
             } catch (IOException e) {

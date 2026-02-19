@@ -1959,3 +1959,16 @@
     -fx-fill: -fx-accent-contrast;
     fill: -fx-accent-contrast;
 }
+/* Sidebar Toolbar Extensions */
+.sidebar-toolbar {
+    -fx-background-color: -fx-sidebar-bg;
+    -fx-border-color: transparent transparent -fx-fn-border-color transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 4px;
+}
+
+.small-search {
+    -fx-font-size: 12px;
+    -fx-padding: 4px 8px;
+    -fx-min-height: 28px;
+}

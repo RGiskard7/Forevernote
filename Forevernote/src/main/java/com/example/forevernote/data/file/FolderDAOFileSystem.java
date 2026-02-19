@@ -135,12 +135,106 @@ public class FolderDAOFileSystem implements FolderDAO {
         Path path = idToPathMap.get(id);
         if (path != null && Files.exists(path)) {
             try {
+                Path trashRoot = rootPath.resolve(".trash");
+                if (!Files.exists(trashRoot)) {
+                    Files.createDirectories(trashRoot);
+                }
+
+                String folderName = path.getFileName().toString();
+                Path targetPath = trashRoot.resolve(folderName);
+
+                // Handle duplication
+                if (Files.exists(targetPath)) {
+                    targetPath = trashRoot.resolve(folderName + "_" + System.currentTimeMillis());
+                }
+
+                Files.move(path, targetPath);
+
+                // Update cache
+                idToPathMap.remove(id);
+                // Also remove subfolders from cache
+                String idPrefix = id + File.separator;
+                idToPathMap.keySet().removeIf(k -> k.startsWith(idPrefix) || k.equals(id));
+
+            } catch (IOException e) {
+                logger.log(Level.SEVERE, "Failed to move folder to trash: " + path, e);
+                throw new DataAccessException("Failed to delete folder", e);
+            }
+        }
+    }
+
+    @Override
+    public Folder fetchTrashFolders() {
+        Folder trashRootFolder = new Folder(".trash", "Trash", null);
+        Path trashPath = rootPath.resolve(".trash");
+
+        if (Files.exists(trashPath)) {
+            loadSubFoldersRec(trashRootFolder, trashPath);
+        }
+        return trashRootFolder;
+    }
+
+    private void loadSubFoldersRec(Folder parent, Path currentPath) {
+        try (Stream<Path> stream = Files.list(currentPath)) {
+            stream.filter(Files::isDirectory)
+                    .filter(p -> !p.getFileName().toString().startsWith("."))
+                    .forEach(p -> {
+                        String id = rootPath.relativize(p).toString();
+                        Folder sub = new Folder(id, p.getFileName().toString(), null);
+                        parent.add(sub);
+                        sub.setParent(parent);
+
+                        // Add to cache so NoteDAO can find it if needed
+                        idToPathMap.put(id, p);
+
+                        loadSubFoldersRec(sub, p);
+                    });
+        } catch (IOException e) {
+            logger.warning("Error scanning trash subfolders: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public void restoreFolder(String id) {
+        // ID is relative path like .trash/MyFolder
+        Path srcPath = rootPath.resolve(id);
+        if (!Files.exists(srcPath))
+            throw new DataAccessException("Folder not found in trash: " + id, null);
+
+        // Target is root (or we could try to restore parent structure, but root is
+        // safer for now)
+        // If id starts with .trash/, remove it to find original name
+        String folderName = srcPath.getFileName().toString();
+        // Remove timestamp suffix if added during deletion? Hard to know. Stick to
+        // current name.
+
+        Path targetPath = rootPath.resolve(folderName);
+        if (Files.exists(targetPath)) {
+            targetPath = rootPath.resolve(folderName + "_restored");
+        }
+
+        try {
+            Files.move(srcPath, targetPath);
+            // Refresh cache or let next access handle it
+            refreshCache();
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Failed to restore folder: " + id, e);
+            throw new DataAccessException("Failed to restore folder", e);
+        }
+    }
+
+    @Override
+    public void permanentlyDeleteFolder(String id) {
+        Path path = rootPath.resolve(id); // Should be in .trash
+        if (Files.exists(path)) {
+            try {
                 deleteDirectoryRecursively(path);
                 idToPathMap.remove(id);
                 // Also remove subfolders from cache
-                idToPathMap.keySet().removeIf(k -> k.startsWith(id + File.separator) || k.equals(id));
+                String idPrefix = id + File.separator;
+                idToPathMap.keySet().removeIf(k -> k.startsWith(idPrefix));
             } catch (IOException e) {
-                logger.log(Level.SEVERE, "Failed to delete folder: " + path, e);
+                logger.log(Level.SEVERE, "Failed to permanently delete folder: " + path, e);
             }
         }
     }

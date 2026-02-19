@@ -590,4 +590,24 @@ public class FolderDAOSQLite implements FolderDAO {
 			logger.log(Level.SEVERE, "Error updateModifiedDateFolder(): " + e.getMessage(), e);
 		}
 	}
+
+	@Override
+	public Folder fetchTrashFolders() {
+		// Not implemented for SQLite yet - requires schema change
+		logger.warning("fetchTrashFolders not implemented for SQLite");
+		return new Folder(".trash", "Trash", null);
+	}
+
+	@Override
+	public void restoreFolder(String id) {
+		logger.warning("restoreFolder not implemented for SQLite - ID: " + id);
+		// No-op or throw
+	}
+
+	@Override
+	public void permanentlyDeleteFolder(String id) {
+		logger.warning("permanentlyDeleteFolder not implemented for SQLite - ID: " + id);
+		// In current SQLite implementation, deleteFolder is already permanent.
+		deleteFolder(id);
+	}
 }
