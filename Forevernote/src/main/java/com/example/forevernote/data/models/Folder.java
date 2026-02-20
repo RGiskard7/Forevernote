@@ -39,7 +39,18 @@ public class Folder extends CompositeModel implements Serializable {
         if (o == null || getClass() != o.getClass())
             return false;
         Folder folder = (Folder) o;
+        if (getId() != null && folder.getId() != null) {
+            return getId().equals(folder.getId());
+        }
         return getTitle().equals(folder.getTitle());
+    }
+
+    @Override
+    public int hashCode() {
+        if (getId() != null) {
+            return getId().hashCode();
+        }
+        return getTitle().hashCode();
     }
 
     @Override

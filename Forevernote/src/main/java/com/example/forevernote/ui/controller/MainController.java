@@ -115,7 +115,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     // Cached data to avoid recreating listeners
     private List<Note> cachedAllNotes = new ArrayList<>();
     private List<Note> cachedFavoriteNotes = new ArrayList<>();
-    private List<Note> cachedTrashNotes = new ArrayList<>();
     private boolean recentListenerAdded = false;
     private boolean favoritesListenerAdded = false;
     private boolean trashListenerAdded = false;
@@ -558,16 +557,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 javafx.stage.DirectoryChooser directoryChooser = new javafx.stage.DirectoryChooser();
                 directoryChooser.setTitle(getString("pref.storage.browse"));
 
-                // Set initial directory if exists
-                if (!currentPath.isEmpty()) {
-                    File initialDir = new File(currentPath);
-                    if (initialDir.exists()) {
-                        directoryChooser.setInitialDirectory(initialDir);
-                    }
-                } else {
-                    directoryChooser.setInitialDirectory(new File(System.getProperty("user.home")));
-                }
-
                 File selectedDirectory = directoryChooser.showDialog(menuBar.getScene().getWindow());
                 if (selectedDirectory != null) {
                     newType = "filesystem";
@@ -623,7 +612,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 vaultName = f.getName();
             }
         } else if ("sqlite".equals(prefs.get("storage_type", "sqlite"))) {
-            vaultName = "My Notes";
+            vaultName = getString("app.my_notes");
         }
 
         Folder vaultFolder = new Folder(vaultName, null, null);
@@ -688,10 +677,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                             return true;
                         }
                         String lowerCaseFilter = newValue.toLowerCase();
-                        if (item.toLowerCase().contains(lowerCaseFilter)) {
-                            return true;
-                        }
-                        return false;
+                        return item.toLowerCase().contains(lowerCaseFilter);
                     });
                 });
             }
@@ -805,17 +791,17 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             if (folder == null)
                 return 0;
 
-            // "All Notes" check
-            if (folder.getId() == null || folder.getTitle().equals("All Notes")
-                    || folder.getTitle().equals("Todas las Notas") || "ROOT".equals(folder.getId())) {
-                List<Note> allNotes = noteDAO.fetchAllNotes();
-                return allNotes != null ? allNotes.size() : 0;
+            String folderId = folder.getId();
+
+            // Handle root/all notes separately if needed, but fetchNotesByFolderId should
+            // handle it
+            if (folderId == null || "ALL_NOTES_VIRTUAL".equals(folderId)) {
+                return noteDAO.fetchAllNotes().size();
             }
 
-            // For other folders, return 0 to avoid massive FS recursion lag.
-            // If users REALLY want counts, we can implement an async background counter
-            // later.
-            return 0;
+            // Fetch notes for this specific folder
+            List<Note> notes = noteDAO.fetchNotesByFolderId(folderId);
+            return notes != null ? notes.size() : 0;
         } catch (Exception e) {
             return 0;
         }
@@ -957,11 +943,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         Label iconLabel = new Label("");
                         iconLabel.getStyleClass().setAll("folder-cell-icon"); // Use setAll to clear previous classes
 
-                        String rootTitle = getString("app.all_notes");
-                        boolean isRoot = folder.getTitle().equals("All Notes") || folder.getTitle().equals(rootTitle)
-                                || folder.getId() == null;
+                        String allNotesTitle = getString("app.all_notes");
+                        boolean isAllNotes = "ALL_NOTES_VIRTUAL".equals(folder.getId())
+                                || folder.getTitle().equals(allNotesTitle);
 
-                        if (isRoot) {
+                        if (isAllNotes) {
                             iconLabel.setText("[=]");
                             iconLabel.getStyleClass().add("folder-all-notes");
                         } else {
@@ -973,10 +959,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
                         int noteCount = 0;
                         try {
-                            if (!isRoot) {
-                                noteCount = getNoteCountForFolder(folder);
-                            } else {
+                            if (isAllNotes) {
                                 noteCount = noteDAO.fetchAllNotes().size();
+                            } else {
+                                noteCount = getNoteCountForFolder(folder);
                             }
                         } catch (Exception e) {
                         }
@@ -987,7 +973,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         Label nameLabel = new Label(folder.getTitle());
                         nameLabel.getStyleClass().add("folder-cell-name");
 
-                        if (noteCount > 0 || isRoot) {
+                        if (noteCount > 0 || isAllNotes) {
                             Label countLabel = new Label("(" + noteCount + ")");
                             countLabel.getStyleClass().add("folder-cell-count");
                             container.getChildren().addAll(iconLabel, nameLabel, countLabel);
@@ -999,7 +985,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         setText(null);
 
                         // Context Menu
-                        if (!isRoot) {
+                        if (!isAllNotes) {
                             setContextMenu(createFolderContextMenu(folder));
                         } else {
                             setContextMenu(null);
@@ -2581,7 +2567,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (infoCharsLabel != null) {
             infoCharsLabel.setText(String.valueOf(content == null ? 0 : content.length()));
         }
-
         if (infoLatitudeLabel != null) {
             String latVal = currentNote.getLatitude() != 0 ? String.valueOf(currentNote.getLatitude()) : "-";
             infoLatitudeLabel.setText(java.text.MessageFormat.format(getString("info.lat"), latVal));
@@ -2684,13 +2669,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      * Load subfolders recursively with filter and sort.
      */
     private void loadSubFolders(TreeItem<Folder> parentItem, Folder parentFolder, Set<String> visibleIds,
-            Comparator<Folder> comparator, boolean filterActive) {
+            java.util.Comparator<Folder> comparator, boolean filterActive) {
         try {
             // Reload children from DAO to be sure
-            folderDAO.loadSubFolders(parentFolder);
+            folderDAO.loadSubFolders(parentFolder, 1);
 
             List<Folder> children = new ArrayList<>();
-            for (Component child : parentFolder.getChildren()) {
+            for (com.example.forevernote.data.models.interfaces.Component child : parentFolder.getChildren()) {
                 if (child instanceof Folder) {
                     Folder f = (Folder) child;
                     if (!filterActive || visibleIds.contains(f.getId())) {
@@ -2709,12 +2694,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         } catch (Exception e) {
             logger.warning("Error loading subfolders for " + parentFolder.getTitle() + ": " + e.getMessage());
         }
-    }
 
-    // Legacy method signature if called elsewhere (though it shouldn't be)
-    private void loadSubFolders(TreeItem<Folder> parentItem, Folder parentFolder) {
-        loadSubFolders(parentItem, parentFolder, null, (f1, f2) -> f1.getTitle().compareToIgnoreCase(f2.getTitle()),
-                false);
     }
 
     /**
@@ -2754,6 +2734,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             // Reload folder from database to ensure we have the latest data
             Folder loadedFolder = folderDAO.getFolderById(folder.getId());
+            if (loadedFolder == null && "ROOT".equals(folder.getId())) {
+                // Fallback for virtual root
+                loadedFolder = folder;
+            }
+
             if (loadedFolder != null) {
                 currentFolder = loadedFolder;
 
@@ -3115,28 +3100,47 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             mapTrashFolders(trashRoot, folderMap);
 
             // 4. Distribute notes to their parent folders
-            List<Component> rootNotes = new ArrayList<>();
+            List<Note> rootNotes = new ArrayList<>();
 
             for (Note n : allTrashNotes) {
-                String id = n.getId();
-                // ID is relative path: .trash/sub/note.md
-                java.nio.file.Path p = java.nio.file.Paths.get(id);
-                java.nio.file.Path parentPath = p.getParent();
+                String id = n.getId().replace("\\", "/");
+
+                // Determine parent ID
+                String parentId = null;
+
+                // Priority A: Parent object set (SQLite mode)
+                if (n.getParent() != null && n.getParent().getId() != null) {
+                    parentId = n.getParent().getId();
+                } else {
+                    // Priority B: Deduce from path (FileSystem mode)
+                    int lastSlash = id.lastIndexOf('/');
+                    if (lastSlash != -1) {
+                        parentId = id.substring(0, lastSlash);
+                    }
+                }
 
                 boolean added = false;
-                if (parentPath != null) {
-                    String parentId = parentPath.toString();
-                    // Check if parent is root .trash
-                    if (parentId.equals(".trash") || parentId.endsWith(File.separator + ".trash")) {
-                        rootNotes.add(n);
-                        added = true;
-                    } else {
-                        // Find parent folder
-                        Folder parent = folderMap.get(parentId);
-                        if (parent != null) {
-                            parent.add(n);
-                            added = true;
+                if (parentId != null) {
+                    String normalizedParentId = parentId.replace("\\", "/");
+
+                    // Lookup in folder map
+                    Folder parent = folderMap.get(normalizedParentId);
+
+                    // Fallback: handle .trash prefix mismatches
+                    if (parent == null) {
+                        if (normalizedParentId.equals(".trash") || normalizedParentId.equals("trash")) {
+                            parent = trashRoot;
+                        } else if (normalizedParentId.startsWith("trash/")) {
+                            parent = folderMap.get("." + normalizedParentId);
+                        } else if (!normalizedParentId.startsWith(".trash/") && !normalizedParentId.startsWith(".")) {
+                            parent = folderMap.get(".trash/" + normalizedParentId);
                         }
+                    }
+
+                    if (parent != null) {
+                        parent.add(n);
+                        n.setParent(parent);
+                        added = true;
                     }
                 }
 
@@ -3145,8 +3149,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 }
             }
 
-            // Add root notes
-            trashRoot.addAll(rootNotes);
+            // Add orphaned notes directly to trash root
+            for (Note rn : rootNotes) {
+                trashRoot.add(rn);
+                rn.setParent(trashRoot);
+            }
 
             // 5. Build Tree
             TreeItem<Component> rootItem = new TreeItem<>(trashRoot);
@@ -3175,7 +3182,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                             iconLabel.setText(isExpanded ? "[/]" : "[+]");
                             iconLabel.getStyleClass().add(isExpanded ? "folder-expanded" : "folder-collapsed");
 
-                            Label nameLabel = new Label(item.getTitle());
+                            String title = item.getTitle();
+                            // Clean up display title: remove any path prefixes
+                            if (title != null) {
+                                int lastSlash = title.lastIndexOf('/');
+                                if (lastSlash != -1) {
+                                    title = title.substring(lastSlash + 1);
+                                }
+                                if (title.equals(".trash")) {
+                                    title = getString("tab.trash");
+                                }
+                            }
+
+                            Label nameLabel = new Label(title);
                             nameLabel.getStyleClass().add("folder-cell-name");
 
                             container.getChildren().addAll(iconLabel, nameLabel);
@@ -3313,6 +3332,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     updateStatus("Item deleted");
                 } catch (Exception e) {
                     logger.severe("Delete failed: " + e.getMessage());
+                    updateStatus("Error deleting item");
                 }
             }
         }
@@ -3895,8 +3915,48 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         pinItem.setOnAction(e -> togglePin(note));
         MenuItem deleteItem = new MenuItem(getString("action.move_to_trash"));
         deleteItem.setOnAction(e -> deleteNote(note));
-        contextMenu.getItems().addAll(openItem, favoriteItem, pinItem, new SeparatorMenuItem(), deleteItem);
+
+        Menu moveMenu = createMoveToFolderMenu(note);
+
+        contextMenu.getItems().addAll(openItem, favoriteItem, pinItem, new SeparatorMenuItem(), moveMenu,
+                new SeparatorMenuItem(), deleteItem);
         return contextMenu;
+    }
+
+    private Menu createMoveToFolderMenu(Note note) {
+        Menu moveMenu = new Menu(getString("action.move_to"));
+
+        // Add root option
+        MenuItem rootItem = new MenuItem(getString("app.my_notes"));
+        rootItem.setOnAction(e -> {
+            Folder root = new Folder("ROOT", getString("app.my_notes"));
+            folderDAO.addNote(root, note);
+            refreshNotesList();
+            loadFolders();
+        });
+        moveMenu.getItems().add(rootItem);
+        moveMenu.getItems().add(new SeparatorMenuItem());
+
+        try {
+            List<Folder> folders = folderDAO.fetchAllFoldersAsList();
+            for (Folder f : folders) {
+                // Don't show the current folder
+                if (note.getParent() != null && f.getId().equals(note.getParent().getId()))
+                    continue;
+
+                MenuItem folderItem = new MenuItem(f.getTitle());
+                folderItem.setOnAction(e -> {
+                    folderDAO.addNote(f, note);
+                    refreshNotesList();
+                    loadFolders();
+                });
+                moveMenu.getItems().add(folderItem);
+            }
+        } catch (Exception e) {
+            logger.warning("Failed to load folders for move menu: " + e.getMessage());
+        }
+
+        return moveMenu;
     }
 
     private ContextMenu createTagContextMenu(Tag tag) {
@@ -3958,8 +4018,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         try {
             Note newNote = new Note(getString("action.new_note"), "");
 
-            // Fix: If a folder is selected, prepare the ID with the folder path
+            // Set parent folder regardless of storage
             if (currentFolder != null && currentFolder.getId() != null &&
+                    !"ROOT".equals(currentFolder.getId()) &&
+                    !currentFolder.getTitle().equals("All Notes")) {
+                newNote.setParent(currentFolder);
+            }
+
+            // Fix: If a folder is selected, prepare the ID with the folder path
+            // Data Access Logic: Only do this for FileSystem, SQLite handles ID generation
+            Preferences prefs = Preferences.userNodeForPackage(MainController.class);
+            boolean isFileSystem = !"sqlite".equals(prefs.get("storage_type", "sqlite"));
+
+            if (isFileSystem && currentFolder != null && currentFolder.getId() != null &&
                     !"ROOT".equals(currentFolder.getId()) &&
                     !currentFolder.getTitle().equals("All Notes")) {
 
@@ -3973,6 +4044,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
 
             String noteId = noteDAO.createNote(newNote);
+            if (noteId == null) {
+                // If creation failed, do not proceed
+                updateStatus(getString("status.error_creating_note"));
+                return;
+            }
             newNote.setId(noteId);
 
             // With FS DAO and our fix, the file is already in the right place.
@@ -4178,33 +4254,17 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     @FXML
-    private void handleSaveAll(ActionEvent event) {
-        // Save all modified notes (for now, just save current if modified)
-        if (currentNote != null && isModified) {
-            handleSave(event);
-        }
-        updateStatus(getString("status.saved_all"));
-    }
-
-    @FXML
     private void handleDelete(ActionEvent event) {
-        // Obtenemos qué pestaña de la barra lateral está activa
+        // Check selection in Sidebar Tabs
         int activeTabIndex = navigationTabPane.getSelectionModel().getSelectedIndex();
 
-        // Prioridad 1: Si estamos en la pestaña de Carpetas (index 0)
-        if (activeTabIndex == 0) {
-            TreeItem<Folder> selectedFolderItem = folderTreeView.getSelectionModel().getSelectedItem();
-            if (selectedFolderItem != null && selectedFolderItem.getValue() != null) {
-                Folder folder = selectedFolderItem.getValue();
-                String rootTitle = getString("app.all_notes");
-                if (!folder.getTitle().equals(rootTitle) && !"All Notes".equals(folder.getTitle())) {
-                    handleDeleteFolder(folder);
-                    return;
-                }
-            }
+        // 1. If Trash Tab is active (index 4) - PERMANENT DELETE
+        if (activeTabIndex == 4) {
+            handleDeleteTrashItem();
+            return;
         }
 
-        // Prioridad 2: Si estamos en la pestaña de Etiquetas (index 1)
+        // 2. If Tags Tab is active (index 1)
         if (activeTabIndex == 1) {
             String selectedTagName = tagListView.getSelectionModel().getSelectedItem();
             if (selectedTagName != null) {
@@ -4216,21 +4276,30 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
         }
 
-        // Prioridad 3: Borrar la nota seleccionada en la lista principal
+        // 3. If Folders Tab is active (index 0)
+        if (activeTabIndex == 0) {
+            TreeItem<Folder> selectedFolderItem = folderTreeView.getSelectionModel().getSelectedItem();
+            if (selectedFolderItem != null && selectedFolderItem.getValue() != null) {
+                Folder folder = selectedFolderItem.getValue();
+                // Avoid deleting protected root items
+                String rootId = folder.getId();
+                if (!"ROOT".equals(rootId) && !"ALL_NOTES_VIRTUAL".equals(rootId)
+                        && !getString("app.all_notes").equals(folder.getTitle())) {
+                    handleDeleteFolder(folder);
+                    return;
+                }
+            }
+        }
+
+        // 4. Default: Note deletion (Selected in list or currently open)
         Note selectedNote = notesListView.getSelectionModel().getSelectedItem();
         if (selectedNote != null) {
             deleteNote(selectedNote);
-            return;
-        }
-
-        // Prioridad 4: Borrar la nota que esté abierta actualmente en el editor (si no
-        // hay selección en lista)
-        if (currentNote != null) {
+        } else if (currentNote != null) {
             deleteNote(currentNote);
-            return;
+        } else {
+            updateStatus(getString("status.no_item_selected"));
         }
-
-        updateStatus(getString("status.nothing_to_delete"));
     }
 
     /**
@@ -5434,6 +5503,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         noteContentArea.requestFocus();
         isModified = true;
         updateStatus(getString("status.number"));
+    }
+
+    @FXML
+    private void handleSaveAll(ActionEvent event) {
+        // Save all modified notes (for now, just save current if modified)
+        if (currentNote != null && isModified) {
+            handleSave(event);
+        }
+        updateStatus(getString("status.saved_all"));
     }
 
     @FXML

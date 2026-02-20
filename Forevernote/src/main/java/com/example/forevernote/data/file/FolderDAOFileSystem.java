@@ -140,12 +140,18 @@ public class FolderDAOFileSystem implements FolderDAO {
                     Files.createDirectories(trashRoot);
                 }
 
-                String folderName = path.getFileName().toString();
-                Path targetPath = trashRoot.resolve(folderName);
+                // Use the relative ID to preserve structure in trash
+                Path targetPath = trashRoot.resolve(id);
+
+                // Ensure target parent directories exist in trash
+                if (targetPath.getParent() != null && !Files.exists(targetPath.getParent())) {
+                    Files.createDirectories(targetPath.getParent());
+                }
 
                 // Handle duplication
                 if (Files.exists(targetPath)) {
-                    targetPath = trashRoot.resolve(folderName + "_" + System.currentTimeMillis());
+                    String name = targetPath.getFileName().toString();
+                    targetPath = targetPath.getParent().resolve(name + "_" + System.currentTimeMillis());
                 }
 
                 Files.move(path, targetPath);
@@ -165,7 +171,8 @@ public class FolderDAOFileSystem implements FolderDAO {
 
     @Override
     public Folder fetchTrashFolders() {
-        Folder trashRootFolder = new Folder(".trash", "Trash", null);
+        // Title should be a localized string or just "Trash", not ".trash"
+        Folder trashRootFolder = new Folder(".trash", "Trash");
         Path trashPath = rootPath.resolve(".trash");
 
         if (Files.exists(trashPath)) {
@@ -177,45 +184,64 @@ public class FolderDAOFileSystem implements FolderDAO {
     private void loadSubFoldersRec(Folder parent, Path currentPath) {
         try (Stream<Path> stream = Files.list(currentPath)) {
             stream.filter(Files::isDirectory)
-                    .filter(p -> !p.getFileName().toString().startsWith("."))
                     .forEach(p -> {
-                        String id = rootPath.relativize(p).toString();
-                        Folder sub = new Folder(id, p.getFileName().toString(), null);
+                        // ID must be relative to rootPath with forward slashes
+                        String id = rootPath.relativize(p).toString().replace("\\", "/");
+
+                        // Title MUST be just the directory name
+                        String title = p.getFileName().toString();
+
+                        Folder sub = new Folder(id, title);
                         parent.add(sub);
                         sub.setParent(parent);
 
-                        // Add to cache so NoteDAO can find it if needed
+                        // Cache the path
                         idToPathMap.put(id, p);
 
+                        // Recursively load subfolders
                         loadSubFoldersRec(sub, p);
                     });
         } catch (IOException e) {
-            logger.warning("Error scanning trash subfolders: " + e.getMessage());
+            logger.log(Level.SEVERE, "Error loading trash subfolders for " + currentPath, e);
         }
     }
 
     @Override
     public void restoreFolder(String id) {
-        // ID is relative path like .trash/MyFolder
+        // ID is relative path like .trash/MyFolder or .trash/Sub/MyFolder
         Path srcPath = rootPath.resolve(id);
         if (!Files.exists(srcPath))
             throw new DataAccessException("Folder not found in trash: " + id, null);
 
-        // Target is root (or we could try to restore parent structure, but root is
-        // safer for now)
-        // If id starts with .trash/, remove it to find original name
-        String folderName = srcPath.getFileName().toString();
-        // Remove timestamp suffix if added during deletion? Hard to know. Stick to
-        // current name.
+        // Calculate original relative path by removing .trash/ prefix
+        String originalRelativePath = id;
+        if (id.startsWith(".trash" + File.separator)) {
+            originalRelativePath = id.substring((".trash" + File.separator).length());
+        } else if (id.equals(".trash")) {
+            return; // Cannot restore the trash itself
+        } else if (id.startsWith(".trash")) {
+            // Case where separator might be different or it's just .trash/folder
+            originalRelativePath = id.substring(6);
+            if (originalRelativePath.startsWith("/") || originalRelativePath.startsWith("\\")) {
+                originalRelativePath = originalRelativePath.substring(1);
+            }
+        }
 
-        Path targetPath = rootPath.resolve(folderName);
+        Path targetPath = rootPath.resolve(originalRelativePath);
+
+        // If target already exists, append timestamp or similar to avoid conflict
         if (Files.exists(targetPath)) {
-            targetPath = rootPath.resolve(folderName + "_restored");
+            String name = srcPath.getFileName().toString();
+            targetPath = targetPath.getParent().resolve(name + "_restored_" + System.currentTimeMillis());
         }
 
         try {
+            // Ensure parent directory exists
+            if (targetPath.getParent() != null && !Files.exists(targetPath.getParent())) {
+                Files.createDirectories(targetPath.getParent());
+            }
+
             Files.move(srcPath, targetPath);
-            // Refresh cache or let next access handle it
             refreshCache();
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to restore folder: " + id, e);
@@ -227,31 +253,19 @@ public class FolderDAOFileSystem implements FolderDAO {
     public void permanentlyDeleteFolder(String id) {
         Path path = rootPath.resolve(id); // Should be in .trash
         if (Files.exists(path)) {
-            try {
-                deleteDirectoryRecursively(path);
+            try (Stream<Path> walk = Files.walk(path)) {
+                walk.sorted(java.util.Comparator.reverseOrder())
+                        .map(Path::toFile)
+                        .forEach(java.io.File::delete);
+
                 idToPathMap.remove(id);
                 // Also remove subfolders from cache
-                String idPrefix = id + File.separator;
-                idToPathMap.keySet().removeIf(k -> k.startsWith(idPrefix));
+                String idPrefix = id.replace("\\", "/") + "/";
+                idToPathMap.keySet().removeIf(k -> k.replace("\\", "/").startsWith(idPrefix) || k.equals(id));
             } catch (IOException e) {
-                logger.log(Level.SEVERE, "Failed to permanently delete folder: " + path, e);
+                logger.log(Level.SEVERE, "Failed to permanently delete folder: " + id, e);
             }
         }
-    }
-
-    private void deleteDirectoryRecursively(Path path) throws IOException {
-        if (Files.isDirectory(path)) {
-            try (Stream<Path> entries = Files.list(path)) {
-                entries.forEach(entry -> {
-                    try {
-                        deleteDirectoryRecursively(entry);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                });
-            }
-        }
-        Files.delete(path);
     }
 
     @Override
@@ -293,8 +307,47 @@ public class FolderDAOFileSystem implements FolderDAO {
 
     @Override
     public void addNote(Folder folder, Note note) {
-        // Move note file
-        // Note logic handles this usually
+        if (folder == null || note == null)
+            return;
+
+        Path sourcePath = idToPathMap.get(note.getId());
+        if (sourcePath == null)
+            return;
+
+        Path targetDir;
+        if ("ROOT".equals(folder.getId())) {
+            targetDir = rootPath;
+        } else {
+            targetDir = idToPathMap.get(folder.getId());
+        }
+
+        if (targetDir == null || !Files.exists(targetDir))
+            return;
+
+        Path targetPath = targetDir.resolve(sourcePath.getFileName());
+
+        try {
+            if (!sourcePath.equals(targetPath)) {
+                Files.move(sourcePath, targetPath);
+
+                // Update maps and note object
+                String oldId = note.getId();
+                String newId = rootPath.relativize(targetPath).toString();
+
+                idToPathMap.remove(oldId);
+                idToPathMap.put(newId, targetPath);
+
+                // We need to update the note in NoteDAO cache too
+                // Since we don't have direct access easily without coupling,
+                // but MainController refreshes both.
+                // However, we MUST update the note object itself so subsequent calls use the
+                // new ID
+                note.setId(newId);
+                note.setParent(folder);
+            }
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Failed to move note file to folder: " + folder.getId(), e);
+        }
     }
 
     @Override

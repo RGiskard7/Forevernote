@@ -296,24 +296,25 @@ public class NoteDAOFileSystem implements NoteDAO {
         Path sourcePath = idToPathMap.get(id);
         if (sourcePath != null && Files.exists(sourcePath)) {
             try {
-                // Determine trash folder
+                // Determine target path in trash while preserving relative structure
                 Path trashDir = rootPath.resolve(".trash");
-                if (!Files.exists(trashDir)) {
-                    Files.createDirectories(trashDir);
-                }
+                Path targetPath = trashDir.resolve(id); // id is relative path
 
-                String filename = sourcePath.getFileName().toString();
-                Path targetPath = trashDir.resolve(filename);
+                // Ensure target parent directories exist in trash
+                if (targetPath.getParent() != null && !Files.exists(targetPath.getParent())) {
+                    Files.createDirectories(targetPath.getParent());
+                }
 
                 // Avoid collision in trash
                 if (Files.exists(targetPath)) {
-                    String name = filename.substring(0, filename.length() - 3); // remove .md
-                    targetPath = trashDir.resolve(name + "_" + System.currentTimeMillis() + ".md");
+                    String filename = targetPath.getFileName().toString();
+                    String name = filename.endsWith(".md") ? filename.substring(0, filename.length() - 3) : filename;
+                    targetPath = targetPath.getParent().resolve(name + "_" + System.currentTimeMillis() + ".md");
                 }
 
                 Files.move(sourcePath, targetPath);
 
-                // Remove from cache so it disappears from list
+                // Remove from cache
                 idToPathMap.remove(id);
                 cachedNotes.remove(id);
 
@@ -333,26 +334,16 @@ public class NoteDAOFileSystem implements NoteDAO {
                         .filter(p -> p.toString().endsWith(".md"))
                         .filter(p -> !p.getFileName().toString().startsWith(".")) // Ignore hidden files
                         .filter(p -> {
-                            // Ignore files in hidden directories
-                            Path rel = trashPath.relativize(p);
-                            if (rel.getParent() != null) {
-                                for (Path part : rel.getParent()) {
-                                    if (part.toString().startsWith("."))
-                                        return false;
-                                }
-                            }
-                            return true;
+                            // Only skip truly hidden system files like .DS_Store or .obsidian
+                            // but allow trashed folders starting with dot
+                            String filename = p.getFileName().toString();
+                            return !filename.startsWith(".") || filename.endsWith(".md");
                         })
                         .forEach(p -> {
                             // Create note with ID relative to root (e.g. .trash/sub/note.md)
-                            String trashId = rootPath.relativize(p).toString();
+                            String trashId = rootPath.relativize(p).toString().replace("\\", "/");
                             Note n = createLightweightNote(trashId, p);
                             n.setDeleted(true);
-                            // Ensure title is just the filename without extension
-                            String name = p.getFileName().toString();
-                            if (name.endsWith(".md"))
-                                name = name.substring(0, name.length() - 3);
-                            // Setting title explicitly if needed, but createLightweightNote does it.
                             deletedNotes.add(n);
                         });
             } catch (IOException e) {
@@ -364,31 +355,45 @@ public class NoteDAOFileSystem implements NoteDAO {
 
     @Override
     public void restoreNote(String id) {
-        // ID should be like .trash/note.md
+        // ID is relative path like .trash/note.md or .trash/Folder/note.md
         try {
-            Path trashPath = rootPath.resolve(".trash");
-            // If ID contains separator, get filename, else assume it is filename
-            String filename = Paths.get(id).getFileName().toString();
-            Path source = trashPath.resolve(filename);
+            Path source = rootPath.resolve(id);
+            if (!Files.exists(source)) {
+                // Try fallback to just filename if id is not found (for old trashed notes)
+                String filename = Paths.get(id).getFileName().toString();
+                source = rootPath.resolve(".trash").resolve(filename);
+            }
 
             if (Files.exists(source)) {
-                Path target = rootPath.resolve(filename);
-                // Handle collision
+                // Calculate original relative path
+                String originalRelPath = id;
+                if (id.startsWith(".trash" + File.separator)) {
+                    originalRelPath = id.substring((".trash" + File.separator).length());
+                } else if (id.startsWith(".trash")) {
+                    originalRelPath = id.substring(6);
+                    if (originalRelPath.startsWith("/") || originalRelPath.startsWith("\\")) {
+                        originalRelPath = originalRelPath.substring(1);
+                    }
+                }
+
+                Path target = rootPath.resolve(originalRelPath);
+
+                // Handle conflicts
                 if (Files.exists(target)) {
-                    String name = filename.substring(0, filename.length() - 3);
-                    target = rootPath.resolve(name + "_" + System.currentTimeMillis() + ".md");
+                    String filename = target.getFileName().toString();
+                    String name = filename.endsWith(".md") ? filename.substring(0, filename.length() - 3) : filename;
+                    target = target.getParent().resolve(name + "_restored_" + System.currentTimeMillis() + ".md");
+                }
+
+                // Ensure parent exists
+                if (target.getParent() != null && !Files.exists(target.getParent())) {
+                    Files.createDirectories(target.getParent());
                 }
 
                 Files.move(source, target);
 
                 // Update cache
-                String newId = rootPath.relativize(target).toString();
-                Note n = createLightweightNote(newId, target);
-                n.setDeleted(false);
-                n.setDeletedDate(null);
-
-                idToPathMap.put(newId, target);
-                cachedNotes.put(newId, n);
+                refreshCache();
             }
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to restore note: " + id, e);
@@ -398,22 +403,21 @@ public class NoteDAOFileSystem implements NoteDAO {
     @Override
     public void permanentlyDeleteNote(String id) {
         try {
-            String filename = Paths.get(id).getFileName().toString();
-            Path trashPath = rootPath.resolve(".trash");
-            Path target = trashPath.resolve(filename);
+            Path path = rootPath.resolve(id); // id starts with .trash/ usually
 
-            if (Files.exists(target)) {
-                Files.delete(target);
+            if (Files.exists(path)) {
+                Files.delete(path);
+                idToPathMap.remove(id);
+                cachedNotes.remove(id);
             } else {
-                // Formatting for check
-                Path path = idToPathMap.get(id);
-                if (path != null && Files.exists(path)) {
-                    Files.delete(path);
-                    idToPathMap.remove(id);
-                    cachedNotes.remove(id);
+                // Try fallback to filename in trash root
+                String filename = path.getFileName().toString();
+                Path fallback = rootPath.resolve(".trash").resolve(filename);
+                if (Files.exists(fallback)) {
+                    Files.delete(fallback);
                 }
             }
-            // Also remove from cache if somehow lingering
+            // Also remove from cache
             cachedNotes.remove(id);
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to permanently delete note: " + id, e);
@@ -430,19 +434,23 @@ public class NoteDAOFileSystem implements NoteDAO {
         String prefix = (folderId == null || folderId.equals("ROOT")) ? "" : folderId + File.separator;
 
         for (Note note : cachedNotes.values()) {
-            String id = note.getId();
+            if (note.isDeleted())
+                continue;
+
+            String id = note.getId().replace("\\", "/");
+            String normalizedPrefix = prefix.replace("\\", "/");
 
             if (folderId == null || folderId.equals("ROOT")) {
                 // Root folder: direct children have no separator
-                if (!id.contains(File.separator)) {
+                if (!id.contains("/")) {
                     notes.add(note);
                 }
             } else {
                 // Subfolder: must start with folder path + separator, and have no further
                 // separators
-                if (id.startsWith(prefix)) {
-                    String remaining = id.substring(prefix.length());
-                    if (!remaining.contains(File.separator)) {
+                if (id.startsWith(normalizedPrefix)) {
+                    String remaining = id.substring(normalizedPrefix.length());
+                    if (!remaining.contains("/")) {
                         notes.add(note);
                     }
                 }

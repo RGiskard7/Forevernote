@@ -32,13 +32,13 @@ public class NoteDAOSQLite implements NoteDAO {
 
 	// SQL Queries
 	private static final String INSERT_NOTE_SQL = "INSERT INTO notes (note_id, title, content, created_date, modified_date, "
-			+ "latitude, longitude, author, source_url, source, source_application, is_todo, todo_due, todo_completed, is_favorite, is_pinned, is_deleted, deleted_date) "
-			+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+			+ "latitude, longitude, author, source_url, source, source_application, is_todo, todo_due, todo_completed, is_favorite, is_pinned, is_deleted, deleted_date, parent_id) "
+			+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
 	private static final String INSERT_TAG_NOTE_SQL = "INSERT INTO tagsNotes (id, tag_id, note_id, added_date) VALUES (?, ?, ?, ?)";
 
-	private static final String SELECT_NOTE_BY_ID_SQL = "SELECT * FROM notes LEFT JOIN folders ON notes.parent_id = folders.folder_id "
-			+ "WHERE note_id = ? AND is_deleted = 0";
+	private static final String SELECT_NOTE_BY_ID_SQL = "SELECT notes.* FROM notes LEFT JOIN folders ON notes.parent_id = folders.folder_id "
+			+ "WHERE notes.note_id = ?";
 
 	private static final String SELECT_NOTES_BY_FOLDER_ID_SQL = "SELECT * FROM notes WHERE parent_id = ? AND is_deleted = 0";
 
@@ -50,7 +50,7 @@ public class NoteDAOSQLite implements NoteDAO {
 	private static final String SELECT_NOTES_BY_TAG_ID_SQL = "SELECT DISTINCT notes.* FROM notes "
 			+ "INNER JOIN tagsNotes ON notes.note_id = tagsNotes.note_id WHERE tagsNotes.tag_id = ? AND notes.is_deleted = 0";
 
-	private static final String UPDATE_NOTE_SQL = "UPDATE notes SET title = ?, content = ?, modified_date = ?, is_favorite = ?, is_pinned = ? WHERE note_id = ?";
+	private static final String UPDATE_NOTE_SQL = "UPDATE notes SET title = ?, content = ?, modified_date = ?, is_favorite = ?, is_pinned = ?, parent_id = ? WHERE note_id = ?";
 
 	private static final String SOFT_DELETE_NOTE_SQL = "UPDATE notes SET is_deleted = 1, deleted_date = ? WHERE note_id = ?";
 
@@ -116,6 +116,9 @@ public class NoteDAOSQLite implements NoteDAO {
 			pstmt.setInt(16, note.isPinned() ? 1 : 0); // is_pinned
 			pstmt.setInt(17, note.isDeleted() ? 1 : 0); // is_deleted
 			pstmt.setString(18, note.getDeletedDate()); // deleted_date
+			pstmt.setString(19,
+					(note.getParent() != null && !"ROOT".equals(note.getParent().getId())) ? note.getParent().getId()
+							: null);
 
 			pstmt.executeUpdate();
 
@@ -169,7 +172,10 @@ public class NoteDAOSQLite implements NoteDAO {
 			pstmt.setString(3, DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
 			pstmt.setInt(4, note.isFavorite() ? 1 : 0);
 			pstmt.setInt(5, note.isPinned() ? 1 : 0);
-			pstmt.setString(6, note.getId());
+			pstmt.setString(6,
+					(note.getParent() != null && !"ROOT".equals(note.getParent().getId())) ? note.getParent().getId()
+							: null);
+			pstmt.setString(7, note.getId());
 			pstmt.executeUpdate();
 			connection.commit();
 
@@ -271,8 +277,14 @@ public class NoteDAOSQLite implements NoteDAO {
 
 		List<Note> list = new ArrayList<>();
 
-		try (PreparedStatement pstmt = connection.prepareStatement(SELECT_NOTES_BY_FOLDER_ID_SQL)) {
-			pstmt.setString(1, folderId);
+		String sql = (folderId == null || folderId.isEmpty() || "ROOT".equals(folderId))
+				? "SELECT * FROM notes WHERE (parent_id IS NULL OR parent_id = '') AND is_deleted = 0"
+				: SELECT_NOTES_BY_FOLDER_ID_SQL;
+
+		try (PreparedStatement pstmt = connection.prepareStatement(sql)) {
+			if (!sql.contains("IS NULL")) {
+				pstmt.setString(1, folderId);
+			}
 
 			try (ResultSet rs = pstmt.executeQuery()) {
 				while (rs.next()) {
@@ -505,8 +517,15 @@ public class NoteDAOSQLite implements NoteDAO {
 			note.setPinned(isPinned == 1);
 			note.setDeleted(isDeleted == 1);
 			note.setDeletedDate(deletedDate);
-		}
 
-		return note;
+			// Populate parent placeholder for hierarchy reconstruction
+			String parentId = rs.getString("parent_id");
+			if (parentId != null && !parentId.isEmpty()) {
+				note.setParent(new com.example.forevernote.data.models.Folder(parentId, ""));
+			}
+
+			return note;
+		}
+		return null;
 	}
 }

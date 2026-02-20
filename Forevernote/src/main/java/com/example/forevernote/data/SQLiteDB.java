@@ -202,8 +202,30 @@ public class SQLiteDB {
                     logger.info("Adding deleted_date column to notes table...");
                     stmt.executeUpdate("ALTER TABLE notes ADD COLUMN deleted_date TEXT DEFAULT NULL");
                 }
+
+                // Check 'folders' table
+                rs = stmt.executeQuery("PRAGMA table_info(folders)");
+                boolean hasFolderIsDeleted = false;
+                boolean hasFolderDeletedDate = false;
+                while (rs.next()) {
+                    String columnName = rs.getString("name");
+                    if ("is_deleted".equals(columnName))
+                        hasFolderIsDeleted = true;
+                    if ("deleted_date".equals(columnName))
+                        hasFolderDeletedDate = true;
+                }
+                rs.close();
+
+                if (!hasFolderIsDeleted) {
+                    logger.info("Adding is_deleted column to folders table...");
+                    stmt.executeUpdate("ALTER TABLE folders ADD COLUMN is_deleted INTEGER NOT NULL DEFAULT 0");
+                }
+                if (!hasFolderDeletedDate) {
+                    logger.info("Adding deleted_date column to folders table...");
+                    stmt.executeUpdate("ALTER TABLE folders ADD COLUMN deleted_date TEXT DEFAULT NULL");
+                }
             } catch (SQLException e) {
-                logger.warning("Could not check/add columns to notes table: " + e.getMessage());
+                logger.warning("Could not check/add columns to tables: " + e.getMessage());
             } finally {
                 stmt.close();
             }
@@ -257,7 +279,23 @@ public class SQLiteDB {
             logger.info("Migrating table " + tableName + " to use TEXT IDs...");
             stmt.executeUpdate("ALTER TABLE " + tableName + " RENAME TO " + tableName + "_old");
             stmt.executeUpdate(createSql);
-            stmt.executeUpdate("INSERT INTO " + tableName + " SELECT * FROM " + tableName + "_old");
+
+            // Dynamically build INSERT to match columns (Fix for column mismatch during
+            // migration)
+            java.util.List<String> columns = new java.util.ArrayList<>();
+            try (ResultSet rsOld = stmt.executeQuery("PRAGMA table_info(" + tableName + "_old)")) {
+                while (rsOld.next()) {
+                    columns.add(rsOld.getString("name"));
+                }
+            }
+
+            if (!columns.isEmpty()) {
+                String cols = String.join(", ", columns);
+                String insertSql = "INSERT INTO " + tableName + " (" + cols + ") SELECT " + cols + " FROM " + tableName
+                        + "_old";
+                stmt.executeUpdate(insertSql);
+            }
+
             stmt.executeUpdate("DROP TABLE " + tableName + "_old");
             logger.info("Migration complete for table: " + tableName);
         }

@@ -33,20 +33,20 @@ public class FolderDAOSQLite implements FolderDAO {
 	// SQL Queries
 	private static final String INSERT_FOLDER_SQL = "INSERT INTO folders (folder_id, title, created_date) VALUES (?, ?, ?)";
 
-	private static final String SELECT_EXIST_TITLE = "SELECT COUNT(*) FROM folders WHERE title = ?";
+	private static final String SELECT_EXIST_TITLE = "SELECT COUNT(*) FROM folders WHERE title = ? AND is_deleted = 0";
 
 	private static final String SELECT_FOLDER_BY_ID_SQL = "SELECT * FROM folders WHERE folder_id = ?";
 
 	private static final String SELECT_FOLDER_BY_NOTE_ID_SQL = "SELECT folder_id, folders.title, folders.created_date, "
-			+ "folders.modified_date FROM notes INNER JOIN folders ON notes.parent_id = folders.folder_id WHERE note_id = ?";
+			+ "folders.modified_date FROM notes INNER JOIN folders ON notes.parent_id = folders.folder_id WHERE note_id = ? AND folders.is_deleted = 0";
 
-	private static final String SELECT_ALL_FOLDERS_SQL = "SELECT * FROM folders";
+	private static final String SELECT_ALL_FOLDERS_SQL = "SELECT * FROM folders WHERE is_deleted = 0";
 
 	private static final String SELECT_PARENT_FOLDER_SQL = "SELECT parent_id FROM folders WHERE folder_id = ?";
 
-	private static final String SELECT_SUBFOLDERS_SQL = "SELECT * FROM folders WHERE parent_id = ?";
+	private static final String SELECT_SUBFOLDERS_SQL = "SELECT * FROM folders WHERE parent_id = ? AND is_deleted = 0";
 
-	private static final String SELECT_SUBFOLDERS_ROOT_SQL = "SELECT * FROM folders WHERE parent_id IS NULL";
+	private static final String SELECT_SUBFOLDERS_ROOT_SQL = "SELECT * FROM folders WHERE parent_id IS NULL AND is_deleted = 0";
 
 	private static final String UPDATE_FOLDER_SQL = "UPDATE folders SET title = ?, modified_date = ? WHERE folder_id = ?";
 
@@ -59,6 +59,12 @@ public class FolderDAOSQLite implements FolderDAO {
 	private static final String UPDATE_FOLDER_ADD_SUBFOLDER_SQL = "UPDATE folders SET parent_id = ?, modified_date = ? WHERE folder_id = ?";
 
 	private static final String UPDATE_FOLDER_REMOVE_SUBFOLDER_SQL = "UPDATE folders SET parent_id = NULL, modified_date = ? WHERE folder_id = ? AND parent_id = ?";
+
+	private static final String SOFT_DELETE_FOLDER_SQL = "UPDATE folders SET is_deleted = 1, deleted_date = ? WHERE folder_id = ?";
+
+	private static final String RESTORE_FOLDER_SQL = "UPDATE folders SET is_deleted = 0, deleted_date = NULL WHERE folder_id = ?";
+
+	private static final String SELECT_TRASH_FOLDERS_SQL = "SELECT * FROM folders WHERE is_deleted = 1";
 
 	private static final String DELETE_FOLDER_SQL = "DELETE FROM folders WHERE folder_id = ?";
 
@@ -162,11 +168,29 @@ public class FolderDAOSQLite implements FolderDAO {
 			throw new IllegalArgumentException("Folder ID cannot be null or empty");
 		}
 
-		try (PreparedStatement pstmt = connection.prepareStatement(DELETE_FOLDER_SQL)) {
-			pstmt.setString(1, id);
-			pstmt.executeUpdate();
-			connection.commit();
+		com.example.forevernote.data.dao.interfaces.NoteDAO noteDAO = new com.example.forevernote.data.dao.NoteDAOSQLite(
+				connection);
 
+		try {
+			// 1. Recursively soft delete subfolders
+			List<Folder> subFolders = fetchSubFoldersImplementation(id);
+			for (Folder sub : subFolders) {
+				deleteFolder(sub.getId()); // This will call soft delete recursively
+			}
+
+			// 2. Soft delete notes in this folder
+			List<Note> notes = noteDAO.fetchNotesByFolderId(id);
+			for (Note n : notes) {
+				noteDAO.deleteNote(n.getId()); // This will call soft delete for notes
+			}
+
+			// 3. Mark this folder as deleted
+			try (PreparedStatement pstmt = connection.prepareStatement(SOFT_DELETE_FOLDER_SQL)) {
+				pstmt.setString(1, DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
+				pstmt.setString(2, id);
+				pstmt.executeUpdate();
+				connection.commit();
+			}
 		} catch (SQLException e) {
 			logger.log(Level.SEVERE, "Error deleteFolder(): " + e.getMessage(), e);
 			try {
@@ -405,13 +429,19 @@ public class FolderDAOSQLite implements FolderDAO {
 		}
 
 		try (PreparedStatement pstmt = connection.prepareStatement(UPDATE_FOLDER_ADD_NOTE_SQL)) {
-			pstmt.setString(1, folderId);
+			if ("ROOT".equals(folderId)) {
+				pstmt.setNull(1, java.sql.Types.VARCHAR);
+			} else {
+				pstmt.setString(1, folderId);
+			}
 			pstmt.setString(2, DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
 			pstmt.setString(3, noteId);
 			pstmt.executeUpdate();
 			connection.commit();
 
-			updateModifiedDateFolder(folderId);
+			if (!"ROOT".equals(folderId)) {
+				updateModifiedDateFolder(folderId);
+			}
 		} catch (SQLException e) {
 			logger.log(Level.SEVERE, "Error addNote(): " + e.getMessage(), e);
 			try {
@@ -593,21 +623,149 @@ public class FolderDAOSQLite implements FolderDAO {
 
 	@Override
 	public Folder fetchTrashFolders() {
-		// Not implemented for SQLite yet - requires schema change
-		logger.warning("fetchTrashFolders not implemented for SQLite");
-		return new Folder(".trash", "Trash", null);
+		// Create a virtual root for the trash
+		Folder trashRoot = new Folder(".trash", "Trash", null);
+
+		// Map for folders: ID -> Folder
+		java.util.Map<String, Folder> folderMap = new java.util.HashMap<>();
+		// Map for hierarchy: FolderID -> ParentID
+		java.util.Map<String, String> parentMap = new java.util.HashMap<>();
+
+		try (Statement s = connection.createStatement(); ResultSet rs = s.executeQuery(SELECT_TRASH_FOLDERS_SQL)) {
+			while (rs.next()) {
+				Folder f = mapResultSetToFolder(rs);
+				folderMap.put(f.getId(), f);
+
+				// Re-extract parent_id for the map
+				String pid = rs.getString("parent_id");
+				if (pid != null) {
+					parentMap.put(f.getId(), pid);
+				}
+			}
+		} catch (SQLException e) {
+			logger.log(Level.SEVERE, "Error fetching trash folders: " + e.getMessage(), e);
+		}
+
+		// Reconstruct Hierarchy
+		for (Folder f : folderMap.values()) {
+			String pid = parentMap.get(f.getId());
+			// Check if parent is also deleted (exists in map)
+			if (pid != null && folderMap.containsKey(pid)) {
+				Folder parent = folderMap.get(pid);
+				parent.add(f);
+				f.setParent(parent);
+			} else {
+				// Orphan in trash context (parent is alive or null)
+				trashRoot.add(f);
+				f.setParent(trashRoot);
+			}
+		}
+
+		return trashRoot;
 	}
 
 	@Override
 	public void restoreFolder(String id) {
-		logger.warning("restoreFolder not implemented for SQLite - ID: " + id);
-		// No-op or throw
+		if (id == null || id.isEmpty()) {
+			return;
+		}
+
+		com.example.forevernote.data.dao.interfaces.NoteDAO noteDAO = new com.example.forevernote.data.dao.NoteDAOSQLite(
+				connection);
+
+		// 1. Restore this folder
+		try (PreparedStatement pstmt = connection.prepareStatement(RESTORE_FOLDER_SQL)) {
+			pstmt.setString(1, id);
+			pstmt.executeUpdate();
+			connection.commit();
+		} catch (SQLException e) {
+			logger.log(Level.SEVERE, "Error restoreFolder: " + e.getMessage(), e);
+		}
+
+		// 2. Recursively restore subfolders that were deleted
+		List<Folder> deletedSubs = fetchDeletedSubFolders(id);
+		for (Folder sub : deletedSubs) {
+			restoreFolder(sub.getId());
+		}
+
+		// 3. Restore notes in this folder
+		String queryDeletedNotes = "SELECT note_id FROM notes WHERE parent_id = ? AND is_deleted = 1";
+		try (PreparedStatement p = connection.prepareStatement(queryDeletedNotes)) {
+			p.setString(1, id);
+			try (ResultSet rs = p.executeQuery()) {
+				while (rs.next()) {
+					noteDAO.restoreNote(rs.getString("note_id"));
+				}
+			}
+		} catch (SQLException e) {
+			logger.log(Level.SEVERE, "Error restoring notes in folder: " + e.getMessage(), e);
+		}
 	}
 
 	@Override
 	public void permanentlyDeleteFolder(String id) {
-		logger.warning("permanentlyDeleteFolder not implemented for SQLite - ID: " + id);
-		// In current SQLite implementation, deleteFolder is already permanent.
-		deleteFolder(id);
+		if (id == null || id.isEmpty()) {
+			return;
+		}
+
+		com.example.forevernote.data.dao.interfaces.NoteDAO noteDAO = new com.example.forevernote.data.dao.NoteDAOSQLite(
+				connection);
+
+		// 1. Recursively hard delete subfolders
+		List<Folder> deletedSubs = fetchDeletedSubFolders(id);
+		for (Folder sub : deletedSubs) {
+			permanentlyDeleteFolder(sub.getId());
+		}
+
+		// 2. Permanently delete notes in this folder
+		String queryNotes = "SELECT note_id FROM notes WHERE parent_id = ?";
+		try (PreparedStatement p = connection.prepareStatement(queryNotes)) {
+			p.setString(1, id);
+			try (ResultSet rs = p.executeQuery()) {
+				while (rs.next()) {
+					noteDAO.permanentlyDeleteNote(rs.getString("note_id"));
+				}
+			}
+		} catch (SQLException e) {
+			logger.log(Level.SEVERE, "Error permanently deleting notes: " + e.getMessage(), e);
+		}
+
+		// 3. Hard delete this folder
+		try (PreparedStatement pstmt = connection.prepareStatement(DELETE_FOLDER_SQL)) {
+			pstmt.setString(1, id);
+			pstmt.executeUpdate();
+			connection.commit();
+		} catch (SQLException e) {
+			logger.log(Level.SEVERE, "Error permanentlyDeleteFolder(): " + e.getMessage(), e);
+		}
+	}
+
+	private List<Folder> fetchSubFoldersImplementation(String parentId) {
+		List<Folder> list = new ArrayList<>();
+		try (PreparedStatement p = connection.prepareStatement(SELECT_SUBFOLDERS_SQL)) {
+			p.setString(1, parentId);
+			try (ResultSet rs = p.executeQuery()) {
+				while (rs.next())
+					list.add(mapResultSetToFolder(rs));
+			}
+		} catch (SQLException e) {
+			logger.log(Level.SEVERE, "Error fetchSubFoldersImplementation: " + e.getMessage(), e);
+		}
+		return list;
+	}
+
+	private List<Folder> fetchDeletedSubFolders(String parentId) {
+		String sql = "SELECT * FROM folders WHERE parent_id = ? AND is_deleted = 1";
+		List<Folder> list = new ArrayList<>();
+		try (PreparedStatement p = connection.prepareStatement(sql)) {
+			p.setString(1, parentId);
+			try (ResultSet rs = p.executeQuery()) {
+				while (rs.next())
+					list.add(mapResultSetToFolder(rs));
+			}
+		} catch (SQLException e) {
+			logger.log(Level.SEVERE, "Error fetchDeletedSubFolders: " + e.getMessage(), e);
+		}
+		return list;
 	}
 }
