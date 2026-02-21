@@ -55,7 +55,8 @@ public class FolderDAOFileSystem implements FolderDAO {
         try (Stream<Path> walk = Files.walk(rootPath)) {
             walk.filter(Files::isDirectory)
                     .filter(p -> !p.equals(rootPath))
-                    .filter(p -> !p.getFileName().toString().startsWith(".")) // Ignore hidden folders
+                    // Exclude any directory that is inside a hidden folder (e.g. .trash, .git)
+                    .filter(p -> !p.toString().contains(File.separator + "."))
                     .forEach(path -> {
                         String relativePath = rootPath.relativize(path).toString();
                         idToPathMap.put(relativePath, path);
@@ -195,8 +196,8 @@ public class FolderDAOFileSystem implements FolderDAO {
                         parent.add(sub);
                         sub.setParent(parent);
 
-                        // Cache the path
-                        idToPathMap.put(id, p);
+                        // Do NOT add to idToPathMap - these are trash folders
+                        // and must not pollute the main folder cache
 
                         // Recursively load subfolders
                         loadSubFoldersRec(sub, p);

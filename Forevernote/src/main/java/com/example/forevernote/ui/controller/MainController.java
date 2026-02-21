@@ -5645,6 +5645,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             // Reload folder from database to ensure we have the latest data
             Folder folderToDelete = folderDAO.getFolderById(folder.getId());
+
             if (folderToDelete != null) {
                 Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
                 alert.setTitle(getString("dialog.delete_folder.title"));
@@ -5655,6 +5656,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 if (result.isPresent() && result.get() == ButtonType.OK) {
                     folderDAO.deleteFolder(folderToDelete.getId());
                     loadFolders();
+                    loadTrashTree();
                     if (currentFolder != null && currentFolder.getId().equals(folderToDelete.getId())) {
                         currentFolder = null;
                         loadAllNotes();
