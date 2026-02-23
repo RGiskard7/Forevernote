@@ -378,6 +378,13 @@ public class NoteDAOFileSystem implements NoteDAO {
 
                 Path target = rootPath.resolve(originalRelPath);
 
+                // If parent folder was deleted (not restored), restore to root instead of
+                // recreating the folder
+                if (target.getParent() != null && !Files.exists(target.getParent())) {
+                    String filenameOrig = target.getFileName().toString();
+                    target = rootPath.resolve(filenameOrig);
+                }
+
                 // Handle conflicts
                 if (Files.exists(target)) {
                     String filename = target.getFileName().toString();
@@ -385,7 +392,7 @@ public class NoteDAOFileSystem implements NoteDAO {
                     target = target.getParent().resolve(name + "_restored_" + System.currentTimeMillis() + ".md");
                 }
 
-                // Ensure parent exists
+                // Ensure parent exists (always true if it's rootPath, but safe to keep)
                 if (target.getParent() != null && !Files.exists(target.getParent())) {
                     Files.createDirectories(target.getParent());
                 }

@@ -84,6 +84,20 @@ public class FrontmatterHandler {
             }
         }
 
+        // Also extract inline tags from content like #my_tag
+        if (content != null && !content.isEmpty()) {
+            Pattern inlineTagPattern = Pattern.compile("(?<=\\s|^)#([a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9_\\-\\/]+)(?=\\s|$)");
+            Matcher matcher = inlineTagPattern.matcher(content);
+            while (matcher.find()) {
+                String tagName = matcher.group(1);
+                // Avoid adding duplicate tags
+                boolean exists = note.getTags().stream().anyMatch(t -> t.getTitle().equalsIgnoreCase(tagName));
+                if (!exists) {
+                    note.addTag(new Tag(tagName));
+                }
+            }
+        }
+
         return note;
     }
 
@@ -148,11 +162,45 @@ public class FrontmatterHandler {
         Map<String, String> result = new HashMap<>();
         String[] lines = yamlContent.split("\n");
 
+        String currentArrayKey = null;
+        StringBuilder currentArrayValues = new StringBuilder();
+
         for (String line : lines) {
-            Matcher matcher = KEY_VALUE_PATTERN.matcher(line.trim());
+            String trimmedLine = line.trim();
+            if (trimmedLine.isEmpty())
+                continue;
+
+            if (trimmedLine.startsWith("-") && currentArrayKey != null) {
+                // It's an array element
+                String value = trimmedLine.substring(1).trim();
+                // Remove quotes
+                if (value.startsWith("\"") && value.endsWith("\"") && value.length() > 1) {
+                    value = value.substring(1, value.length() - 1);
+                } else if (value.startsWith("'") && value.endsWith("'") && value.length() > 1) {
+                    value = value.substring(1, value.length() - 1);
+                }
+
+                if (currentArrayValues.length() > 0) {
+                    currentArrayValues.append(", ");
+                }
+                currentArrayValues.append(value);
+                result.put(currentArrayKey, currentArrayValues.toString());
+                continue;
+            }
+
+            Matcher matcher = KEY_VALUE_PATTERN.matcher(trimmedLine);
             if (matcher.matches()) {
                 String key = matcher.group(1).trim();
                 String value = matcher.group(2).trim();
+
+                // Start of an array
+                if (value.isEmpty() || value.equals("-")) {
+                    currentArrayKey = key;
+                    currentArrayValues = new StringBuilder();
+                    continue; // Might have elements in following lines
+                } else {
+                    currentArrayKey = null; // No longer collecting an array
+                }
 
                 // Remove quotes if present
                 if (value.startsWith("\"") && value.endsWith("\"") && value.length() > 1) {
@@ -162,6 +210,8 @@ public class FrontmatterHandler {
                 }
 
                 result.put(key, value);
+            } else {
+                currentArrayKey = null; // Reset if unrecognizable line
             }
         }
         return result;

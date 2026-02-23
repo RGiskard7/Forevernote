@@ -47,7 +47,7 @@ public class FolderDAOFileSystem implements FolderDAO {
         refreshCache();
     }
 
-    private void refreshCache() {
+    public void refreshCache() {
         idToPathMap.clear();
         // ID "" (empty string) or "ROOT" maps to rootPath
         idToPathMap.put("ROOT", rootPath);

@@ -767,11 +767,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         expandCollapseRecursive(vaultRootItem, false);
     }
 
-    private void expandCollapseRecursive(TreeItem<Folder> item, boolean expand) {
+    private void expandCollapseRecursive(TreeItem<? extends Component> item, boolean expand) {
         if (item != null && !item.isLeaf()) {
             item.setExpanded(expand);
-            for (TreeItem<Folder> child : item.getChildren()) {
-                expandCollapseRecursive(child, expand);
+            for (TreeItem<?> childItem : item.getChildren()) {
+                if (childItem.getValue() instanceof Component) {
+                    @SuppressWarnings("unchecked")
+                    TreeItem<? extends Component> child = (TreeItem<? extends Component>) childItem;
+                    expandCollapseRecursive(child, expand);
+                }
             }
         }
     }
@@ -3156,8 +3160,23 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
 
             // 5. Build Tree
+            String filter = (filterTrashField != null && filterTrashField.getText() != null)
+                    ? filterTrashField.getText().toLowerCase().trim()
+                    : "";
+
+            Set<String> visibleIds = new HashSet<>();
+            if (!filter.isEmpty()) {
+                buildTrashVisibleIdsRec(trashRoot, filter, visibleIds);
+            }
+
             TreeItem<Component> rootItem = new TreeItem<>(trashRoot);
-            buildTrashTreeRecursive(rootItem);
+            buildTrashTreeRecursive(rootItem, visibleIds, !filter.isEmpty());
+
+            // Expand the tree if filtering
+            if (!filter.isEmpty() && !rootItem.getChildren().isEmpty()) {
+                rootItem.setExpanded(true);
+                expandCollapseRecursive(rootItem, true);
+            }
 
             trashTreeView.setRoot(rootItem);
             trashTreeView.setShowRoot(false);
@@ -3245,14 +3264,59 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
     }
 
-    private void buildTrashTreeRecursive(TreeItem<Component> parentItem) {
+    private boolean buildTrashVisibleIdsRec(Component c, String filter, Set<String> visibleIds) {
+        boolean isVisible = false;
+
+        // Matches filter directly?
+        if (c.getTitle() != null && c.getTitle().toLowerCase().contains(filter)) {
+            isVisible = true;
+        }
+
+        // Check children
+        if (c instanceof Folder) {
+            Folder f = (Folder) c;
+            for (Component child : f.getChildren()) {
+                if (buildTrashVisibleIdsRec(child, filter, visibleIds)) {
+                    isVisible = true;
+                }
+            }
+        }
+
+        if (isVisible) {
+            visibleIds.add(c.getId());
+        }
+        return isVisible;
+    }
+
+    private void buildTrashTreeRecursive(TreeItem<Component> parentItem, Set<String> visibleIds, boolean isFiltering) {
         if (parentItem.getValue() instanceof Folder) {
             Folder folder = (Folder) parentItem.getValue();
-            for (Component child : folder.getChildren()) {
+
+            // Sort children: Folders first, then Notes, both alphabetically.
+            List<Component> sortedChildren = new ArrayList<>(folder.getChildren());
+            sortedChildren.sort((c1, c2) -> {
+                boolean isF1 = c1 instanceof Folder;
+                boolean isF2 = c2 instanceof Folder;
+                if (isF1 && !isF2)
+                    return -1;
+                if (!isF1 && isF2)
+                    return 1;
+
+                String t1 = c1.getTitle() == null ? "" : c1.getTitle().toLowerCase();
+                String t2 = c2.getTitle() == null ? "" : c2.getTitle().toLowerCase();
+                return t1.compareTo(t2);
+            });
+
+            for (Component child : sortedChildren) {
+                if (isFiltering && child.getId() != null && !visibleIds.contains(child.getId())) {
+                    continue;
+                }
+
                 TreeItem<Component> childItem = new TreeItem<>(child);
                 parentItem.getChildren().add(childItem);
+
                 if (child instanceof Folder) {
-                    buildTrashTreeRecursive(childItem);
+                    buildTrashTreeRecursive(childItem, visibleIds, isFiltering);
                 }
             }
         }
@@ -3302,8 +3366,17 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     folderDAO.restoreFolder(c.getId());
                 } else if (c instanceof Note) {
                     noteDAO.restoreNote(c.getId());
+                    // Note restoration might recreate parent directories that were in trash.
+                    // We must force the FolderDAO to rescan the disk and update UI.
+                    if (folderDAO instanceof com.example.forevernote.data.file.FolderDAOFileSystem) {
+                        ((com.example.forevernote.data.file.FolderDAOFileSystem) folderDAO).refreshCache();
+                    }
                 }
+
+                loadFolders(); // Refresh folders tree so restored folder appears instantly
                 loadTrashTree();
+                refreshNotesList(); // Keep notes grid/list up to date
+                folderTreeView.refresh(); // Refresh note counts
                 updateStatus("Item restored");
             } catch (Exception e) {
                 logger.severe("Restore failed: " + e.getMessage());
@@ -4062,6 +4135,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             // Refresh recent notes to include new note
             loadRecentNotes();
 
+            // Refresh folder tree note counts and list visually
+            folderTreeView.refresh();
+
+            // Fire event for plugins
+            if (eventBus != null) {
+                eventBus.publish(new NoteEvents.NoteCreatedEvent(newNote));
+            }
+
             updateStatus(getString("status.note_created"));
         } catch (Exception e) {
             logger.severe("Failed to create new note: " + e.getMessage());
@@ -4229,6 +4310,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     eventBus.publish(new NoteEvents.NoteSavedEvent(currentNote));
                 }
 
+                // Refresh visual folder tree to reflect new note counts instantly
+                folderTreeView.refresh();
+
                 updateStatus(java.text.MessageFormat.format(getString("status.saved_note"), currentNote.getTitle()));
             } catch (Exception e) {
                 logger.severe("Failed to save note: " + e.getMessage());
@@ -4333,6 +4417,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 loadRecentNotes();
                 loadFavorites();
                 loadTrashTree();
+                folderTreeView.refresh(); // Update note counts in UI
 
                 updateStatus(getString("status.note_moved_trash"));
             } catch (Exception e) {
