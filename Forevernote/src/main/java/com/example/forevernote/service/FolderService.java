@@ -137,6 +137,26 @@ public class FolderService {
         logger.info("Deleted folder ID: " + folderId);
     }
 
+    /**
+     * Permanently deletes a folder.
+     * 
+     * @param folderId The ID of the folder to delete
+     */
+    public void permanentlyDeleteFolder(String folderId) {
+        folderDAO.permanentlyDeleteFolder(folderId);
+        logger.info("Permanently deleted folder ID: " + folderId);
+    }
+
+    /**
+     * Restores a deleted folder from the trash.
+     * 
+     * @param folderId The ID of the folder to restore
+     */
+    public void restoreFolder(String folderId) {
+        folderDAO.restoreFolder(folderId);
+        logger.info("Restored folder ID: " + folderId);
+    }
+
     // ==================== Retrieval Methods ====================
 
     /**
@@ -164,6 +184,15 @@ public class FolderService {
     }
 
     /**
+     * Fetches all deleted folders (the trash root).
+     * 
+     * @return The root folder of the trash containing deleted subfolders
+     */
+    public Folder getTrashFolders() {
+        return folderDAO.fetchTrashFolders();
+    }
+
+    /**
      * Fetches subfolders of a parent folder.
      * 
      * @param parentFolder The parent folder
@@ -179,6 +208,18 @@ public class FolderService {
                 .filter(c -> c instanceof Folder)
                 .map(c -> (Folder) c)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Loads subfolders of a parent folder recursively up to a certain depth.
+     * 
+     * @param parentFolder The parent folder
+     * @param depth        The depth to load
+     */
+    public void loadSubfolders(Folder parentFolder, int depth) {
+        if (parentFolder != null && parentFolder.getId() != null) {
+            folderDAO.loadSubFolders(parentFolder, depth);
+        }
     }
 
     /**

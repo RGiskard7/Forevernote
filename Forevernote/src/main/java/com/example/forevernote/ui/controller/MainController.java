@@ -732,17 +732,17 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
                 // Delete notes in trash root
-                List<Note> trashNotes = noteDAO.fetchTrashNotes();
+                List<Note> trashNotes = noteService.getTrashNotes();
                 for (Note n : trashNotes) {
-                    noteDAO.permanentlyDeleteNote(n.getId());
+                    noteService.permanentlyDeleteNote(n.getId());
                 }
 
                 // Delete folders in trash root (recursively deletes content)
-                Folder trashRoot = folderDAO.fetchTrashFolders();
+                Folder trashRoot = folderService.getTrashFolders();
                 if (trashRoot != null) {
                     for (Component c : trashRoot.getChildren()) {
                         if (c instanceof Folder) {
-                            folderDAO.permanentlyDeleteFolder(c.getId());
+                            folderService.permanentlyDeleteFolder(c.getId());
                         }
                     }
                 }
@@ -805,11 +805,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             // Handle root/all notes separately if needed, but fetchNotesByFolderId should
             // handle it
             if (folderId == null || "ALL_NOTES_VIRTUAL".equals(folderId)) {
-                return noteDAO.fetchAllNotes().size();
+                return noteService.getAllNotes().size();
             }
 
             // Fetch notes for this specific folder
-            List<Note> notes = noteDAO.fetchNotesByFolderId(folderId);
+            Optional<Folder> optionalFolder = folderService.getFolderById(folderId);
+            List<Note> notes = optionalFolder.map(noteService::getNotesByFolder)
+                    .orElseGet(ArrayList::new);
             return notes != null ? notes.size() : 0;
         } catch (Exception e) {
             return 0;
@@ -969,7 +971,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         int noteCount = 0;
                         try {
                             if (isAllNotes) {
-                                noteCount = noteDAO.fetchAllNotes().size();
+                                noteCount = noteService.getAllNotes().size();
                             } else {
                                 noteCount = getNoteCountForFolder(folder);
                             }
@@ -1029,8 +1031,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     if (targetFolder != null && !targetFolder.getTitle().equals("All Notes")) {
                         try {
                             String noteId = db.getString().substring(5);
-                            Note note = noteDAO.getNoteById(noteId);
-                            if (note != null) {
+                            Optional<Note> optionalNote = noteService.getNoteById(noteId);
+                            if (optionalNote.isPresent()) {
+                                Note note = optionalNote.get();
                                 folderDAO.addNote(targetFolder, note);
                                 success = true;
                                 Platform.runLater(() -> {
@@ -1291,7 +1294,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
             quickSwitcher.setDarkTheme(isDark);
             // Update notes list before showing
-            quickSwitcher.setNotes(noteDAO.fetchAllNotes());
+            quickSwitcher.setNotes(noteService.getAllNotes());
             quickSwitcher.show();
         }
     }
@@ -2604,7 +2607,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 return;
             vaultRootItem.getChildren().clear();
 
-            List<Folder> allFolders = folderDAO.fetchAllFoldersAsList();
+            List<Folder> allFolders = folderService.getAllFolders();
 
             // 1. Filter logic
             String filter = (filterFoldersField != null && filterFoldersField.getText() != null)
@@ -2622,9 +2625,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         // acyclic
                         int safety = 0;
                         while (safety++ < 100) {
-                            Folder p = folderDAO.getParentFolder(parent.getId());
-                            if (p == null || (p.getId() != null && "ROOT".equals(p.getId())))
+                            Optional<Folder> optionalParent = folderService.getParentFolder(parent);
+                            if (optionalParent.isEmpty() || (optionalParent.get().getId() != null
+                                    && "ROOT".equals(optionalParent.get().getId())))
                                 break;
+                            Folder p = optionalParent.get();
                             visibleIds.add(p.getId());
                             parent = p;
                         }
@@ -2639,7 +2644,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 if (!filter.isEmpty() && !visibleIds.contains(folder.getId()))
                     continue;
 
-                Folder parent = folderDAO.getParentFolder(folder.getId());
+                Optional<Folder> optionalParent = folderService.getParentFolder(folder);
+                Folder parent = optionalParent.orElse(null);
                 if (parent == null || (parent.getId() != null && parent.getId().equals("ROOT"))) {
                     rootFolders.add(folder);
                 }
@@ -2681,7 +2687,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             java.util.Comparator<Folder> comparator, boolean filterActive) {
         try {
             // Reload children from DAO to be sure
-            folderDAO.loadSubFolders(parentFolder, 1);
+            folderService.loadSubfolders(parentFolder, 1);
 
             List<Folder> children = new ArrayList<>();
             for (com.example.forevernote.data.models.interfaces.Component child : parentFolder.getChildren()) {
@@ -2711,7 +2717,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      */
     private void loadAllNotes() {
         try {
-            List<Note> notes = noteDAO.fetchAllNotes();
+            List<Note> notes = noteService.getAllNotes();
+            notesListView.getSelectionModel().clearSelection();
             notesListView.getItems().setAll(notes);
             sortNotes(sortComboBox.getValue());
             noteCountLabel.setText(java.text.MessageFormat.format(getString("info.notes_count"), notes.size()));
@@ -2751,16 +2758,18 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             if (loadedFolder != null) {
                 currentFolder = loadedFolder;
 
-                // DATA ACCESS FIX: Explicitly use NoteDAO to fetch notes for the folder
-                // This ensures we get the latest file list directly from disk (via our
-                // optimized method)
-                List<Note> notes = noteDAO.fetchNotesByFolderId(currentFolder.getId());
+                // DATA ACCESS FIX: Explicitly use NoteService to fetch notes for the folder
+                // This ensures we get the latest file list directly from disk
+                List<Note> notes = noteService.getNotesByFolder(currentFolder);
 
                 // Add notes to the folder object implicitly for UI consistency if needed,
                 // but primarily use the returned list for the ListView.
                 currentFolder.getChildren().removeIf(c -> c instanceof Note);
                 currentFolder.addAll(new ArrayList<>(notes));
 
+                // FIX: Clear selection in list view before refreshing items to avoid out of
+                // bounds exception
+                notesListView.getSelectionModel().clearSelection();
                 notesListView.getItems().setAll(notes);
                 sortNotes(sortComboBox.getValue());
                 noteCountLabel.setText(notes.size() + " notes");
@@ -2835,9 +2844,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         // note without content.
         // We MUST reload the full note data from the DAO using the ID to get the
         // content.
-        Note fullNote = noteDAO.getNoteById(note.getId());
-        if (fullNote != null) {
-            currentNote = fullNote;
+        Optional<Note> optionalNote = noteService.getNoteById(note.getId());
+        if (optionalNote.isPresent()) {
+            currentNote = optionalNote.get();
         } else {
             // Fallback if load fails (shouldn't happen if file exists)
             currentNote = note;
@@ -2982,7 +2991,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      */
     private void loadRecentNotes() {
         try {
-            cachedAllNotes = noteDAO.fetchAllNotes();
+            cachedAllNotes = noteService.getAllNotes();
             // Sort by modified date (simplified)
             cachedAllNotes.sort((a, b) -> {
                 String dateA = a.getModifiedDate() != null ? a.getModifiedDate()
@@ -3066,6 +3075,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
                                         List<Note> currentFavorites = new ArrayList<>(cachedFavoriteNotes);
                                         if (!currentFavorites.isEmpty()) {
+                                            notesListView.getSelectionModel().clearSelection();
                                             notesListView.getItems().setAll(currentFavorites);
                                             sortNotes(sortComboBox.getValue());
                                             noteCountLabel.setText(currentFavorites.size() + " favorite notes");
@@ -3099,10 +3109,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private void loadTrashTree() {
         try {
             // 1. Get trash root folder structure
-            Folder trashRoot = folderDAO.fetchTrashFolders();
+            Folder trashRoot = folderService.getTrashFolders();
 
             // 2. Get all notes recursively
-            List<Note> allTrashNotes = noteDAO.fetchTrashNotes();
+            List<Note> allTrashNotes = noteService.getTrashNotes();
 
             // 3. Map folders by ID for easy lookup
             java.util.Map<String, Folder> folderMap = new java.util.HashMap<>();
@@ -3335,6 +3345,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         Platform.runLater(() -> {
             if (c instanceof Note) {
+                notesListView.getSelectionModel().clearSelection();
                 notesListView.getItems().setAll((Note) c);
                 loadNoteInEditor((Note) c);
             } else if (c instanceof Folder) {
@@ -3345,6 +3356,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         childNotes.add((Note) child);
                     }
                 }
+                notesListView.getSelectionModel().clearSelection();
                 notesListView.getItems().setAll(childNotes);
 
                 // Optionally clear editor or load first note if desired
@@ -3368,10 +3380,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             Component c = selected.getValue();
             try {
                 if (c instanceof Folder) {
-                    folderDAO.restoreFolder(c.getId());
+                    folderService.restoreFolder(c.getId());
                     noteDAO.refreshCache();
                 } else if (c instanceof Note) {
-                    noteDAO.restoreNote(c.getId());
+                    noteService.restoreNote(c.getId());
                     // Note restoration might recreate parent directories that were in trash.
                     // We must force the FolderDAO to rescan the disk and update UI.
                     folderDAO.refreshCache();
@@ -3401,10 +3413,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             if (alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
                 try {
                     if (c instanceof Folder) {
-                        folderDAO.permanentlyDeleteFolder(c.getId());
+                        folderService.permanentlyDeleteFolder(c.getId());
                         noteDAO.refreshCache();
                     } else if (c instanceof Note) {
-                        noteDAO.permanentlyDeleteNote(c.getId());
+                        noteService.permanentlyDeleteNote(c.getId());
                     }
                     loadTrashTree();
                     updateStatus("Item deleted");
@@ -3421,7 +3433,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      */
     private void loadTags() {
         try {
-            List<Tag> tags = tagDAO.fetchAllTags();
+            List<Tag> tags = tagService.getAllTags();
             // Do not clear listView directly if bound
             // tagListView.getItems().clear();
 
@@ -3472,7 +3484,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private void handleTagSelection(String tagName) {
         try {
             // Find tag by name
-            List<Tag> allTags = tagDAO.fetchAllTags();
+            List<Tag> allTags = tagService.getAllTags();
             Optional<Tag> selectedTag = allTags.stream()
                     .filter(t -> t.getTitle().equals(tagName))
                     .findFirst();
@@ -3482,7 +3494,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 currentTag = tag;
                 currentFolder = null; // Clear folder selection when filtering by tag
                 currentFilterType = "tag";
-                List<Note> notesWithTag = tagDAO.fetchAllNotesWithTag(tag.getId());
+                List<Note> notesWithTag = tagService.getNotesWithTag(tag);
+                notesListView.getSelectionModel().clearSelection();
                 notesListView.getItems().setAll(notesWithTag);
                 sortNotes(sortComboBox.getValue());
                 noteCountLabel.setText(notesWithTag.size() + " notes with tag: " + tagName);
@@ -3511,7 +3524,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
 
         try {
-            List<Note> allNotes = noteDAO.fetchAllNotes();
+            List<Note> allNotes = noteService.getAllNotes();
             String searchLower = searchText.toLowerCase();
             List<Note> filteredNotes = allNotes.stream()
                     .filter(note -> {
@@ -3521,6 +3534,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     })
                     .toList();
 
+            notesListView.getSelectionModel().clearSelection();
             notesListView.getItems().setAll(filteredNotes);
             sortNotes(sortComboBox.getValue());
             noteCountLabel.setText(java.text.MessageFormat.format(getString("info.notes_found"), filteredNotes.size()));
@@ -3587,6 +3601,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
         });
 
+        notesListView.getSelectionModel().clearSelection();
         notesListView.getItems().setAll(notes);
 
         // Refresh grid view if active
@@ -3878,7 +3893,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         try {
             // Get existing tags
-            List<Tag> existingTags = tagDAO.fetchAllTags();
+            List<Tag> existingTags = tagService.getAllTags();
             List<Tag> noteTags = noteDAO.fetchTags(currentNote.getId());
 
             // Filter out tags already assigned to the note
@@ -3933,8 +3948,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 } else {
                     // Create new tag
                     tag = new Tag(tagName);
-                    String tagId = tagDAO.createTag(tag);
-                    tag.setId(tagId);
+                    Tag createdTag = tagService.createTag(tag.getTitle());
+                    tag.setId(createdTag.getId());
                 }
 
                 // Check if tag is already assigned to note (double check)
@@ -4008,7 +4023,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         MenuItem rootItem = new MenuItem(getString("app.my_notes"));
         rootItem.setOnAction(e -> {
             Folder root = new Folder("ROOT", getString("app.my_notes"));
-            folderDAO.addNote(root, note);
+            folderService.addNoteToFolder(root, note);
             refreshNotesList();
             loadFolders();
         });
@@ -4016,7 +4031,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         moveMenu.getItems().add(new SeparatorMenuItem());
 
         try {
-            List<Folder> folders = folderDAO.fetchAllFoldersAsList();
+            List<Folder> folders = folderService.getAllFolders();
             for (Folder f : folders) {
                 // Don't show the current folder
                 if (note.getParent() != null && f.getId().equals(note.getParent().getId()))
@@ -4024,7 +4039,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
                 MenuItem folderItem = new MenuItem(f.getTitle());
                 folderItem.setOnAction(e -> {
-                    folderDAO.addNote(f, note);
+                    folderService.addNoteToFolder(f, note);
                     refreshNotesList();
                     loadFolders();
                 });
@@ -4121,13 +4136,20 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 newNote.setId(folderPath + pathSeparator + safeTitle);
             }
 
-            String noteId = noteDAO.createNote(newNote);
+            Note createdNote = noteService.createNote(newNote);
+            String noteId = createdNote.getId();
             if (noteId == null) {
                 // If creation failed, do not proceed
                 updateStatus(getString("status.error_creating_note"));
                 return;
             }
             newNote.setId(noteId);
+
+            if (currentFolder != null && currentFolder.getId() != null &&
+                    !"ROOT".equals(currentFolder.getId()) &&
+                    !currentFolder.getTitle().equals("All Notes")) {
+                folderService.addNoteToFolder(currentFolder, newNote);
+            }
 
             // With FS DAO and our fix, the file is already in the right place.
             // We don't need to manually add it to the Folder object's children list
@@ -4264,12 +4286,26 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
                     // Create new note
                     Note newNote = new Note(title, content);
-                    String noteId = noteDAO.createNote(newNote);
-                    newNote.setId(noteId);
+                    String safeTitle = title.replaceAll("[^a-zA-Z0-9\\.\\-_ ]", "_");
+                    Preferences prefs = Preferences.userNodeForPackage(MainController.class);
+                    boolean isFileSystem = !"sqlite".equals(prefs.get("storage_type", "sqlite"));
 
-                    // Add to current folder if selected
-                    if (currentFolder != null && currentFolder.getId() != null) {
-                        folderDAO.addNote(currentFolder, newNote);
+                    if (isFileSystem && currentFolder != null && currentFolder.getId() != null &&
+                            !"ROOT".equals(currentFolder.getId()) &&
+                            !currentFolder.getTitle().equals("All Notes")) {
+                        String pathSeparator = File.separator;
+                        String folderPath = currentFolder.getId();
+                        newNote.setId(folderPath + pathSeparator + safeTitle);
+                    }
+
+                    Note createdNote = noteService.createNote(newNote);
+                    newNote.setId(createdNote.getId());
+
+                    if (!isFileSystem && currentFolder != null && currentFolder.getId() != null &&
+                            !"ROOT".equals(currentFolder.getId())) {
+                        // For non-filesystem storage (SQLite), createNote produces the ID safely
+                        // Then we add it to the folder. Since SQLite doesn't use path folders on disk.
+                        folderService.addNoteToFolder(currentFolder, createdNote);
                     }
 
                     imported++;
@@ -4301,11 +4337,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 // Update note content and title from UI
                 currentNote.setTitle(noteTitleField.getText());
                 currentNote.setContent(noteContentArea.getText());
-                noteDAO.updateNote(currentNote);
+                noteService.updateNote(currentNote);
                 isModified = false;
+
+                // Keep track of current note ID to reselect it after refresh
+                String savedNoteId = currentNote.getId();
 
                 // Refresh the notes list to show updated title
                 refreshNotesList();
+
+                // Re-select the saved note if it's still in the list to prevent SelectionModel
+                // IndexOutOfBounds
+                notesListView.getItems().stream()
+                        .filter(n -> n.getId().equals(savedNoteId))
+                        .findFirst()
+                        .ifPresent(n -> {
+                            notesListView.getSelectionModel().select(n);
+                            currentNote = n; // Update currentNote to the new instance from the list
+                        });
 
                 // Refresh favorites list in case favorite status changed
                 loadFavorites();
@@ -4406,7 +4455,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
-                noteDAO.deleteNote(note.getId());
+                noteService.moveToTrash(note.getId());
 
                 if (currentNote != null && currentNote.getId().equals(note.getId())) {
                     // Clear editor
@@ -4416,6 +4465,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     tagsFlowPane.getChildren().clear();
                     previewWebView.getEngine().loadContent("", "text/html");
                 }
+
+                // FIX: Clear selection in list view before refreshing items to avoid out of
+                // bounds exception
+                notesListView.getSelectionModel().clearSelection();
 
                 // Refresh ALL lists
                 refreshNotesList();
@@ -5034,7 +5087,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private void handleTagsManager(ActionEvent event) {
         try {
-            List<Tag> allTags = tagDAO.fetchAllTags();
+            List<Tag> allTags = tagService.getAllTags();
 
             Dialog<Void> dialog = new Dialog<>();
             dialog.setTitle("Tags Manager");
@@ -5071,7 +5124,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                             Optional<ButtonType> result = confirm.showAndWait();
                             if (result.isPresent() && result.get() == ButtonType.OK) {
                                 try {
-                                    tagDAO.deleteTag(tag.getId());
+                                    tagService.deleteTag(tag.getId());
                                     tagListView.getItems().remove(tag);
                                     loadTags(); // Refresh sidebar
                                     updateStatus(java.text.MessageFormat.format(getString("status.tag_deleted"),
@@ -5265,10 +5318,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     break;
                 case "favorites":
                     // Load favorites
-                    List<Note> allNotes = noteDAO.fetchAllNotes();
+                    List<Note> allNotes = noteService.getAllNotes();
                     List<Note> favoriteNotes = allNotes.stream()
                             .filter(Note::isFavorite)
                             .toList();
+                    notesListView.getSelectionModel().clearSelection();
                     notesListView.getItems().setAll(favoriteNotes);
                     sortNotes(sortComboBox.getValue());
                     noteCountLabel.setText(favoriteNotes.size() + " favorite notes");
@@ -5318,7 +5372,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             note.setFavorite(newFavoriteStatus);
 
             // Save to database
-            noteDAO.updateNote(note);
+            noteService.updateNote(note);
 
             // Update UI if this is the current note
             if (currentNote != null && currentNote.getId().equals(note.getId())) {
@@ -5353,7 +5407,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             boolean newPinStatus = !note.isPinned();
             note.setPinned(newPinStatus);
 
-            noteDAO.updateNote(note);
+            noteService.updateNote(note);
 
             if (currentNote != null && currentNote.getId().equals(note.getId())) {
                 updatePinnedButtonIcon();
@@ -5404,7 +5458,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             try {
                 String tagName = result.get().trim();
-                if (tagDAO.existsByTitle(tagName)) {
+                if (tagService.tagExists(tagName)) {
                     Alert alert = new Alert(Alert.AlertType.WARNING);
                     alert.setTitle(getString("dialog.tag_exists.title"));
                     alert.setHeaderText(getString("dialog.tag_exists.header"));
@@ -5412,7 +5466,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     alert.showAndWait();
                 } else {
                     Tag newTag = new Tag(tagName);
-                    tagDAO.createTag(newTag);
+                    Tag createdTag = tagService.createTag(newTag.getTitle());
+                    newTag.setId(createdTag.getId());
                     loadTags(); // Refresh tag list
                     updateStatus(java.text.MessageFormat.format(getString("status.tag_created"), tagName));
                 }
@@ -5705,8 +5760,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
 
             // Reload folder from database to ensure we have the latest data
-            Folder folderToRename = folderDAO.getFolderById(folder.getId());
-            if (folderToRename != null) {
+            Optional<Folder> folderToRenameOpt = folderService.getFolderById(folder.getId());
+            if (folderToRenameOpt.isPresent()) {
+                Folder folderToRename = folderToRenameOpt.get();
                 TextInputDialog dialog = new TextInputDialog(folderToRename.getTitle());
                 dialog.setTitle(getString("dialog.rename_folder.title"));
                 dialog.setHeaderText(getString("dialog.rename_folder.header"));
@@ -5716,7 +5772,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 if (result.isPresent() && !result.get().trim().isEmpty()
                         && !result.get().equals(folderToRename.getTitle())) {
                     folderToRename.setTitle(result.get().trim());
-                    folderDAO.updateFolder(folderToRename);
+                    folderService.updateFolder(folderToRename);
                     noteDAO.refreshCache();
                     loadFolders();
                     updateStatus(java.text.MessageFormat.format(getString("status.renamed_folder"), result.get()));
@@ -5735,7 +5791,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
 
             // Reload folder from database to ensure we have the latest data
-            Folder folderToDelete = folderDAO.getFolderById(folder.getId());
+            Optional<Folder> optionalFolder = folderService.getFolderById(folder.getId());
+            if (optionalFolder.isEmpty())
+                return;
+            Folder folderToDelete = optionalFolder.get();
 
             if (folderToDelete != null) {
                 Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -5745,7 +5804,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
                 Optional<ButtonType> result = alert.showAndWait();
                 if (result.isPresent() && result.get() == ButtonType.OK) {
-                    folderDAO.deleteFolder(folderToDelete.getId());
+                    folderService.deleteFolder(folderToDelete.getId());
                     noteDAO.refreshCache();
                     loadFolders();
                     loadTrashTree();
@@ -5778,7 +5837,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         Optional<ButtonType> result = alert.showAndWait();
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
-                tagDAO.deleteTag(tag.getId());
+                tagService.deleteTag(tag.getId());
                 loadTags();
                 if (currentNote != null)
                     loadNoteTags(currentNote);
@@ -5806,7 +5865,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (result.isPresent() && !result.get().trim().isEmpty() && !result.get().equals(tag.getTitle())) {
             try {
                 tag.setTitle(result.get().trim());
-                tagDAO.updateTag(tag);
+                tagService.updateTag(tag);
                 loadTags();
                 if (currentNote != null)
                     loadNoteTags(currentNote);
@@ -5825,7 +5884,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (title == null)
             return null;
         try {
-            return tagDAO.fetchAllTags().stream()
+            return tagService.getAllTags().stream()
                     .filter(t -> t.getTitle().equals(title))
                     .findFirst()
                     .orElse(null);

@@ -104,9 +104,20 @@ public class NoteService {
      */
     public Note createNote(String title, String content) {
         Note note = new Note(title, content);
+        return createNote(note);
+    }
+
+    /**
+     * Creates a new note from an existing Note object.
+     * Useful when pre-setting the ID for specific DAOs (like FileSystem).
+     * 
+     * @param note The note to create
+     * @return The created note with its generated ID
+     */
+    public Note createNote(Note note) {
         String noteId = noteDAO.createNote(note);
         note.setId(noteId);
-        logger.info("Created note: " + title + " (ID: " + noteId + ")");
+        logger.info("Created note: " + note.getTitle() + " (ID: " + noteId + ")");
         return note;
     }
 
