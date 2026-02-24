@@ -1,7 +1,8 @@
-package com.example.forevernote.data.file;
+package com.example.forevernote.data.dao.filesystem;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.BufferedReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -14,10 +15,10 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import java.util.stream.Stream;
 
 import com.example.forevernote.config.LoggerConfig;
+import com.example.forevernote.data.models.interfaces.Component;
 import com.example.forevernote.data.dao.interfaces.NoteDAO;
 import com.example.forevernote.data.models.Folder;
 import com.example.forevernote.data.models.Note;
@@ -52,7 +53,7 @@ public class NoteDAOFileSystem implements NoteDAO {
         refreshCache();
     }
 
-    private void refreshCache() {
+    public void refreshCache() {
         idToPathMap.clear();
         cachedNotes.clear();
         try (Stream<Path> walk = Files.walk(rootPath)) {
@@ -83,7 +84,7 @@ public class NoteDAOFileSystem implements NoteDAO {
 
         // Lightweight Header Reading: Read only frontmatter to get metadata
         if (Files.exists(path)) {
-            try (java.io.BufferedReader reader = Files.newBufferedReader(path)) {
+            try (BufferedReader reader = Files.newBufferedReader(path)) {
                 String line = reader.readLine();
                 if (line != null && line.trim().equals("---")) {
                     // Frontmatter detected
@@ -106,8 +107,7 @@ public class NoteDAOFileSystem implements NoteDAO {
                                 String[] parts = tagsVal.split(",");
                                 for (String part : parts) {
                                     if (!part.trim().isEmpty()) {
-                                        com.example.forevernote.data.models.Tag t = new com.example.forevernote.data.models.Tag(
-                                                part.trim());
+                                        Tag t = new Tag(part.trim());
                                         t.setId(part.trim());
                                         note.addTag(t);
                                     }
@@ -118,15 +118,13 @@ public class NoteDAOFileSystem implements NoteDAO {
                                     String[] parts = tagsVal.split(",");
                                     for (String part : parts) {
                                         if (!part.trim().isEmpty()) {
-                                            com.example.forevernote.data.models.Tag t = new com.example.forevernote.data.models.Tag(
-                                                    part.trim());
+                                            Tag t = new Tag(part.trim());
                                             t.setId(part.trim());
                                             note.addTag(t);
                                         }
                                     }
                                 } else {
-                                    com.example.forevernote.data.models.Tag t = new com.example.forevernote.data.models.Tag(
-                                            tagsVal.trim());
+                                    Tag t = new Tag(tagsVal.trim());
                                     t.setId(tagsVal.trim());
                                     note.addTag(t);
                                 }
@@ -342,9 +340,9 @@ public class NoteDAOFileSystem implements NoteDAO {
                         .forEach(p -> {
                             // Create note with ID relative to root (e.g. .trash/sub/note.md)
                             String trashId = rootPath.relativize(p).toString().replace("\\", "/");
-                            Note n = createLightweightNote(trashId, p);
-                            n.setDeleted(true);
-                            deletedNotes.add(n);
+                            Note note = createLightweightNote(trashId, p);
+                            note.setDeleted(true);
+                            deletedNotes.add(note);
                         });
             } catch (IOException e) {
                 logger.warning("Error reading trash folder: " + e.getMessage());
@@ -470,7 +468,7 @@ public class NoteDAOFileSystem implements NoteDAO {
     public void fetchNotesByFolderId(Folder folder) {
         List<Note> notes = fetchNotesByFolderId(folder.getId());
         // Cast to Component list for addAll
-        List<com.example.forevernote.data.models.interfaces.Component> components = new ArrayList<>(notes);
+        List<Component> components = new ArrayList<>(notes);
         folder.addAll(components);
     }
 
@@ -526,7 +524,7 @@ public class NoteDAOFileSystem implements NoteDAO {
         }
         List<Note> all = new ArrayList<>();
         for (Note n : cachedNotes.values()) {
-            for (com.example.forevernote.data.models.Tag t : n.getTags()) {
+            for (Tag t : n.getTags()) {
                 if (t.getTitle().equals(tagId)) {
                     all.add(n);
                     break;

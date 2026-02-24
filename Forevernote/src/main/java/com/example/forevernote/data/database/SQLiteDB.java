@@ -1,4 +1,4 @@
-package com.example.forevernote.data;
+package com.example.forevernote.data.database;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

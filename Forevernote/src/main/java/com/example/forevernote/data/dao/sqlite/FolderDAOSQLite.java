@@ -1,4 +1,4 @@
-package com.example.forevernote.data.dao;
+package com.example.forevernote.data.dao.sqlite;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -8,13 +8,16 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.example.forevernote.config.LoggerConfig;
 import com.example.forevernote.data.dao.interfaces.FolderDAO;
+import com.example.forevernote.data.dao.interfaces.NoteDAO;
 import com.example.forevernote.data.models.Folder;
 import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.interfaces.Component;
@@ -168,8 +171,7 @@ public class FolderDAOSQLite implements FolderDAO {
 			throw new IllegalArgumentException("Folder ID cannot be null or empty");
 		}
 
-		com.example.forevernote.data.dao.interfaces.NoteDAO noteDAO = new com.example.forevernote.data.dao.NoteDAOSQLite(
-				connection);
+		NoteDAO noteDAO = new NoteDAOSQLite(connection);
 
 		try {
 			// 1. Recursively soft delete subfolders
@@ -627,9 +629,9 @@ public class FolderDAOSQLite implements FolderDAO {
 		Folder trashRoot = new Folder(".trash", "Trash", null);
 
 		// Map for folders: ID -> Folder
-		java.util.Map<String, Folder> folderMap = new java.util.HashMap<>();
+		Map<String, Folder> folderMap = new HashMap<>();
 		// Map for hierarchy: FolderID -> ParentID
-		java.util.Map<String, String> parentMap = new java.util.HashMap<>();
+		Map<String, String> parentMap = new HashMap<>();
 
 		try (Statement s = connection.createStatement(); ResultSet rs = s.executeQuery(SELECT_TRASH_FOLDERS_SQL)) {
 			while (rs.next()) {
@@ -670,8 +672,7 @@ public class FolderDAOSQLite implements FolderDAO {
 			return;
 		}
 
-		com.example.forevernote.data.dao.interfaces.NoteDAO noteDAO = new com.example.forevernote.data.dao.NoteDAOSQLite(
-				connection);
+		NoteDAO noteDAO = new NoteDAOSQLite(connection);
 
 		// 1. Restore this folder
 		try (PreparedStatement pstmt = connection.prepareStatement(RESTORE_FOLDER_SQL)) {
@@ -708,8 +709,7 @@ public class FolderDAOSQLite implements FolderDAO {
 			return;
 		}
 
-		com.example.forevernote.data.dao.interfaces.NoteDAO noteDAO = new com.example.forevernote.data.dao.NoteDAOSQLite(
-				connection);
+		NoteDAO noteDAO = new NoteDAOSQLite(connection);
 
 		// 1. Recursively hard delete subfolders
 		List<Folder> deletedSubs = fetchDeletedSubFolders(id);

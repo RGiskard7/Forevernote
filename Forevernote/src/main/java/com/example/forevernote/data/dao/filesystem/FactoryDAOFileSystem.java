@@ -1,12 +1,9 @@
-package com.example.forevernote.data.dao;
+package com.example.forevernote.data.dao.filesystem;
 
-import com.example.forevernote.data.dao.abstractLayers.FactoryDAO;
+import com.example.forevernote.data.dao.interfaces.FactoryDAO;
 import com.example.forevernote.data.dao.interfaces.FolderDAO;
 import com.example.forevernote.data.dao.interfaces.NoteDAO;
 import com.example.forevernote.data.dao.interfaces.TagDAO;
-import com.example.forevernote.data.file.FolderDAOFileSystem;
-import com.example.forevernote.data.file.NoteDAOFileSystem;
-import com.example.forevernote.data.file.TagDAOFileSystem;
 
 public class FactoryDAOFileSystem extends FactoryDAO {
 

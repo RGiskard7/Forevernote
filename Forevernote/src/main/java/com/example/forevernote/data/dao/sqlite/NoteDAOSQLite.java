@@ -1,4 +1,4 @@
-package com.example.forevernote.data.dao;
+package com.example.forevernote.data.dao.sqlite;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;

@@ -43,8 +43,8 @@ import javafx.scene.input.KeyCode;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import com.example.forevernote.config.LoggerConfig;
-import com.example.forevernote.data.SQLiteDB;
-import com.example.forevernote.data.dao.abstractLayers.FactoryDAO;
+import com.example.forevernote.data.database.SQLiteDB;
+import com.example.forevernote.data.dao.interfaces.FactoryDAO;
 import com.example.forevernote.data.dao.interfaces.FolderDAO;
 import com.example.forevernote.data.dao.interfaces.NoteDAO;
 import com.example.forevernote.data.dao.interfaces.TagDAO;
@@ -3364,13 +3364,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             try {
                 if (c instanceof Folder) {
                     folderDAO.restoreFolder(c.getId());
+                    noteDAO.refreshCache();
                 } else if (c instanceof Note) {
                     noteDAO.restoreNote(c.getId());
                     // Note restoration might recreate parent directories that were in trash.
                     // We must force the FolderDAO to rescan the disk and update UI.
-                    if (folderDAO instanceof com.example.forevernote.data.file.FolderDAOFileSystem) {
-                        ((com.example.forevernote.data.file.FolderDAOFileSystem) folderDAO).refreshCache();
-                    }
+                    folderDAO.refreshCache();
                 }
 
                 loadFolders(); // Refresh folders tree so restored folder appears instantly
@@ -3398,6 +3397,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 try {
                     if (c instanceof Folder) {
                         folderDAO.permanentlyDeleteFolder(c.getId());
+                        noteDAO.refreshCache();
                     } else if (c instanceof Note) {
                         noteDAO.permanentlyDeleteNote(c.getId());
                     }
@@ -5712,6 +5712,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         && !result.get().equals(folderToRename.getTitle())) {
                     folderToRename.setTitle(result.get().trim());
                     folderDAO.updateFolder(folderToRename);
+                    noteDAO.refreshCache();
                     loadFolders();
                     updateStatus(java.text.MessageFormat.format(getString("status.renamed_folder"), result.get()));
                 }
@@ -5740,6 +5741,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 Optional<ButtonType> result = alert.showAndWait();
                 if (result.isPresent() && result.get() == ButtonType.OK) {
                     folderDAO.deleteFolder(folderToDelete.getId());
+                    noteDAO.refreshCache();
                     loadFolders();
                     loadTrashTree();
                     if (currentFolder != null && currentFolder.getId().equals(folderToDelete.getId())) {

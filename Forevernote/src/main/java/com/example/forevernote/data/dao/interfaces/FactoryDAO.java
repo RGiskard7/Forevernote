@@ -1,11 +1,9 @@
-package com.example.forevernote.data.dao.abstractLayers;
+package com.example.forevernote.data.dao.interfaces;
 
 import java.sql.Connection;
 
-import com.example.forevernote.data.dao.FactoryDAOSQLite;
-import com.example.forevernote.data.dao.interfaces.NoteDAO;
-import com.example.forevernote.data.dao.interfaces.FolderDAO;
-import com.example.forevernote.data.dao.interfaces.TagDAO;
+import com.example.forevernote.data.dao.sqlite.FactoryDAOSQLite;
+import com.example.forevernote.data.dao.filesystem.FactoryDAOFileSystem;
 
 /**
  * Abstract Factory class for creating DAO instances.
@@ -81,7 +79,7 @@ public abstract class FactoryDAO {
     public static FactoryDAO getFactory(int keyFactory, String rootPath) {
         switch (keyFactory) {
             case FILE_SYSTEM_FACTORY:
-                return new com.example.forevernote.data.dao.FactoryDAOFileSystem(rootPath);
+                return new FactoryDAOFileSystem(rootPath);
             default:
                 throw new IllegalArgumentException("Unsupported factory type for path argument");
         }

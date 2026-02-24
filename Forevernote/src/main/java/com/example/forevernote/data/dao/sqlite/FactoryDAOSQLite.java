@@ -1,8 +1,8 @@
-package com.example.forevernote.data.dao;
+package com.example.forevernote.data.dao.sqlite;
 
 import java.sql.Connection;
 
-import com.example.forevernote.data.dao.abstractLayers.FactoryDAO;
+import com.example.forevernote.data.dao.interfaces.FactoryDAO;
 import com.example.forevernote.data.dao.interfaces.NoteDAO;
 import com.example.forevernote.data.dao.interfaces.FolderDAO;
 import com.example.forevernote.data.dao.interfaces.TagDAO;

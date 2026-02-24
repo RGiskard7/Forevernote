@@ -1,4 +1,4 @@
-package com.example.forevernote.data.file;
+package com.example.forevernote.data.dao.filesystem;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,6 +12,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.Comparator;
 
 import com.example.forevernote.config.LoggerConfig;
 import com.example.forevernote.data.dao.interfaces.FolderDAO;
@@ -255,9 +256,9 @@ public class FolderDAOFileSystem implements FolderDAO {
         Path path = rootPath.resolve(id); // Should be in .trash
         if (Files.exists(path)) {
             try (Stream<Path> walk = Files.walk(path)) {
-                walk.sorted(java.util.Comparator.reverseOrder())
+                walk.sorted(Comparator.reverseOrder())
                         .map(Path::toFile)
-                        .forEach(java.io.File::delete);
+                        .forEach(File::delete);
 
                 idToPathMap.remove(id);
                 // Also remove subfolders from cache

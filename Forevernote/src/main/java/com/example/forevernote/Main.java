@@ -13,7 +13,7 @@ import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 import com.example.forevernote.config.LoggerConfig;
-import com.example.forevernote.data.SQLiteDB;
+import com.example.forevernote.data.database.SQLiteDB;
 
 import java.io.File;
 import java.io.IOException;

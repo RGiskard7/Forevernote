@@ -2,7 +2,6 @@ package com.example.forevernote.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -12,7 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import com.example.forevernote.data.file.NoteDAOFileSystem;
+import com.example.forevernote.data.dao.filesystem.NoteDAOFileSystem;
 import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.Tag;
 
@@ -65,14 +64,14 @@ class NoteDAOFileSystemTest {
 
         noteDAO.deleteNote(id);
 
-        Note deleted = noteDAO.getNoteById(id);
-        // Soft delete means it should still exist but marked as deleted
-        assertNotNull(deleted);
+        // Soft delete means it should exist in trash and marked as deleted
+        List<Note> trash = noteDAO.fetchTrashNotes();
+        assertEquals(1, trash.size());
+        Note deleted = trash.get(0);
         assertTrue(deleted.isDeleted());
 
-        noteDAO.permanentlyDeleteNote(id);
-        Note gone = noteDAO.getNoteById(id);
-        assertNull(gone);
+        noteDAO.permanentlyDeleteNote(deleted.getId());
+        assertEquals(0, noteDAO.fetchTrashNotes().size());
     }
 
     @Test

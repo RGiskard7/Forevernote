@@ -207,4 +207,12 @@ public interface FolderDAO {
      * @param id The ID of the folder to permanently delete.
      */
     public void permanentlyDeleteFolder(String id);
+
+    /**
+     * Refreshes the internal cache if the DAO implementation uses one.
+     * Default implementation does nothing (e.g., SQLite does not need it).
+     */
+    default void refreshCache() {
+        // Do nothing by default
+    }
 }

@@ -153,4 +153,12 @@ public interface NoteDAO {
      * @return A list of notes that have the specified tag.
      */
     public List<Note> fetchNotesByTagId(String tagId);
+
+    /**
+     * Refreshes the internal cache if the DAO implementation uses one.
+     * Default implementation does nothing (e.g., SQLite does not need it).
+     */
+    default void refreshCache() {
+        // Do nothing by default
+    }
 }

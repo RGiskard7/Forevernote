@@ -1,4 +1,4 @@
-package com.example.forevernote.data.file;
+package com.example.forevernote.data.dao.filesystem;
 
 import java.util.HashMap;
 import java.util.List;
@@ -114,10 +114,8 @@ public class FrontmatterHandler {
         appendLine(sb, "pinned", String.valueOf(note.isPinned()));
         appendLine(sb, "deleted", String.valueOf(note.isDeleted()));
 
-        if (note.getDeletedDate() != null) {
+        if (note.getDeletedDate() != null)
             appendLine(sb, "deleted_date", note.getDeletedDate());
-        }
-
         if (note.getAuthor() != null)
             appendLine(sb, "author", note.getAuthor());
         if (note.getSourceUrl() != null)

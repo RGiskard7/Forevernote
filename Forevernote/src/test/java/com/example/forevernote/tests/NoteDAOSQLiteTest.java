@@ -14,9 +14,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.example.forevernote.data.dao.FolderDAOSQLite;
-import com.example.forevernote.data.dao.NoteDAOSQLite;
-import com.example.forevernote.data.dao.TagDAOSQLite;
+import com.example.forevernote.data.dao.sqlite.FolderDAOSQLite;
+import com.example.forevernote.data.dao.sqlite.NoteDAOSQLite;
+import com.example.forevernote.data.dao.sqlite.TagDAOSQLite;
 import com.example.forevernote.data.models.Folder;
 import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.Tag;
@@ -159,7 +159,12 @@ class NoteDAOSQLiteTest {
         noteDAO.deleteNote(noteId);
 
         Note deletedNote = noteDAO.getNoteById(noteId);
-        assertNull(deletedNote);
+        assertNotNull(deletedNote);
+        org.junit.jupiter.api.Assertions.assertTrue(deletedNote.isDeleted());
+
+        noteDAO.permanentlyDeleteNote(noteId);
+        Note gone = noteDAO.getNoteById(noteId);
+        assertNull(gone);
     }
 
     @Test
