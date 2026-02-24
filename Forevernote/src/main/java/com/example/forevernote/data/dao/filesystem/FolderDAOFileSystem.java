@@ -272,6 +272,8 @@ public class FolderDAOFileSystem implements FolderDAO {
 
     @Override
     public Folder getFolderById(String id) {
+        if (id == null)
+            return null;
         Path path = idToPathMap.get(id);
         if (path != null) {
             return new Folder(id, path.getFileName().toString());

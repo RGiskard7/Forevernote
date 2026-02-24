@@ -628,6 +628,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         Folder selectedFolder = newValue.getValue();
                         String id = selectedFolder.getId();
 
+                        // Ignore if for some reason the invisible root gets selected
+                        if (id == null && "INVISIBLE_ROOT".equals(selectedFolder.getTitle())) {
+                            return;
+                        }
+
                         if ("ALL_NOTES_VIRTUAL".equals(id)) {
                             // "All Notes": Show everything recursive (virtual view)
                             currentFolder = null; // No physical folder selected
