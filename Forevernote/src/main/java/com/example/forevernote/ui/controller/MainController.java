@@ -11,8 +11,6 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.Menu;
-import javafx.scene.control.MenuBar;
-import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.Separator;
 import javafx.scene.control.SeparatorMenuItem;
@@ -22,7 +20,6 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.Dialog;
-import javafx.scene.control.RadioMenuItem;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.control.Tooltip;
@@ -41,6 +38,7 @@ import javafx.event.ActionEvent;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.KeyCode;
 import org.kordamp.ikonli.javafx.FontIcon;
+import com.example.forevernote.event.events.UIEvents;
 
 import com.example.forevernote.config.LoggerConfig;
 import com.example.forevernote.data.database.SQLiteDB;
@@ -53,7 +51,7 @@ import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.Tag;
 import com.example.forevernote.data.models.interfaces.Component;
 import com.example.forevernote.event.EventBus;
-import com.example.forevernote.event.events.NoteEvents;
+import com.example.forevernote.event.events.*;
 import com.example.forevernote.plugin.Plugin;
 import com.example.forevernote.plugin.PluginManager;
 import com.example.forevernote.plugin.PluginMenuRegistry;
@@ -121,30 +119,30 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     // FXML UI Components
     @FXML
-    private MenuBar menuBar;
-    @FXML
     private SplitPane mainSplitPane;
     @FXML
     private SplitPane contentSplitPane;
-    @FXML
     private SplitPane editorPreviewSplitPane;
     @FXML
+    private SidebarController sidebarController;
+    @FXML
+    private NotesListController notesListController;
+    @FXML
+    private EditorController editorController;
+
+    // Tab Pane
     private TabPane navigationTabPane;
 
     // Collapsible Panels
-    @FXML
     private VBox sidebarPane;
     @FXML
     private VBox notesPanel;
     @FXML
     private Label notesPanelTitleLabel;
-    @FXML
     private VBox editorContainer;
 
     // Navigation components
-    @FXML
     private TreeView<Folder> folderTreeView;
-    @FXML
     private TextField filterFoldersField;
 
     // Special tree items
@@ -152,21 +150,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private TreeItem<Folder> allNotesItem;
 
     private boolean folderSortAscending = true;
-    @FXML
     private ListView<String> tagListView;
-    @FXML
     private TextField filterTagsField;
-    @FXML
     private ListView<String> recentNotesListView;
-    @FXML
     private TextField filterRecentField;
-    @FXML
     private ListView<String> favoritesListView;
-    @FXML
     private TextField filterFavoritesField;
-    @FXML
     private TreeView<Component> trashTreeView;
-    @FXML
     private TextField filterTrashField;
 
     // Master lists for filtering
@@ -186,84 +176,43 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private boolean isStackedLayout = false;
     private SplitPane navSplitPane;
 
-    // Search and toolbar
-    // Search and toolbar
+    // Toolbar Controller
     @FXML
-    private TextField searchField;
+    private ToolbarController toolbarController;
+
     @FXML
     private ComboBox<String> sortComboBox;
-    @FXML
-    private ToggleButton listViewButton;
-    @FXML
-    private ToggleButton gridViewButton;
-    @FXML
-    private ToggleButton sidebarToggleBtn;
-    @FXML
-    private ToggleButton notesPanelToggleBtn;
-    @FXML
-    private Button layoutSwitchBtn;
-    @FXML
-    private Button newTagBtn;
 
     // Notes list
     @FXML
     private ListView<Note> notesListView;
 
     // Editor components
-    @FXML
     private TextField noteTitleField;
-    @FXML
     private TextArea noteContentArea;
-    @FXML
     private FlowPane tagsFlowPane;
-    @FXML
     private VBox tagsContainer;
-    @FXML
     private ToggleButton toggleTagsBtn;
-    @FXML
     private Label modifiedDateLabel;
-    @FXML
     private Label wordCountLabel;
 
     // Editor/Preview panes (Modern-style)
-    @FXML
     private VBox editorPane;
-    @FXML
     private VBox previewPane;
-    @FXML
     private ToggleButton editorOnlyButton;
-    @FXML
     private ToggleButton splitViewButton;
-    @FXML
     private ToggleButton previewOnlyButton;
-    @FXML
     private ToggleButton favoriteButton;
-    @FXML
     private ToggleButton pinButton;
-    @FXML
     private ToggleButton infoButton;
 
     // Sidebar buttons removed
 
-    // Toolbar buttons
-    @FXML
-    private Button newNoteBtn;
-    @FXML
-    private Button newFolderBtn;
-    @FXML
-    private Button saveBtn;
-    @FXML
-    private Button deleteBtn;
+    // Default buttons in notes panel
     @FXML
     private Button refreshBtn;
     @FXML
     private HBox stackedModeHeader;
-    @FXML
-    private HBox toolbarHBox;
-    @FXML
-    private MenuButton toolbarOverflowBtn;
-    @FXML
-    private Separator toolbarSeparator1;
 
     // Preview Enhancers
     private final Map<String, PreviewEnhancer> previewEnhancers = new HashMap<>();
@@ -272,37 +221,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private Separator toolbarSeparator3;
 
-    // Format toolbar buttons
-    @FXML
-    private Button heading1Btn;
-    @FXML
-    private Button heading2Btn;
-    @FXML
-    private Button heading3Btn;
-    @FXML
-    private Button boldBtn;
-    @FXML
-    private Button italicBtn;
-    @FXML
-    private Button strikeBtn;
-    @FXML
-    private Button underlineBtn;
-    @FXML
-    private Button highlightBtn;
-    @FXML
-    private Button linkBtn;
-    @FXML
-    private Button imageBtn;
-    @FXML
-    private Button todoBtn;
-    @FXML
-    private Button bulletBtn;
-    @FXML
-    private Button numberBtn;
-    @FXML
-    private Button quoteBtn;
-    @FXML
-    private Button codeBtn;
     @FXML
     private Button closeRightPanelBtn;
 
@@ -321,7 +239,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private VBox noteInfoContent;
 
     // Preview and info labels
-    @FXML
     private javafx.scene.web.WebView previewWebView;
     @FXML
     private Label infoCreatedLabel;
@@ -336,16 +253,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private Label infoLongitudeLabel;
 
-    @FXML
-    private RadioMenuItem lightThemeMenuItem;
-    @FXML
-    private RadioMenuItem darkThemeMenuItem;
-    @FXML
-    private RadioMenuItem systemThemeMenuItem;
-    @FXML
-    private RadioMenuItem englishLangMenuItem;
-    @FXML
-    private RadioMenuItem spanishLangMenuItem;
+    // Theme and Language items moved to ToolbarController
 
     private ToggleGroup themeToggleGroup;
     private ToggleGroup languageToggleGroup;
@@ -436,6 +344,59 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             // Initialize database connections
             initializeDatabase();
+
+            if (toolbarController != null) {
+                toolbarController.setEventBus(eventBus);
+            }
+            if (eventBus != null) {
+                eventBus.subscribe(SystemActionEvent.class, this::handleSystemAction);
+                subscribeToUIEvents();
+            }
+            if (sidebarController != null) {
+                sidebarController.setEventBus(eventBus);
+                sidebarPane = sidebarController.getSidebarPane();
+                navigationTabPane = sidebarController.getNavigationTabPane();
+                folderTreeView = sidebarController.getFolderTreeView();
+                filterFoldersField = sidebarController.getFilterFoldersField();
+                tagListView = sidebarController.getTagListView();
+                filterTagsField = sidebarController.getFilterTagsField();
+                recentNotesListView = sidebarController.getRecentNotesListView();
+                filterRecentField = sidebarController.getFilterRecentField();
+                favoritesListView = sidebarController.getFavoritesListView();
+                filterFavoritesField = sidebarController.getFilterFavoritesField();
+                trashTreeView = sidebarController.getTrashTreeView();
+                filterTrashField = sidebarController.getFilterTrashField();
+            }
+            if (notesListController != null) {
+                notesListController.setEventBus(eventBus);
+                notesPanel = notesListController.getNotesPanel();
+                notesPanelTitleLabel = notesListController.getNotesPanelTitleLabel();
+                sortComboBox = notesListController.getSortComboBox();
+                refreshBtn = notesListController.getRefreshBtn();
+                notesListView = notesListController.getNotesListView();
+                stackedModeHeader = notesListController.getStackedModeHeader();
+            }
+            if (editorController != null) {
+                editorController.setEventBus(eventBus);
+                editorContainer = editorController.getEditorContainer();
+                noteTitleField = editorController.getNoteTitleField();
+                toggleTagsBtn = editorController.getToggleTagsBtn();
+                editorOnlyButton = editorController.getEditorOnlyButton();
+                splitViewButton = editorController.getSplitViewButton();
+                previewOnlyButton = editorController.getPreviewOnlyButton();
+                pinButton = editorController.getPinButton();
+                favoriteButton = editorController.getFavoriteButton();
+                infoButton = editorController.getInfoButton();
+                tagsContainer = editorController.getTagsContainer();
+                tagsFlowPane = editorController.getTagsFlowPane();
+                modifiedDateLabel = editorController.getModifiedDateLabel();
+                editorPreviewSplitPane = editorController.getEditorPreviewSplitPane();
+                editorPane = editorController.getEditorPane();
+                noteContentArea = editorController.getNoteContentArea();
+                wordCountLabel = editorController.getWordCountLabel();
+                previewPane = editorController.getPreviewPane();
+                previewWebView = editorController.getPreviewWebView();
+            }
 
             // Initialize theme and language groups
             initializeThemeMenu();
@@ -557,7 +518,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 javafx.stage.DirectoryChooser directoryChooser = new javafx.stage.DirectoryChooser();
                 directoryChooser.setTitle(getString("pref.storage.browse"));
 
-                File selectedDirectory = directoryChooser.showDialog(menuBar.getScene().getWindow());
+                File selectedDirectory = directoryChooser.showDialog(
+                        vaultRootItem.getGraphic() != null ? vaultRootItem.getGraphic().getScene().getWindow() : null);
                 if (selectedDirectory != null) {
                     newType = "filesystem";
                     customPath = selectedDirectory.getAbsolutePath();
@@ -802,17 +764,50 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             String folderId = folder.getId();
 
-            // Handle root/all notes separately if needed, but fetchNotesByFolderId should
-            // handle it
             if (folderId == null || "ALL_NOTES_VIRTUAL".equals(folderId)) {
                 return noteService.getAllNotes().size();
             }
 
-            // Fetch notes for this specific folder
-            Optional<Folder> optionalFolder = folderService.getFolderById(folderId);
-            List<Note> notes = optionalFolder.map(noteService::getNotesByFolder)
-                    .orElseGet(ArrayList::new);
-            return notes != null ? notes.size() : 0;
+            // Recursive counting for all folders
+            Preferences prefs = Preferences.userNodeForPackage(MainController.class);
+            boolean isFileSystem = !"sqlite".equals(prefs.get("storage_type", "sqlite"));
+
+            if (isFileSystem) {
+                // For FileSystem, notes under a folder start with folderId as path prefix
+                // Normalize folderId to use forward slashes for matching
+                String normalizedFolderId = folderId.replace("\\", "/");
+
+                // Count notes that are in this folder or any subfolder
+                return (int) noteService.getAllNotes().stream()
+                        .filter(n -> !n.isDeleted())
+                        .filter(n -> {
+                            String notePath = n.getId().replace("\\", "/");
+                            // Case 1: Note is directly in the folder
+                            // Case 2: Note is in a subfolder (path starts with folderId + /)
+                            return notePath.equals(normalizedFolderId) ||
+                                    notePath.startsWith(normalizedFolderId + "/");
+                        })
+                        .count();
+            } else {
+                // SQLite: Basic non-recursive for now, or we could implement a more complex SQL
+                // query
+                // but let's at least keep what we had.
+                Optional<Folder> optionalFolder = folderService.getFolderById(folderId);
+                List<Note> notes = optionalFolder.map(f -> noteService.getNotesByFolder(f))
+                        .orElseGet(ArrayList::new);
+                int count = notes.size();
+
+                // Add counts from subfolders (recursive call)
+                // Note: This might be slow if hierarchy is deep, but requested by user
+                if (folder.getChildren() != null) {
+                    for (com.example.forevernote.data.models.interfaces.Component child : folder.getChildren()) {
+                        if (child instanceof Folder) {
+                            count += getNoteCountForFolder((Folder) child);
+                        }
+                    }
+                }
+                return count;
+            }
         } catch (Exception e) {
             return 0;
         }
@@ -1105,9 +1100,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      * Initialize search functionality.
      */
     private void initializeSearch() {
-        searchField.textProperty().addListener((observable, oldValue, newValue) -> {
-            performSearch(newValue);
-        });
+        if (toolbarController != null && toolbarController.getSearchField() != null) {
+            toolbarController.getSearchField().textProperty().addListener((observable, oldValue, newValue) -> {
+                performSearch(newValue);
+            });
+        }
     }
 
     /**
@@ -1115,14 +1112,17 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      */
     private void initializeThemeMenu() {
         themeToggleGroup = new ToggleGroup();
-        if (lightThemeMenuItem != null) {
-            lightThemeMenuItem.setToggleGroup(themeToggleGroup);
-        }
-        if (darkThemeMenuItem != null) {
-            darkThemeMenuItem.setToggleGroup(themeToggleGroup);
-        }
-        if (systemThemeMenuItem != null) {
-            systemThemeMenuItem.setToggleGroup(themeToggleGroup);
+        // Sync Themes Menu
+        if (toolbarController != null) {
+            if (toolbarController.getLightThemeMenuItem() != null) {
+                toolbarController.getLightThemeMenuItem().setToggleGroup(themeToggleGroup);
+            }
+            if (toolbarController.getDarkThemeMenuItem() != null) {
+                toolbarController.getDarkThemeMenuItem().setToggleGroup(themeToggleGroup);
+            }
+            if (toolbarController.getSystemThemeMenuItem() != null) {
+                toolbarController.getSystemThemeMenuItem().setToggleGroup(themeToggleGroup);
+            }
         }
         // Set initial selection based on current theme
         updateThemeMenuSelection();
@@ -1144,20 +1144,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     private void initializeLanguageMenu() {
         languageToggleGroup = new ToggleGroup();
-        if (englishLangMenuItem != null) {
-            englishLangMenuItem.setToggleGroup(languageToggleGroup);
-        }
-        if (spanishLangMenuItem != null) {
-            spanishLangMenuItem.setToggleGroup(languageToggleGroup);
-        }
+        // Sync Language Menu
+        if (toolbarController != null) {
+            if (toolbarController.getEnglishLangMenuItem() != null) {
+                toolbarController.getEnglishLangMenuItem().setToggleGroup(languageToggleGroup);
+            }
+            if (toolbarController.getSpanishLangMenuItem() != null) {
+                toolbarController.getSpanishLangMenuItem().setToggleGroup(languageToggleGroup);
+            }
 
-        String currentLang = prefs.get("language", java.util.Locale.getDefault().getLanguage());
-        if (currentLang.startsWith("es")) {
-            if (spanishLangMenuItem != null)
-                spanishLangMenuItem.setSelected(true);
-        } else {
-            if (englishLangMenuItem != null)
-                englishLangMenuItem.setSelected(true);
+            // Set current selection
+            String currentLang = prefs.get("language", java.util.Locale.getDefault().getLanguage());
+            if ("es".equals(currentLang)) {
+                if (toolbarController.getSpanishLangMenuItem() != null)
+                    toolbarController.getSpanishLangMenuItem().setSelected(true);
+            } else {
+                if (toolbarController.getEnglishLangMenuItem() != null)
+                    toolbarController.getEnglishLangMenuItem().setSelected(true);
+            }
         }
     }
 
@@ -1190,16 +1194,22 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             return;
 
         if ("dark".equals(currentTheme)) {
-            if (darkThemeMenuItem != null) {
-                darkThemeMenuItem.setSelected(true);
+            if (toolbarController != null) {
+                if (toolbarController.getDarkThemeMenuItem() != null) {
+                    toolbarController.getDarkThemeMenuItem().setSelected(true);
+                }
             }
-        } else if ("system".equals(currentTheme)) {
-            if (systemThemeMenuItem != null) {
-                systemThemeMenuItem.setSelected(true);
+        } else if ("system".equalsIgnoreCase(currentTheme)) {
+            if (toolbarController != null) {
+                if (toolbarController.getSystemThemeMenuItem() != null) {
+                    toolbarController.getSystemThemeMenuItem().setSelected(true);
+                }
             }
         } else {
-            if (lightThemeMenuItem != null) {
-                lightThemeMenuItem.setSelected(true);
+            if (toolbarController != null) {
+                if (toolbarController.getLightThemeMenuItem() != null) {
+                    toolbarController.getLightThemeMenuItem().setSelected(true);
+                }
             }
         }
     }
@@ -1212,8 +1222,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         try {
             // Get the stage from any available component
             javafx.scene.Scene scene = null;
-            if (menuBar != null && menuBar.getScene() != null) {
-                scene = menuBar.getScene();
+            if (mainSplitPane != null && mainSplitPane.getScene() != null) {
+                scene = mainSplitPane.getScene();
             } else if (mainSplitPane != null && mainSplitPane.getScene() != null) {
                 scene = mainSplitPane.getScene();
             }
@@ -1326,8 +1336,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             // init)
             pluginManager.initializeAll();
 
-            // Create the plugin manager dialog
-            Stage stage = (Stage) menuBar.getScene().getWindow();
+            Stage stage = mainSplitPane != null && mainSplitPane.getScene() != null
+                    ? (Stage) mainSplitPane.getScene().getWindow()
+                    : null;
             pluginManagerDialog = new PluginManagerDialog(stage, pluginManager);
 
             // Register plugin manager command in Command Palette
@@ -1351,6 +1362,20 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     /**
      * Subscribe to events from plugins.
      */
+    private void subscribeToUIEvents() {
+        if (eventBus == null)
+            return;
+
+        eventBus.subscribe(UIEvents.ThemeChangedEvent.class, event -> {
+            Platform.runLater(() -> {
+                this.currentTheme = event.getTheme();
+                prefs.put("theme", currentTheme);
+                applyTheme();
+                updateThemeMenuSelection();
+            });
+        });
+    }
+
     private void subscribeToPluginEvents() {
         // Listen for note open requests from plugins
         eventBus.subscribe(NoteEvents.NoteOpenRequestEvent.class, event -> {
@@ -1440,7 +1465,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @Override
     public void registerMenuItem(String pluginId, String category, String itemName, String shortcut, Runnable action) {
         Platform.runLater(() -> {
-            if (pluginsMenu == null) {
+            if (toolbarController == null || toolbarController.getPluginsMenu() == null) {
                 logger.warning("Plugins menu not available for registration: " + itemName);
                 return;
             }
@@ -1453,8 +1478,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
                 // Add category menu after the separator (index 1 is after "Manage Plugins" and
                 // separator)
-                int insertIndex = Math.min(pluginsMenu.getItems().size(), 2);
-                pluginsMenu.getItems().add(insertIndex, categoryMenu);
+                int insertIndex = Math.min(toolbarController.getPluginsMenu().getItems().size(), 2);
+                toolbarController.getPluginsMenu().getItems().add(insertIndex, categoryMenu);
             }
 
             // Create the menu item
@@ -1521,7 +1546,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 pluginCategoryMenus.entrySet().removeIf(entry -> {
                     Menu menu = entry.getValue();
                     if (menu.getItems().isEmpty()) {
-                        pluginsMenu.getItems().remove(menu);
+                        if (toolbarController != null && toolbarController.getPluginsMenu() != null) {
+                            toolbarController.getPluginsMenu().getItems().remove(menu);
+                        }
                         return true;
                     }
                     return false;
@@ -1927,7 +1954,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 showQuickSwitcher();
                 break;
             case "Global Search":
-                searchField.requestFocus();
+                if (toolbarController != null && toolbarController.getSearchField() != null)
+                    toolbarController.getSearchField().requestFocus();
                 break;
             case "Go to All Notes":
                 loadAllNotes();
@@ -2019,12 +2047,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         // Create toggle group for list/grid view modes
         ToggleGroup notesViewGroup = new ToggleGroup();
-        if (listViewButton != null) {
-            listViewButton.setToggleGroup(notesViewGroup);
-            listViewButton.setSelected(true);
+        if (toolbarController != null && toolbarController.getListViewButton() != null) {
+            toolbarController.getListViewButton().setToggleGroup(notesViewGroup);
+            toolbarController.getListViewButton().setSelected(true);
         }
-        if (gridViewButton != null) {
-            gridViewButton.setToggleGroup(notesViewGroup);
+        if (toolbarController != null && toolbarController.getGridViewButton() != null) {
+            toolbarController.getGridViewButton().setToggleGroup(notesViewGroup);
         }
 
         // Initialize grid view container
@@ -2153,22 +2181,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      * Setup responsive behavior for the toolbar.
      */
     private void setupToolbarResponsiveness() {
-        if (toolbarHBox == null || toolbarOverflowBtn == null)
+        if (toolbarController == null || toolbarController.getToolbarHBox() == null
+                || toolbarController.getToolbarOverflowBtn() == null)
             return;
 
-        toolbarHBox.widthProperty().addListener((obs, oldVal, newVal) -> {
+        toolbarController.getToolbarHBox().widthProperty().addListener((obs, oldVal, newVal) -> {
             updateToolbarOverflow(newVal.doubleValue());
         });
 
         // Initial check
-        Platform.runLater(() -> updateToolbarOverflow(toolbarHBox.getWidth()));
+        Platform.runLater(() -> updateToolbarOverflow(toolbarController.getToolbarHBox().getWidth()));
     }
 
     /**
      * Update toolbar items based on available width.
      */
     private void updateToolbarOverflow(double width) {
-        if (toolbarHBox == null || toolbarOverflowBtn == null)
+        if (toolbarController == null || toolbarController.getToolbarHBox() == null
+                || toolbarController.getToolbarOverflowBtn() == null)
             return;
 
         // Thresholds for different buttons (cumulative widths approx)
@@ -2176,49 +2206,37 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         boolean showFileActions = width > 550;
         boolean showLayoutToggles = width > 400;
 
-        // File Actions (New, Folder, Tag, Save, Delete)
-        newNoteBtn.setVisible(showFileActions);
-        newNoteBtn.setManaged(showFileActions);
-        newFolderBtn.setVisible(showFileActions);
-        newFolderBtn.setManaged(showFileActions);
-        newTagBtn.setVisible(showFileActions);
-        newTagBtn.setManaged(showFileActions);
-        saveBtn.setVisible(showFileActions);
-        saveBtn.setManaged(showFileActions);
-        deleteBtn.setVisible(showFileActions);
-        deleteBtn.setManaged(showFileActions);
+        toolbarController.setResponsiveState(showSearch, showLayoutToggles, showFileActions);
 
         // Update separator 2 (between file actions and save/delete) - actually between
         // file actions group and search
-        toolbarSeparator2.setVisible(showFileActions);
-        toolbarSeparator2.setManaged(showFileActions);
-
-        // Search Field
-        searchField.setVisible(showSearch);
-        searchField.setManaged(showSearch);
-        toolbarSeparator3.setVisible(showSearch);
-        toolbarSeparator3.setManaged(showSearch);
-
         // Layout Toggles
-        sidebarToggleBtn.setVisible(showLayoutToggles);
-        sidebarToggleBtn.setManaged(showLayoutToggles);
-        notesPanelToggleBtn.setVisible(showLayoutToggles);
-        notesPanelToggleBtn.setManaged(showLayoutToggles);
-        layoutSwitchBtn.setVisible(showLayoutToggles);
-        layoutSwitchBtn.setManaged(showLayoutToggles);
-        toolbarSeparator1.setVisible(showLayoutToggles);
-        toolbarSeparator1.setManaged(showLayoutToggles);
+        if (toolbarController != null) {
+            toolbarController.getSidebarToggleBtn().setVisible(showLayoutToggles);
+            toolbarController.getSidebarToggleBtn().setManaged(showLayoutToggles);
+            toolbarController.getNotesPanelToggleBtn().setVisible(showLayoutToggles);
+            toolbarController.getNotesPanelToggleBtn().setManaged(showLayoutToggles);
+            toolbarController.getSearchField().setVisible(showSearch);
+            toolbarController.getSearchField().setManaged(showSearch);
+        }
+        if (toolbarController != null) {
+            toolbarController.getLayoutSwitchBtn().setVisible(showLayoutToggles);
+            toolbarController.getLayoutSwitchBtn().setManaged(showLayoutToggles);
+            toolbarController.getToolbarSeparator1().setVisible(showLayoutToggles);
+            toolbarController.getToolbarSeparator1().setManaged(showLayoutToggles);
+        }
 
         // Manage Overflow Menu
-        toolbarOverflowBtn.getItems().clear();
+        toolbarController.getToolbarOverflowBtn().getItems().clear();
         boolean needsOverflow = !showFileActions || !showSearch || !showLayoutToggles;
 
-        if (needsOverflow) {
+        if (needsOverflow && toolbarController != null) {
+            toolbarController.getToolbarOverflowBtn().getItems().clear();
             if (!showSearch) {
                 MenuItem searchItem = new MenuItem(getString("app.search.placeholder"));
-                searchItem.setOnAction(e -> searchField.requestFocus());
-                toolbarOverflowBtn.getItems().add(searchItem);
-                toolbarOverflowBtn.getItems().add(new SeparatorMenuItem());
+                searchItem.setOnAction(e -> toolbarController.getSearchField().requestFocus());
+                toolbarController.getToolbarOverflowBtn().getItems().add(searchItem);
+                toolbarController.getToolbarOverflowBtn().getItems().add(new SeparatorMenuItem());
             }
             if (!showFileActions) {
                 MenuItem newNoteItem = new MenuItem(getString("action.new_note"));
@@ -2231,26 +2249,28 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 saveItem.setOnAction(e -> handleSave(null));
                 MenuItem deleteItem = new MenuItem(getString("action.delete"));
                 deleteItem.setOnAction(e -> handleDelete(null));
-                toolbarOverflowBtn.getItems().addAll(newNoteItem, newFolderItem, newTagItem, saveItem,
+                toolbarController.getToolbarOverflowBtn().getItems().addAll(newNoteItem, newFolderItem, newTagItem,
+                        saveItem,
                         new SeparatorMenuItem(), deleteItem);
             }
             if (!showLayoutToggles) {
-                if (!toolbarOverflowBtn.getItems().isEmpty())
-                    toolbarOverflowBtn.getItems().add(new SeparatorMenuItem());
+                if (!toolbarController.getToolbarOverflowBtn().getItems().isEmpty())
+                    toolbarController.getToolbarOverflowBtn().getItems().add(new SeparatorMenuItem());
                 MenuItem toggleSidebar = new MenuItem(getString("action.toggle_sidebar"));
                 toggleSidebar.setOnAction(e -> handleToggleSidebar(null));
                 MenuItem toggleNotes = new MenuItem(getString("action.toggle_notes_list"));
                 toggleNotes.setOnAction(e -> handleToggleNotesPanel(null));
                 MenuItem switchLayout = new MenuItem(getString("action.switch_layout"));
                 switchLayout.setOnAction(e -> handleViewLayoutSwitch(null));
-                toolbarOverflowBtn.getItems().addAll(toggleSidebar, toggleNotes, switchLayout);
+                toolbarController.getToolbarOverflowBtn().getItems().addAll(toggleSidebar, toggleNotes, switchLayout);
             }
 
-            toolbarOverflowBtn.setVisible(true);
-            toolbarOverflowBtn.setManaged(true);
-        } else {
-            toolbarOverflowBtn.setVisible(false);
-            toolbarOverflowBtn.setManaged(false);
+            toolbarController.getToolbarOverflowBtn().setVisible(true);
+            toolbarController.getToolbarOverflowBtn().setManaged(true);
+        } else if (toolbarController != null) {
+            toolbarController.getToolbarOverflowBtn().getItems().clear();
+            toolbarController.getToolbarOverflowBtn().setVisible(false);
+            toolbarController.getToolbarOverflowBtn().setManaged(false);
         }
     }
 
@@ -2806,8 +2826,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                             }
                         }
                     }
-                    if (notesPanelToggleBtn != null)
-                        notesPanelToggleBtn.setSelected(true);
+                    if (toolbarController != null && toolbarController.getNotesPanelToggleBtn() != null)
+                        toolbarController.getNotesPanelToggleBtn().setSelected(true);
                 }
 
                 updateStatus(
@@ -4201,10 +4221,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             try {
                 Folder newFolder = new Folder(result.get().trim());
+
+                // Only add as subfolder if currentFolder is set and not "All Notes"
+                if (!createInRoot && currentFolder != null) {
+                    newFolder.setParent(currentFolder);
+                }
+
                 String folderId = folderDAO.createFolder(newFolder);
                 newFolder.setId(folderId);
 
-                // Only add as subfolder if currentFolder is set and not "All Notes"
                 if (!createInRoot && currentFolder != null) {
                     folderDAO.addSubFolder(currentFolder, newFolder);
                 }
@@ -4244,6 +4269,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             try {
                 Folder newSubfolder = new Folder(result.get().trim());
+                newSubfolder.setParent(currentFolder);
+
                 String folderId = folderDAO.createFolder(newSubfolder);
                 newSubfolder.setId(folderId);
 
@@ -4719,16 +4746,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         navSplitPane.setPrefWidth(300);
                         mainSplitPane.setDividerPositions(0.25);
                         updateStatus(getString("status.nav_shown"));
-                        if (sidebarToggleBtn != null)
-                            sidebarToggleBtn.setSelected(true);
+                        if (toolbarController != null && toolbarController.getSidebarToggleBtn() != null)
+                            toolbarController.getSidebarToggleBtn().setSelected(true);
                     } else {
                         // Collapse: hide navSplitPane completely
                         navSplitPane.setMinWidth(0);
                         navSplitPane.setMaxWidth(0);
                         navSplitPane.setPrefWidth(0);
                         updateStatus(getString("status.nav_hidden"));
-                        if (sidebarToggleBtn != null)
-                            sidebarToggleBtn.setSelected(false);
+                        if (toolbarController != null && toolbarController.getSidebarToggleBtn() != null)
+                            toolbarController.getSidebarToggleBtn().setSelected(false);
                     }
                 }
             } else {
@@ -4742,16 +4769,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     sidebarPane.setPrefWidth(250);
                     mainSplitPane.setDividerPositions(0.22);
                     updateStatus(getString("status.sidebar_shown"));
-                    if (sidebarToggleBtn != null)
-                        sidebarToggleBtn.setSelected(true);
+                    if (toolbarController != null && toolbarController.getSidebarToggleBtn() != null)
+                        toolbarController.getSidebarToggleBtn().setSelected(true);
                 } else {
                     // Collapse
                     sidebarPane.setMinWidth(0);
                     sidebarPane.setMaxWidth(0);
                     sidebarPane.setPrefWidth(0);
                     updateStatus(getString("status.sidebar_hidden"));
-                    if (sidebarToggleBtn != null)
-                        sidebarToggleBtn.setSelected(false);
+                    if (toolbarController != null && toolbarController.getSidebarToggleBtn() != null)
+                        toolbarController.getSidebarToggleBtn().setSelected(false);
                 }
             }
         }
@@ -4779,16 +4806,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     contentSplitPane.setDividerPositions(0.25);
                 }
                 updateStatus(getString("status.notes_panel_shown"));
-                if (notesPanelToggleBtn != null)
-                    notesPanelToggleBtn.setSelected(true);
+                if (toolbarController != null && toolbarController.getNotesPanelToggleBtn() != null)
+                    toolbarController.getNotesPanelToggleBtn().setSelected(true);
             } else {
                 // Collapse
                 notesPanel.setMinWidth(0);
                 notesPanel.setMaxWidth(0);
                 notesPanel.setPrefWidth(0);
                 updateStatus(getString("status.notes_panel_hidden"));
-                if (notesPanelToggleBtn != null)
-                    notesPanelToggleBtn.setSelected(false);
+                if (toolbarController != null && toolbarController.getNotesPanelToggleBtn() != null)
+                    toolbarController.getNotesPanelToggleBtn().setSelected(false);
             }
         }
     }
@@ -4814,8 +4841,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     private void applyUiZoom() {
-        if (toolbarHBox != null && toolbarHBox.getScene() != null) {
-            toolbarHBox.getScene().getRoot().setStyle("-fx-font-size: " + uiFontSize + "px;");
+        if (toolbarController != null && toolbarController.getToolbarHBox() != null
+                && toolbarController.getToolbarHBox().getScene() != null) {
+            toolbarController.getToolbarHBox().getScene().getRoot().setStyle("-fx-font-size: " + uiFontSize + "px;");
         }
     }
 
@@ -4888,10 +4916,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
 
         // Synch toggle buttons
-        if (sidebarToggleBtn != null)
-            sidebarToggleBtn.setSelected(true);
-        if (notesPanelToggleBtn != null)
-            notesPanelToggleBtn.setSelected(true);
+        if (toolbarController != null && toolbarController.getSidebarToggleBtn() != null)
+            toolbarController.getSidebarToggleBtn().setSelected(true);
+        if (toolbarController != null && toolbarController.getNotesPanelToggleBtn() != null)
+            toolbarController.getNotesPanelToggleBtn().setSelected(true);
     }
 
     @FXML
@@ -5010,9 +5038,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         scene.getStylesheets().removeIf(stylesheet -> stylesheet.contains("modern-theme.css") ||
                 stylesheet.contains("dark-theme.css"));
 
+        // Determine actual theme to use (especially for 'system' mode)
+        String themeToApply = currentTheme;
+        if ("system".equalsIgnoreCase(currentTheme)) {
+            themeToApply = detectSystemTheme();
+        }
+
         // Add the appropriate theme stylesheet
         java.net.URL themeResource;
-        if ("dark".equals(currentTheme)) {
+        if ("dark".equalsIgnoreCase(themeToApply)) {
             themeResource = getClass().getResource("/com/example/forevernote/ui/css/dark-theme.css");
         } else {
             themeResource = getClass().getResource("/com/example/forevernote/ui/css/modern-theme.css");
@@ -5020,14 +5054,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         if (themeResource != null) {
             scene.getStylesheets().add(themeResource.toExternalForm());
-            logger.info("Theme changed to: " + currentTheme);
-
-            // Determine actual theme (system mode uses detected theme)
-            String actualTheme = currentTheme;
-            if ("system".equals(currentTheme)) {
-                // Re-detect system theme
-                actualTheme = detectSystemTheme();
-            }
+            logger.info("Theme changed to: " + currentTheme + " (Applied: " + themeToApply + ")");
 
             // Ensure WebView has correct background color
             if (previewWebView != null) {
@@ -5036,7 +5063,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 }
 
                 // Still set background via JavaScript to ensure it's applied to the body
-                String bgColor = "dark".equals(actualTheme) ? "#1E1E1E" : "#FFFFFF";
+                String bgColor = "dark".equalsIgnoreCase(themeToApply) ? "#1E1E1E" : "#FFFFFF";
                 previewWebView.getEngine().executeScript(
                         "document.body.style.backgroundColor = '" + bgColor + "';");
             }
@@ -5077,9 +5104,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     @FXML
     private void handleSearch(ActionEvent event) {
-        if (searchField != null) {
-            searchField.requestFocus();
-            searchField.selectAll();
+        if (toolbarController != null && toolbarController.getSearchField() != null) {
+            toolbarController.getSearchField().requestFocus();
+            toolbarController.getSearchField().selectAll();
             updateStatus(getString("status.search_focused"));
         }
     }
@@ -5333,7 +5360,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     break;
                 case "search":
                     // Re-execute current search
-                    String searchText = searchField.getText();
+                    String searchText = toolbarController != null && toolbarController.getSearchField() != null
+                            ? toolbarController.getSearchField().getText()
+                            : "";
                     if (searchText != null && !searchText.trim().isEmpty()) {
                         performSearch(searchText);
                     } else {
@@ -5891,5 +5920,206 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private void handleSystemAction(SystemActionEvent event) {
+        javafx.application.Platform.runLater(() -> {
+            switch (event.getActionType()) {
+                case NEW_NOTE:
+                    handleNewNote(null);
+                    break;
+                case NEW_FOLDER:
+                    handleNewFolder(null);
+                    break;
+                case NEW_TAG:
+                    handleNewTag(null);
+                    break;
+                case SAVE:
+                    handleSave(null);
+                    break;
+                case SAVE_ALL:
+                    handleSaveAll(null);
+                    break;
+                case DELETE:
+                    handleDelete(null);
+                    break;
+                case IMPORT:
+                    handleImport(null);
+                    break;
+                case EXPORT:
+                    handleExport(null);
+                    break;
+                case EXIT:
+                    handleExit(null);
+                    break;
+                case UNDO:
+                    handleUndo(null);
+                    break;
+                case REDO:
+                    handleRedo(null);
+                    break;
+                case CUT:
+                    handleCut(null);
+                    break;
+                case COPY:
+                    handleCopy(null);
+                    break;
+                case PASTE:
+                    handlePaste(null);
+                    break;
+                case FIND:
+                    handleFind(null);
+                    break;
+                case REPLACE:
+                    handleReplace(null);
+                    break;
+                case TOGGLE_SIDEBAR:
+                    handleToggleSidebar(null);
+                    break;
+                case TOGGLE_NOTES_LIST:
+                    handleToggleNotesPanel(null);
+                    break;
+                case SWITCH_LAYOUT:
+                    handleViewLayoutSwitch(null);
+                    break;
+                case ZOOM_IN:
+                    handleZoomIn(null);
+                    break;
+                case ZOOM_OUT:
+                    handleZoomOut(null);
+                    break;
+                case RESET_ZOOM:
+                    handleResetZoom(null);
+                    break;
+                case ZOOM_EDITOR_IN:
+                    handleEditorZoomIn(null);
+                    break;
+                case ZOOM_EDITOR_OUT:
+                    handleEditorZoomOut(null);
+                    break;
+                case RESET_EDITOR_ZOOM:
+                    handleEditorResetZoom(null);
+                    break;
+                case LIST_VIEW:
+                    handleListView(null);
+                    break;
+                case GRID_VIEW:
+                    handleGridView(null);
+                    break;
+                case TAGS_MANAGER:
+                    handleTagsManager(null);
+                    break;
+                case PLUGIN_MANAGER:
+                    handlePluginManager(null);
+                    break;
+                case PREFERENCES:
+                    handlePreferences(null);
+                    break;
+                case SWITCH_STORAGE:
+                    handleSwitchStorage();
+                    break;
+                case DOCUMENTATION:
+                    handleDocumentation(null);
+                    break;
+                case ABOUT:
+                    handleAbout(null);
+                    break;
+                case SORT_FOLDERS:
+                    handleSortFolders(null);
+                    break;
+                case EXPAND_ALL_FOLDERS:
+                    handleExpandAllFolders(null);
+                    break;
+                case COLLAPSE_ALL_FOLDERS:
+                    handleCollapseAllFolders(null);
+                    break;
+                case SORT_TAGS:
+                    handleSortTags(null);
+                    break;
+                case SORT_RECENT:
+                    handleSortRecent(null);
+                    break;
+                case SORT_FAVORITES:
+                    handleSortFavorites(null);
+                    break;
+                case SORT_TRASH:
+                    handleSortTrash(null);
+                    break;
+                case EMPTY_TRASH:
+                    handleEmptyTrash(null);
+                    break;
+                case REFRESH_NOTES:
+                    handleRefresh(null);
+                    break;
+                case TOGGLE_TAGS:
+                    handleToggleTags(null);
+                    break;
+                case EDITOR_ONLY_MODE:
+                    handleEditorOnlyMode(null);
+                    break;
+                case SPLIT_VIEW_MODE:
+                    handleSplitViewMode(null);
+                    break;
+                case PREVIEW_ONLY_MODE:
+                    handlePreviewOnlyMode(null);
+                    break;
+                case TOGGLE_PIN:
+                    handleTogglePin(null);
+                    break;
+                case TOGGLE_FAVORITE:
+                    handleToggleFavorite(null);
+                    break;
+                case TOGGLE_RIGHT_PANEL:
+                    handleToggleRightPanel(null);
+                    break;
+                case HEADING1:
+                    handleHeading1(null);
+                    break;
+                case HEADING2:
+                    handleHeading2(null);
+                    break;
+                case HEADING3:
+                    handleHeading3(null);
+                    break;
+                case BOLD:
+                    handleBold(null);
+                    break;
+                case ITALIC:
+                    handleItalic(null);
+                    break;
+                case STRIKE:
+                    handleUnderline(null); // the original mapped strikeBtn to handleUnderline
+                    break;
+                case UNDERLINE:
+                    handleRealUnderline(null);
+                    break;
+                case HIGHLIGHT:
+                    handleHighlight(null);
+                    break;
+                case LINK:
+                    handleLink(null);
+                    break;
+                case IMAGE:
+                    handleImage(null);
+                    break;
+                case TODO_LIST:
+                    handleTodoList(null);
+                    break;
+                case BULLET_LIST:
+                    handleBulletList(null);
+                    break;
+                case NUMBERED_LIST:
+                    handleNumberedList(null);
+                    break;
+                case QUOTE:
+                    handleQuote(null);
+                    break;
+                case CODE:
+                    handleCode(null);
+                    break;
+                default:
+                    break;
+            }
+        });
     }
 }

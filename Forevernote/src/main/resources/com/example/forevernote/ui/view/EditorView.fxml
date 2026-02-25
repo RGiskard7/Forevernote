@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.web.WebView?>
+<?import org.kordamp.ikonli.javafx.FontIcon?>
+
+<VBox fx:id="editorContainer" styleClass="editor-container" HBox.hgrow="ALWAYS" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.forevernote.ui.controller.EditorController">
+    <!-- Editor Header -->
+    <HBox alignment="CENTER_LEFT" spacing="8" styleClass="editor-header">
+        <padding>
+            <Insets top="10" right="16" bottom="10" left="16"/>
+        </padding>
+        <TextField fx:id="noteTitleField" promptText="%panel.editor.title_placeholder" HBox.hgrow="ALWAYS" styleClass="title-field"/>
+        <Separator orientation="VERTICAL" styleClass="header-separator"/>
+         
+        <!-- Tags Toggle UI -->
+         <ToggleButton fx:id="toggleTagsBtn" onAction="#handleToggleTags" styleClass="modern-toggle-btn" selected="true">
+            <tooltip><Tooltip text="%tooltip.toggle_tags"/></tooltip>
+            <graphic>
+                <FontIcon iconLiteral="fth-hash" styleClass="feather-icon"/>
+            </graphic>
+        </ToggleButton>
+        
+        <Separator orientation="VERTICAL" styleClass="header-separator"/>
+        
+        <!-- View Mode Toggle -->
+        <ToggleButton fx:id="editorOnlyButton" text="%action.editor_only" onAction="#handleEditorOnlyMode" styleClass="modern-toggle-btn">
+            <tooltip><Tooltip text="%tooltip.editor_only"/></tooltip>
+        </ToggleButton>
+        <ToggleButton fx:id="splitViewButton" text="%action.split_view" onAction="#handleSplitViewMode" styleClass="modern-toggle-btn">
+            <tooltip><Tooltip text="%tooltip.split_view"/></tooltip>
+        </ToggleButton>
+        <ToggleButton fx:id="previewOnlyButton" text="%action.preview_only" onAction="#handlePreviewOnlyMode" styleClass="modern-toggle-btn">
+            <tooltip><Tooltip text="%tooltip.preview_only"/></tooltip>
+        </ToggleButton>
+        <Separator orientation="VERTICAL" styleClass="header-separator"/>
+        <ToggleButton fx:id="pinButton" onAction="#handleTogglePin" styleClass="modern-toggle-btn">
+            <tooltip><Tooltip text="%tooltip.pin_note"/></tooltip>
+            <graphic>
+                <FontIcon iconLiteral="fth-map-pin" styleClass="feather-icon"/>
+            </graphic>
+        </ToggleButton>
+        <ToggleButton fx:id="favoriteButton" onAction="#handleToggleFavorite" styleClass="modern-toggle-btn">
+            <tooltip><Tooltip text="%tooltip.add_favorite"/></tooltip>
+            <graphic>
+                <FontIcon iconLiteral="fth-star" styleClass="feather-icon"/>
+            </graphic>
+        </ToggleButton>
+        <ToggleButton fx:id="infoButton" onAction="#handleToggleRightPanel" styleClass="modern-toggle-btn">
+            <tooltip><Tooltip text="%tooltip.toggle_right_panel"/></tooltip>
+            <graphic>
+                <FontIcon iconLiteral="fth-menu" styleClass="feather-icon"/>
+            </graphic>
+        </ToggleButton>
+    </HBox>
+    
+    <!-- Tags Bar (Collapsible) -->
+    <VBox fx:id="tagsContainer">
+        <HBox alignment="CENTER_LEFT" spacing="8" styleClass="tags-bar">
+            <padding>
+                <Insets top="6" right="16" bottom="6" left="16"/>
+            </padding>
+            <FlowPane fx:id="tagsFlowPane" hgap="6" vgap="6" styleClass="tags-flow" HBox.hgrow="ALWAYS"/>
+            <Label fx:id="modifiedDateLabel" text="" styleClass="meta-label"/>
+        </HBox>
+    </VBox>
+    
+    <!-- Editor/Preview Split -->
+    <SplitPane fx:id="editorPreviewSplitPane" orientation="HORIZONTAL" dividerPositions="0.5" VBox.vgrow="ALWAYS" styleClass="editor-split">
+        <!-- Editor Pane -->
+        <VBox fx:id="editorPane" styleClass="editor-pane">
+            <TextArea fx:id="noteContentArea" promptText="Start writing in Markdown..." wrapText="true" VBox.vgrow="ALWAYS" styleClass="editor-area"/>
+            
+            <!-- Editor Toolbar (Modern-style) - Scrollable for responsiveness -->
+            <HBox styleClass="format-toolbar-container">
+                <ScrollPane hbarPolicy="AS_NEEDED" vbarPolicy="NEVER" fitToHeight="true" styleClass="format-toolbar-scroll" HBox.hgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="4" styleClass="format-toolbar">
+                        <padding>
+                            <Insets top="6" right="8" bottom="6" left="8"/>
+                        </padding>
+                        <Button fx:id="heading1Btn" text="H1" onAction="#handleHeading1" styleClass="format-btn">
+                            <tooltip><Tooltip text="Heading 1"/></tooltip>
+                        </Button>
+                        <Button fx:id="heading2Btn" text="H2" onAction="#handleHeading2" styleClass="format-btn">
+                            <tooltip><Tooltip text="Heading 2"/></tooltip>
+                        </Button>
+                        <Button fx:id="heading3Btn" text="H3" onAction="#handleHeading3" styleClass="format-btn">
+                            <tooltip><Tooltip text="Heading 3"/></tooltip>
+                        </Button>
+                        <Separator orientation="VERTICAL" styleClass="format-separator"/>
+                        <Button fx:id="boldBtn" text="B" onAction="#handleBold" styleClass="format-btn format-bold">
+                            <tooltip><Tooltip text="Bold (Ctrl+B)"/></tooltip>
+                        </Button>
+                        <Button fx:id="italicBtn" text="I" onAction="#handleItalic" styleClass="format-btn format-italic">
+                             <tooltip><Tooltip text="Italic (Ctrl+I)"/></tooltip>
+                        </Button>
+                        <Button fx:id="strikeBtn" text="S" onAction="#handleUnderline" styleClass="format-btn format-strike">
+                            <tooltip><Tooltip text="Strikethrough"/></tooltip>
+                        </Button>
+                        <Button fx:id="underlineBtn" text="U" onAction="#handleRealUnderline" styleClass="format-btn format-underline">
+                            <tooltip><Tooltip text="Underline"/></tooltip>
+                        </Button>
+                        <Separator orientation="VERTICAL" styleClass="format-separator"/>
+                        <Button fx:id="highlightBtn" text="Hi" onAction="#handleHighlight" styleClass="format-btn">
+                            <tooltip><Tooltip text="Highlight"/></tooltip>
+                        </Button>
+                        <Button fx:id="linkBtn" text="Lk" onAction="#handleLink" styleClass="format-btn">
+                            <tooltip><Tooltip text="Insert link (Ctrl+K)"/></tooltip>
+                        </Button>
+                        <Button fx:id="imageBtn" text="Img" onAction="#handleImage" styleClass="format-btn">
+                            <tooltip><Tooltip text="Insert image"/></tooltip>
+                        </Button>
+                        <Separator orientation="VERTICAL" styleClass="format-separator"/>
+                        <Button fx:id="todoBtn" text="[ ]" onAction="#handleTodoList" styleClass="format-btn">
+                            <tooltip><Tooltip text="Checkbox"/></tooltip>
+                        </Button>
+                        <Button fx:id="bulletBtn" text="-" onAction="#handleBulletList" styleClass="format-btn">
+                            <tooltip><Tooltip text="Bullet list"/></tooltip>
+                        </Button>
+                        <Button fx:id="numberBtn" text="1." onAction="#handleNumberedList" styleClass="format-btn">
+                            <tooltip><Tooltip text="Numbered list"/></tooltip>
+                        </Button>
+                        <Separator orientation="VERTICAL" styleClass="format-separator"/>
+                        <Button fx:id="quoteBtn" text="&gt;" onAction="#handleQuote" styleClass="format-btn">
+                            <tooltip><Tooltip text="Blockquote"/></tooltip>
+                        </Button>
+                        <Button fx:id="codeBtn" text="&lt;/&gt;" onAction="#handleCode" styleClass="format-btn">
+                            <tooltip><Tooltip text="Code block"/></tooltip>
+                        </Button>
+                    </HBox>
+                </ScrollPane>
+                <Label fx:id="wordCountLabel" text="0 words" styleClass="word-count"/>
+            </HBox>
+        </VBox>
+        
+        <!-- Preview Pane -->
+        <VBox fx:id="previewPane" styleClass="preview-pane">
+            <HBox styleClass="preview-header">
+                <padding>
+                    <Insets top="8" right="12" bottom="8" left="12"/>
+                </padding>
+                <Label text="Preview" styleClass="preview-label"/>
+            </HBox>
+            <WebView fx:id="previewWebView" VBox.vgrow="ALWAYS"/>
+        </VBox>
+    </SplitPane>
+</VBox>
