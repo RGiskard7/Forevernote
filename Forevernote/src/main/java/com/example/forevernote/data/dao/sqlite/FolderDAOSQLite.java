@@ -34,7 +34,7 @@ import com.example.forevernote.exceptions.InvalidParameterException;
 public class FolderDAOSQLite implements FolderDAO {
 
 	// SQL Queries
-	private static final String INSERT_FOLDER_SQL = "INSERT INTO folders (folder_id, title, created_date) VALUES (?, ?, ?)";
+	private static final String INSERT_FOLDER_SQL = "INSERT INTO folders (folder_id, parent_id, title, created_date) VALUES (?, ?, ?, ?)";
 
 	private static final String SELECT_EXIST_TITLE = "SELECT COUNT(*) FROM folders WHERE title = ? AND is_deleted = 0";
 
@@ -100,8 +100,14 @@ public class FolderDAOSQLite implements FolderDAO {
 		try (PreparedStatement pstmt = connection.prepareStatement(INSERT_FOLDER_SQL)) {
 
 			pstmt.setString(1, newId);
-			pstmt.setString(2, folder.getTitle());
-			pstmt.setString(3, DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
+			if (folder.getParent() != null && folder.getParent().getId() != null
+					&& !"ROOT".equals(folder.getParent().getId())) {
+				pstmt.setString(2, folder.getParent().getId());
+			} else {
+				pstmt.setNull(2, java.sql.Types.VARCHAR);
+			}
+			pstmt.setString(3, folder.getTitle());
+			pstmt.setString(4, DateTimeFormatter.ISO_INSTANT.format(Instant.now()));
 			pstmt.executeUpdate();
 
 			connection.commit();

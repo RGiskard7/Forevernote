@@ -262,7 +262,7 @@ public class PluginContext {
         if (eventBus != null) {
             return eventBus.subscribe(eventType, handler);
         }
-        return null;
+        return EventBus.Subscription.NO_OP;
     }
 
     /**

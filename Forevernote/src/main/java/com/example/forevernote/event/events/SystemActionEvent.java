@@ -5,6 +5,12 @@ import com.example.forevernote.event.AppEvent;
 /**
  * Event fired when a broad system action is requested from the UI (Menu or
  * Toolbar).
+ * 
+ * Contract:
+ * - Mutating actions (e.g. SAVE, DELETE) must be handled by a single owner to
+ *   avoid re-publication loops.
+ * - Controllers should not re-publish the same action from their action
+ *   handler.
  */
 public class SystemActionEvent extends AppEvent {
     public enum ActionType {

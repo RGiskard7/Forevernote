@@ -150,7 +150,6 @@ public class EventBus {
                 ((Consumer<T>) handler).accept(event);
             } catch (Exception e) {
                 logger.severe("Error handling event " + event.getClass().getSimpleName() + ": " + e.getMessage());
-                e.printStackTrace();
             }
         }
     }
@@ -178,6 +177,23 @@ public class EventBus {
      * Represents a subscription that can be cancelled.
      */
     public static class Subscription {
+        /**
+         * No-op subscription used when a real subscription cannot be created.
+         * This avoids returning null and keeps caller code null-safe.
+         */
+        public static final Subscription NO_OP = new Subscription(() -> {
+        }) {
+            @Override
+            public void cancel() {
+                // intentionally no-op
+            }
+
+            @Override
+            public boolean isCancelled() {
+                return false;
+            }
+        };
+
         private final Runnable unsubscribe;
         private boolean cancelled = false;
         

@@ -271,10 +271,6 @@ public class NoteDAOSQLite implements NoteDAO {
 	// Retrieval Methods
 	@Override
 	public List<Note> fetchNotesByFolderId(String folderId) {
-		if (folderId == null || folderId.isEmpty()) {
-			throw new InvalidParameterException("Invalid folder ID or provided list is null");
-		}
-
 		List<Note> list = new ArrayList<>();
 
 		String sql = (folderId == null || folderId.isEmpty() || "ROOT".equals(folderId))

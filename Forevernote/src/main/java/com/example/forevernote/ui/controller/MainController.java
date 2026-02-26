@@ -1294,8 +1294,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     /**
      * Loads plugins from the plugins/ directory.
-     * All plugins (including built-in ones) must be in plugins/ as JAR files.
-     * The core application is completely decoupled from specific plugins.
+     * Policy:
+     * - Keep a minimal core plugin set bundled with the app (currently Mermaid).
+     * - Load all optional/community plugins from plugins/ as external JAR files.
      */
     private void loadExternalPlugins() {
         try {
@@ -2199,11 +2200,26 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             editorController.loadNote(note);
         }
 
+        Note activeNote = getCurrentNote();
+        if (activeNote == null) {
+            if (tagsFlowPane != null) {
+                tagsFlowPane.getChildren().clear();
+            }
+            if (modifiedDateLabel != null) {
+                modifiedDateLabel.setText("");
+            }
+            if (previewWebView != null) {
+                updatePreview();
+            }
+            updateStatus(getString("status.no_note_selected"));
+            return;
+        }
+
         // Load tags
-        loadNoteTags(getCurrentNote());
+        loadNoteTags(activeNote);
 
         // Update metadata
-        updateNoteMetadata(getCurrentNote());
+        updateNoteMetadata(activeNote);
 
         // Ensure WebView has correct background color based on theme
         if (previewWebView != null && !previewWebView.getStyleClass().contains("webview-theme")) {
@@ -2222,13 +2238,22 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         // Refresh favorites list to show current favorite status
         sidebarController.loadFavorites();
 
-        updateStatus(java.text.MessageFormat.format(getString("status.note_loaded"), getCurrentNote().getTitle()));
+        updateStatus(java.text.MessageFormat.format(getString("status.note_loaded"), activeNote.getTitle()));
     }
 
     /**
      * Load tags for a note.
      */
     private void loadNoteTags(Note note) {
+        if (tagsFlowPane == null) {
+            return;
+        }
+
+        if (note == null || note.getId() == null || note.getId().isEmpty()) {
+            tagsFlowPane.getChildren().clear();
+            return;
+        }
+
         try {
             List<Tag> tags = noteDAO.fetchTags(note.getId());
             tagsFlowPane.getChildren().clear();
@@ -2282,6 +2307,37 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      * Update note metadata display.
      */
     private void updateNoteMetadata(Note note) {
+        if (note == null) {
+            if (modifiedDateLabel != null) {
+                modifiedDateLabel.setText("");
+            }
+            if (infoCreatedLabel != null) {
+                infoCreatedLabel.setText("-");
+            }
+            if (infoModifiedLabel != null) {
+                infoModifiedLabel.setText("-");
+            }
+            if (infoWordsLabel != null) {
+                infoWordsLabel.setText("0");
+            }
+            if (infoCharsLabel != null) {
+                infoCharsLabel.setText("0");
+            }
+            if (infoLatitudeLabel != null) {
+                infoLatitudeLabel.setText(java.text.MessageFormat.format(getString("info.lat"), "-"));
+            }
+            if (infoLongitudeLabel != null) {
+                infoLongitudeLabel.setText(java.text.MessageFormat.format(getString("info.lon"), "-"));
+            }
+            if (infoAuthorLabel != null) {
+                infoAuthorLabel.setText(java.text.MessageFormat.format(getString("info.author"), "-"));
+            }
+            if (infoSourceUrlLabel != null) {
+                infoSourceUrlLabel.setText(java.text.MessageFormat.format(getString("info.source"), "-"));
+            }
+            return;
+        }
+
         // Update the modified date in the tags bar (subtle format)
         if (modifiedDateLabel != null) {
             String modifiedText = note.getModifiedDate() != null
@@ -2995,8 +3051,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     @FXML
     private void handleSave(ActionEvent event) {
-        if (eventBus != null) {
-            eventBus.publish(new SystemActionEvent(SystemActionEvent.ActionType.SAVE));
+        if (editorController != null) {
+            editorController.handleSave();
+        }
+        refreshNotesList();
+        if (sidebarController != null) {
+            sidebarController.loadRecentNotes();
+            sidebarController.loadFavorites();
         }
     }
 
@@ -3004,9 +3065,38 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      * Refresh the notes list to reflect current state.
      */
     private void refreshNotesList() {
-        if (currentFolder == null) {
-        } else {
-            handleFolderSelection(currentFolder);
+        if (notesListController == null) {
+            return;
+        }
+
+        switch (currentFilterType) {
+            case "folder":
+                if (currentFolder != null) {
+                    notesListController.loadNotesForFolder(currentFolder);
+                } else {
+                    notesListController.loadAllNotes();
+                }
+                break;
+            case "tag":
+                if (currentTag != null && currentTag.getTitle() != null) {
+                    notesListController.loadNotesForTag(currentTag.getTitle());
+                } else {
+                    notesListController.loadAllNotes();
+                }
+                break;
+            case "favorites":
+                sidebarController.loadFavorites();
+                break;
+            case "search":
+                String searchText = toolbarController != null && toolbarController.getSearchField() != null
+                        ? toolbarController.getSearchField().getText()
+                        : "";
+                notesListController.performSearch(searchText);
+                break;
+            case "all":
+            default:
+                notesListController.loadAllNotes();
+                break;
         }
 
         // Also refresh grid view if active
@@ -3036,16 +3126,28 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
         }
 
+        shutdownApplication();
+        Platform.exit();
+        System.exit(0);
+    }
+
+    /**
+     * Gracefully shuts down runtime resources.
+     */
+    public void shutdownApplication() {
         try {
+            if (pluginManager != null) {
+                pluginManager.shutdownAll();
+            }
+            com.example.forevernote.plugin.PluginLoader.closeAllClassLoaders();
+
             if (connection != null && !connection.isClosed()) {
                 SQLiteDB db = SQLiteDB.getInstance();
                 db.closeConnection(connection);
             }
         } catch (Exception e) {
-            logger.warning("Error closing database connection: " + e.getMessage());
+            logger.warning("Error during shutdown: " + e.getMessage());
         }
-
-        System.exit(0);
     }
 
     @FXML
@@ -4168,7 +4270,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     handleNewTag(null);
                     break;
                 case SAVE:
-                    handleSave(null);
+                    // SAVE is handled by EditorController via SystemActionEvent subscription.
+                    // Avoid duplicate processing here.
                     break;
                 case SAVE_ALL:
                     handleSaveAll(null);

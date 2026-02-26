@@ -77,7 +77,8 @@ public interface NoteDAO {
     /**
      * Fetches all notes that belong to a specific folder.
      *
-     * @param folderId The ID of the folder.
+     * @param folderId The ID of the folder. If null, empty, or "ROOT", notes at
+     *                 root level are returned.
      * @return A list of notes inside the specified folder.
      */
     public List<Note> fetchNotesByFolderId(String folderId);

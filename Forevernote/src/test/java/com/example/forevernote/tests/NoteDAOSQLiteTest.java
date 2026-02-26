@@ -207,6 +207,27 @@ class NoteDAOSQLiteTest {
     }
 
     @Test
+    public void testFetchRootNotesWithNullOrRootFolderId() throws SQLException {
+        Note rootNote = new Note("Root Title", "Root Content");
+        noteDAO.createNote(rootNote);
+
+        Folder folder = new Folder("Folder Root Contract");
+        folderDAO.createFolder(folder);
+
+        Note folderNote = new Note("Folder Title", "Folder Content");
+        noteDAO.createNote(folderNote);
+        folderDAO.addNote(folder, folderNote);
+
+        List<Note> rootFromNull = noteDAO.fetchNotesByFolderId((String) null);
+        List<Note> rootFromRootId = noteDAO.fetchNotesByFolderId("ROOT");
+
+        assertEquals(1, rootFromNull.size());
+        assertEquals("Root Title", rootFromNull.get(0).getTitle());
+        assertEquals(1, rootFromRootId.size());
+        assertEquals("Root Title", rootFromRootId.get(0).getTitle());
+    }
+
+    @Test
     public void testAddAndRemoveTag() throws SQLException {
         Note note = new Note("Test Title", "Test Content");
         String noteId = noteDAO.createNote(note);

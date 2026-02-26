@@ -58,6 +58,7 @@ public class Main extends Application {
             FXMLLoader loader = new FXMLLoader(getClass()
                     .getResource("/com/example/forevernote/ui/view/MainView.fxml"), bundle);
             Scene scene = new Scene(loader.load(), 1200, 800);
+            MainController mainController = loader.getController();
 
             var cssResource = getClass().getResource("/com/example/forevernote/ui/css/modern-theme.css");
             if (cssResource != null) {
@@ -80,6 +81,11 @@ public class Main extends Application {
             primaryStage.setScene(scene);
             primaryStage.setMinWidth(800);
             primaryStage.setMinHeight(600);
+            primaryStage.setOnCloseRequest(event -> {
+                if (mainController != null) {
+                    mainController.shutdownApplication();
+                }
+            });
             primaryStage.show();
 
             // macOS focus workaround

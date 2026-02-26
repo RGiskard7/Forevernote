@@ -122,6 +122,9 @@ public class SQLiteDB {
         try {
             Class.forName("org.sqlite.JDBC");
             connection = DriverManager.getConnection(databaseUrl);
+            try (Statement pragma = connection.createStatement()) {
+                pragma.execute("PRAGMA foreign_keys = ON");
+            }
             connection.setAutoCommit(false);
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Error opening database connection: " + e.getMessage(), e);

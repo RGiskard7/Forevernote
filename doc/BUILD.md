@@ -97,6 +97,14 @@ The scripts automatically:
 - Configure the Java module-path correctly
 - Launch the application
 
+### 4. Run Hardening Phase Gate
+
+For phase-by-phase hardening validation (tests + package + manual smoke checklist):
+
+```bash
+./scripts/smoke-phase-gate.sh
+```
+
 ## Build Methods
 
 ### Method 1: Using Build Scripts (Recommended)
@@ -573,4 +581,3 @@ The project uses Maven with the following key plugins:
 - The application is **offline-first** - no network connection required
 - Database and logs are stored locally in `Forevernote/data/` and `Forevernote/logs/`
 - The build process does **not** create runtime directories (`data/`, `logs/`) - these are created automatically when the application starts
-
