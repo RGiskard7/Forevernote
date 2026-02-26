@@ -10,48 +10,48 @@ import com.example.forevernote.event.AppEvent;
  * @since 1.1.0
  */
 public final class FolderEvents {
-    
+
     private FolderEvents() {
         // Prevent instantiation
     }
-    
+
     /**
      * Event fired when a folder is selected.
      */
     public static class FolderSelectedEvent extends AppEvent {
         private final Folder folder;
-        
+
         public FolderSelectedEvent(Folder folder) {
             super("FolderTree");
             this.folder = folder;
         }
-        
+
         public Folder getFolder() {
             return folder;
         }
     }
-    
+
     /**
      * Event fired when a folder is created.
      */
     public static class FolderCreatedEvent extends AppEvent {
         private final Folder folder;
         private final Folder parentFolder;
-        
+
         public FolderCreatedEvent(Folder folder, Folder parentFolder) {
             this.folder = folder;
             this.parentFolder = parentFolder;
         }
-        
+
         public Folder getFolder() {
             return folder;
         }
-        
+
         public Folder getParentFolder() {
             return parentFolder;
         }
     }
-    
+
     /**
      * Event fired when a folder is renamed.
      */
@@ -59,47 +59,47 @@ public final class FolderEvents {
         private final Folder folder;
         private final String oldName;
         private final String newName;
-        
+
         public FolderRenamedEvent(Folder folder, String oldName, String newName) {
             this.folder = folder;
             this.oldName = oldName;
             this.newName = newName;
         }
-        
+
         public Folder getFolder() {
             return folder;
         }
-        
+
         public String getOldName() {
             return oldName;
         }
-        
+
         public String getNewName() {
             return newName;
         }
     }
-    
+
     /**
      * Event fired when a folder is deleted.
      */
     public static class FolderDeletedEvent extends AppEvent {
-        private final int folderId;
+        private final String folderId;
         private final String folderTitle;
-        
-        public FolderDeletedEvent(int folderId, String folderTitle) {
+
+        public FolderDeletedEvent(String folderId, String folderTitle) {
             this.folderId = folderId;
             this.folderTitle = folderTitle;
         }
-        
-        public int getFolderId() {
+
+        public String getFolderId() {
             return folderId;
         }
-        
+
         public String getFolderTitle() {
             return folderTitle;
         }
     }
-    
+
     /**
      * Event fired when folders should be refreshed.
      */

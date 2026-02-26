@@ -1,7 +1,11 @@
 package com.example.forevernote.ui.controller;
 
 import com.example.forevernote.event.EventBus;
+import com.example.forevernote.event.events.NoteEvents;
 import com.example.forevernote.event.events.SystemActionEvent;
+import com.example.forevernote.data.models.Note;
+import com.example.forevernote.service.NoteService;
+import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
@@ -9,9 +13,17 @@ import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebView;
 
+import java.util.Optional;
+import java.util.ResourceBundle;
+
 public class EditorController {
 
     private EventBus eventBus;
+    private NoteService noteService;
+    private ResourceBundle bundle;
+
+    private Note currentNote;
+    private boolean isModified = false;
 
     @FXML
     private VBox editorContainer;
@@ -72,6 +84,23 @@ public class EditorController {
 
     public void setEventBus(EventBus eventBus) {
         this.eventBus = eventBus;
+        subscribeToEvents();
+    }
+
+    public void setServices(NoteService noteService) {
+        this.noteService = noteService;
+    }
+
+    public void setBundle(ResourceBundle bundle) {
+        this.bundle = bundle;
+    }
+
+    public Note getCurrentNote() {
+        return currentNote;
+    }
+
+    public boolean isModified() {
+        return isModified;
     }
 
     // --- GETTERS ---
@@ -321,6 +350,270 @@ public class EditorController {
     private void publish(SystemActionEvent.ActionType actionType) {
         if (eventBus != null) {
             eventBus.publish(new SystemActionEvent(actionType));
+        }
+    }
+
+    private void subscribeToEvents() {
+        if (eventBus == null)
+            return;
+
+        eventBus.subscribe(SystemActionEvent.class, event -> {
+            Platform.runLater(() -> {
+                switch (event.getActionType()) {
+                    case BOLD:
+                        insertMarkdownFormat("**", "**");
+                        break;
+                    case ITALIC:
+                        insertMarkdownFormat("*", "*");
+                        break;
+                    case UNDERLINE:
+                        insertMarkdownFormat("<u>", "</u>");
+                        break;
+                    case STRIKE:
+                        insertMarkdownFormat("~~", "~~");
+                        break;
+                    case HIGHLIGHT:
+                        insertMarkdownFormat("==", "==");
+                        break;
+                    case HEADING1:
+                        insertLinePrefix("# ");
+                        break;
+                    case HEADING2:
+                        insertLinePrefix("## ");
+                        break;
+                    case HEADING3:
+                        insertLinePrefix("### ");
+                        break;
+                    case BULLET_LIST:
+                        insertLinePrefix("- ");
+                        break;
+                    case NUMBERED_LIST:
+                        insertLinePrefix("1. ");
+                        break;
+                    case TODO_LIST:
+                        insertTodoList();
+                        break;
+                    case QUOTE:
+                        insertLinePrefix("> ");
+                        break;
+                    case CODE:
+                        insertCodeBlock();
+                        break;
+                    case LINK:
+                        handleLink();
+                        break;
+                    case IMAGE:
+                        handleImage();
+                        break;
+                    case SAVE:
+                        handleSave();
+                        break;
+                    default:
+                        break;
+                }
+            });
+        });
+
+        // Listen for internal text changes to set isModified
+        if (noteContentArea != null) {
+            noteContentArea.textProperty().addListener((obs, oldVal, newVal) -> {
+                if (currentNote != null
+                        && !newVal.equals(currentNote.getContent() != null ? currentNote.getContent() : "")) {
+                    isModified = true;
+                    if (eventBus != null) {
+                        eventBus.publish(new NoteEvents.NoteModifiedEvent(currentNote));
+                    }
+                }
+            });
+        }
+
+        if (noteTitleField != null) {
+            noteTitleField.textProperty().addListener((obs, oldVal, newVal) -> {
+                if (currentNote != null
+                        && !newVal.equals(currentNote.getTitle() != null ? currentNote.getTitle() : "")) {
+                    isModified = true;
+                    if (eventBus != null) {
+                        eventBus.publish(new NoteEvents.NoteModifiedEvent(currentNote));
+                    }
+                }
+            });
+        }
+    }
+
+    public void loadNote(Note note) {
+        if (note == null) {
+            currentNote = null;
+            if (noteTitleField != null)
+                noteTitleField.clear();
+            if (noteContentArea != null)
+                noteContentArea.clear();
+            isModified = false;
+            return;
+        }
+
+        if (isModified && currentNote != null) {
+            handleSave();
+        }
+
+        if (noteService != null) {
+            Optional<Note> optionalNote = noteService.getNoteById(note.getId());
+            currentNote = optionalNote.orElse(note);
+        } else {
+            currentNote = note;
+        }
+
+        if (noteTitleField != null)
+            noteTitleField.setText(currentNote.getTitle() != null ? currentNote.getTitle() : "");
+        if (noteContentArea != null)
+            noteContentArea.setText(currentNote.getContent() != null ? currentNote.getContent() : "");
+
+        isModified = false;
+    }
+
+    public void handleSave() {
+        if (currentNote != null && isModified && noteService != null) {
+            if (noteTitleField != null)
+                currentNote.setTitle(noteTitleField.getText());
+            if (noteContentArea != null)
+                currentNote.setContent(noteContentArea.getText());
+            noteService.updateNote(currentNote);
+            isModified = false;
+
+            if (eventBus != null) {
+                eventBus.publish(new NoteEvents.NoteSavedEvent(currentNote));
+            }
+        }
+    }
+
+    private void insertMarkdownFormat(String prefix, String suffix) {
+        if (noteContentArea == null)
+            return;
+
+        String selectedText = noteContentArea.getSelectedText();
+        if (selectedText != null && !selectedText.isEmpty()) {
+            String formatted = prefix + selectedText + suffix;
+            noteContentArea.replaceSelection(formatted);
+        } else {
+            int caretPos = noteContentArea.getCaretPosition();
+            String text = noteContentArea.getText() != null ? noteContentArea.getText() : "";
+            String newText = text.substring(0, caretPos) + prefix + suffix + text.substring(caretPos);
+            noteContentArea.setText(newText);
+            noteContentArea.positionCaret(caretPos + prefix.length());
+        }
+        noteContentArea.requestFocus();
+        isModified = true;
+    }
+
+    private void insertLinePrefix(String prefix) {
+        if (noteContentArea == null)
+            return;
+        int caretPos = noteContentArea.getCaretPosition();
+        String text = noteContentArea.getText() != null ? noteContentArea.getText() : "";
+
+        int lineStart = text.lastIndexOf('\n', caretPos - 1) + 1;
+        String lineText = text.substring(lineStart, caretPos);
+
+        if (lineText.trim().isEmpty() && lineStart == caretPos) {
+            String newText = text.substring(0, caretPos) + prefix + text.substring(caretPos);
+            noteContentArea.setText(newText);
+            noteContentArea.positionCaret(caretPos + prefix.length());
+        } else {
+            String newText = text.substring(0, caretPos) + "\n" + prefix + text.substring(caretPos);
+            noteContentArea.setText(newText);
+            noteContentArea.positionCaret(caretPos + prefix.length() + 1);
+        }
+        noteContentArea.requestFocus();
+        isModified = true;
+    }
+
+    private void insertTodoList() {
+        if (noteContentArea == null)
+            return;
+        int caretPos = noteContentArea.getCaretPosition();
+        String text = noteContentArea.getText();
+        String newLine = "- [ ] ";
+        int lineStart = text.lastIndexOf('\n', caretPos - 1) + 1;
+        String lineText = text.substring(lineStart, caretPos);
+
+        if (lineText.trim().isEmpty()) {
+            String newText = text.substring(0, caretPos) + newLine + text.substring(caretPos);
+            noteContentArea.setText(newText);
+            noteContentArea.positionCaret(caretPos + newLine.length());
+        } else {
+            String newText = text.substring(0, caretPos) + "\n" + newLine + text.substring(caretPos);
+            noteContentArea.setText(newText);
+            noteContentArea.positionCaret(caretPos + newLine.length() + 1);
+        }
+        noteContentArea.requestFocus();
+        isModified = true;
+    }
+
+    private void insertCodeBlock() {
+        if (noteContentArea == null)
+            return;
+        String selectedText = noteContentArea.getSelectedText();
+        if (selectedText != null && selectedText.contains("\n")) {
+            insertMarkdownFormat("```\n", "\n```");
+        } else {
+            insertMarkdownFormat("`", "`");
+        }
+    }
+
+    private void handleLink() {
+        if (noteContentArea == null)
+            return;
+        TextInputDialog dialog = new TextInputDialog("https://");
+        dialog.setTitle("Insert Link");
+        dialog.setHeaderText("Enter URL:");
+        dialog.setContentText("URL:");
+
+        Optional<String> result = dialog.showAndWait();
+        if (result.isPresent() && !result.get().trim().isEmpty()) {
+            String url = result.get().trim();
+            String selectedText = noteContentArea.getSelectedText();
+            String linkText = (selectedText != null && !selectedText.isEmpty()) ? selectedText : "link text";
+            String markdownLink = "[" + linkText + "](" + url + ")";
+
+            if (selectedText != null && !selectedText.isEmpty()) {
+                noteContentArea.replaceSelection(markdownLink);
+            } else {
+                int caretPos = noteContentArea.getCaretPosition();
+                String text = noteContentArea.getText();
+                String newText = text.substring(0, caretPos) + markdownLink + text.substring(caretPos);
+                noteContentArea.setText(newText);
+                noteContentArea.positionCaret(caretPos + markdownLink.length());
+            }
+            noteContentArea.requestFocus();
+            isModified = true;
+        }
+    }
+
+    private void handleImage() {
+        if (noteContentArea == null)
+            return;
+        TextInputDialog dialog = new TextInputDialog("");
+        dialog.setTitle("Insert Image");
+        dialog.setHeaderText("Enter image URL or path:");
+        dialog.setContentText("Image:");
+
+        Optional<String> result = dialog.showAndWait();
+        if (result.isPresent() && !result.get().trim().isEmpty()) {
+            String imagePath = result.get().trim();
+            String selectedText = noteContentArea.getSelectedText();
+            String altText = (selectedText != null && !selectedText.isEmpty()) ? selectedText : "image";
+            String markdownImage = "![" + altText + "](" + imagePath + ")";
+
+            if (selectedText != null && !selectedText.isEmpty()) {
+                noteContentArea.replaceSelection(markdownImage);
+            } else {
+                int caretPos = noteContentArea.getCaretPosition();
+                String text = noteContentArea.getText();
+                String newText = text.substring(0, caretPos) + markdownImage + text.substring(caretPos);
+                noteContentArea.setText(newText);
+                noteContentArea.positionCaret(caretPos + markdownImage.length());
+            }
+            noteContentArea.requestFocus();
+            isModified = true;
         }
     }
 }

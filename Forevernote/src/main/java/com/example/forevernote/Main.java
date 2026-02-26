@@ -12,9 +12,6 @@ import javafx.scene.Scene;
 import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
-import com.example.forevernote.config.LoggerConfig;
-import com.example.forevernote.data.database.SQLiteDB;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,6 +22,12 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.ResourceBundle;
 import java.util.logging.Logger;
+import java.util.prefs.Preferences;
+import java.util.Locale;
+
+import com.example.forevernote.config.LoggerConfig;
+import com.example.forevernote.data.database.SQLiteDB;
+import com.example.forevernote.ui.controller.MainController;
 
 /**
  * Main application class for Forevernote.
@@ -47,18 +50,16 @@ public class Main extends Application {
             performAutomaticBackup();
             initializeDatabase();
 
-            java.util.prefs.Preferences prefs = java.util.prefs.Preferences
-                    .userNodeForPackage(com.example.forevernote.ui.controller.MainController.class);
-            String lang = prefs.get("language", java.util.Locale.getDefault().getLanguage());
-            java.util.Locale locale = new java.util.Locale(lang);
-            java.util.Locale.setDefault(locale);
+            Preferences prefs = Preferences.userNodeForPackage(MainController.class);
+            String lang = prefs.get("language", Locale.getDefault().getLanguage());
+            Locale locale = new Locale(lang);
+            Locale.setDefault(locale);
             ResourceBundle bundle = ResourceBundle.getBundle("com.example.forevernote.i18n.messages", locale);
-            FXMLLoader loader = new FXMLLoader(getClass().getResource(
-                    "/com/example/forevernote/ui/view/MainView.fxml"), bundle);
+            FXMLLoader loader = new FXMLLoader(getClass()
+                    .getResource("/com/example/forevernote/ui/view/MainView.fxml"), bundle);
             Scene scene = new Scene(loader.load(), 1200, 800);
 
-            var cssResource = getClass().getResource(
-                    "/com/example/forevernote/ui/css/modern-theme.css");
+            var cssResource = getClass().getResource("/com/example/forevernote/ui/css/modern-theme.css");
             if (cssResource != null) {
                 scene.getStylesheets().add(cssResource.toExternalForm());
             }
@@ -99,8 +100,7 @@ public class Main extends Application {
 
     private void initializeDatabase() {
         try {
-            String dbPath = new File(AppDataDirectory.getDataDirectory(), "database.db")
-                    .getAbsolutePath();
+            String dbPath = new File(AppDataDirectory.getDataDirectory(), "database.db").getAbsolutePath();
 
             SQLiteDB.configure(dbPath);
             SQLiteDB.getInstance().initDatabase();
@@ -133,8 +133,8 @@ public class Main extends Application {
             logger.info("Automatic backup created: " + targetDb.getName());
 
             // Clean up old backups (keep only last 5)
-            File[] backups = backupsDir
-                    .listFiles((dir, name) -> name.startsWith("database-auto-backup-") && name.endsWith(".db"));
+            File[] backups = backupsDir.listFiles((dir, name) -> name.startsWith("database-auto-backup-")
+                    && name.endsWith(".db"));
             if (backups != null && backups.length > 5) {
                 Arrays.sort(backups, Comparator.comparingLong(File::lastModified));
                 for (int i = 0; i < backups.length - 5; i++) {

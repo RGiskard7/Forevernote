@@ -66,20 +66,36 @@ public final class NoteEvents {
      * Event fired when a note is deleted.
      */
     public static class NoteDeletedEvent extends AppEvent {
-        private final int noteId;
+        private final String noteId;
         private final String noteTitle;
 
-        public NoteDeletedEvent(int noteId, String noteTitle) {
+        public NoteDeletedEvent(String noteId, String noteTitle) {
             this.noteId = noteId;
             this.noteTitle = noteTitle;
         }
 
-        public int getNoteId() {
+        public String getNoteId() {
             return noteId;
         }
 
         public String getNoteTitle() {
             return noteTitle;
+        }
+    }
+
+    /**
+     * Event fired when an item has been permanently deleted from trash.
+     */
+    public static class TrashItemDeletedEvent extends AppEvent {
+        private final com.example.forevernote.data.models.interfaces.Component component;
+
+        public TrashItemDeletedEvent(com.example.forevernote.data.models.interfaces.Component component) {
+            super("TrashList");
+            this.component = component;
+        }
+
+        public com.example.forevernote.data.models.interfaces.Component getComponent() {
+            return component;
         }
     }
 
@@ -185,6 +201,39 @@ public final class NoteEvents {
 
         public String getStatusMessage() {
             return statusMessage;
+        }
+    }
+
+    /**
+     * Event fired when the current note is modified in the editor but not yet
+     * saved.
+     */
+    public static class NoteModifiedEvent extends AppEvent {
+        private final Note note;
+
+        public NoteModifiedEvent(Note note) {
+            super("Editor");
+            this.note = note;
+        }
+
+        public Note getNote() {
+            return note;
+        }
+    }
+
+    /**
+     * Event fired when a note is updated (e.g., moved to a folder).
+     */
+    public static class NoteUpdatedEvent extends AppEvent {
+        private final Note note;
+
+        public NoteUpdatedEvent(Note note) {
+            super("NotesList");
+            this.note = note;
+        }
+
+        public Note getNote() {
+            return note;
         }
     }
 }
