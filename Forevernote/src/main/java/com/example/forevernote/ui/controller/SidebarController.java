@@ -114,6 +114,7 @@ public class SidebarController {
 
     public void setBundle(ResourceBundle b) {
         this.bundle = b;
+        refreshLocalizedRootLabels();
     }
 
     public void setFolderDAO(FolderDAO fd) {
@@ -221,6 +222,26 @@ public class SidebarController {
         vaultRootItem = new TreeItem<>(vaultFolder);
         vaultRootItem.setExpanded(true);
         folderTreeView.getRoot().getChildren().add(vaultRootItem);
+        refreshLocalizedRootLabels();
+    }
+
+    private void refreshLocalizedRootLabels() {
+        if (allNotesItem != null && allNotesItem.getValue() != null) {
+            allNotesItem.getValue().setTitle(getString("app.all_notes"));
+        }
+        if (vaultRootItem != null && vaultRootItem.getValue() != null) {
+            try {
+                Preferences prefs = Preferences.userNodeForPackage(MainController.class);
+                if ("sqlite".equals(prefs.get("storage_type", "sqlite"))) {
+                    vaultRootItem.getValue().setTitle(getString("app.my_notes"));
+                }
+            } catch (Exception e) {
+                logger.warning("Failed to refresh localized root labels: " + e.getMessage());
+            }
+        }
+        if (folderTreeView != null) {
+            folderTreeView.refresh();
+        }
     }
 
     private void initializeTrashTree() {

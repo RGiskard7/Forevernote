@@ -165,7 +165,11 @@ public class NotesListController {
     }
 
     private String getString(String key) {
-        return bundle != null ? bundle.getString(key) : key;
+        return bundle != null && bundle.containsKey(key) ? bundle.getString(key) : key;
+    }
+
+    private boolean isAllNotesVirtualFolder(Folder folder) {
+        return folder != null && "ALL_NOTES_VIRTUAL".equals(folder.getId());
     }
 
     public void setEventBus(EventBus eventBus) {
@@ -426,7 +430,7 @@ public class NotesListController {
             // Set parent folder
             if (currentFolder != null && currentFolder.getId() != null &&
                     !"ROOT".equals(currentFolder.getId()) &&
-                    !currentFolder.getTitle().equals("All Notes")) {
+                    !isAllNotesVirtualFolder(currentFolder)) {
                 newNote.setParent(currentFolder);
             }
 
@@ -437,7 +441,7 @@ public class NotesListController {
 
             if (isFileSystem && currentFolder != null && currentFolder.getId() != null &&
                     !"ROOT".equals(currentFolder.getId()) &&
-                    !currentFolder.getTitle().equals("All Notes")) {
+                    !isAllNotesVirtualFolder(currentFolder)) {
 
                 String pathSeparator = File.separator;
                 String folderPath = currentFolder.getId();
@@ -456,7 +460,7 @@ public class NotesListController {
 
             if (currentFolder != null && currentFolder.getId() != null &&
                     !"ROOT".equals(currentFolder.getId()) &&
-                    !currentFolder.getTitle().equals("All Notes")) {
+                    !isAllNotesVirtualFolder(currentFolder)) {
                 folderService.addNoteToFolder(currentFolder, newNote);
             }
 

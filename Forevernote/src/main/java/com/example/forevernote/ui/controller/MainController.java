@@ -267,6 +267,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         return key; // Fallback to key if not found
     }
 
+    private boolean isAllNotesVirtualFolder(Folder folder) {
+        return folder != null && "ALL_NOTES_VIRTUAL".equals(folder.getId());
+    }
+
     /**
      * Initialize the controller after FXML loading.
      */
@@ -2621,7 +2625,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             // Set parent folder regardless of storage
             if (currentFolder != null && currentFolder.getId() != null &&
                     !"ROOT".equals(currentFolder.getId()) &&
-                    !currentFolder.getTitle().equals("All Notes")) {
+                    !isAllNotesVirtualFolder(currentFolder)) {
                 newNote.setParent(currentFolder);
             }
 
@@ -2632,7 +2636,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             if (isFileSystem && currentFolder != null && currentFolder.getId() != null &&
                     !"ROOT".equals(currentFolder.getId()) &&
-                    !currentFolder.getTitle().equals("All Notes")) {
+                    !isAllNotesVirtualFolder(currentFolder)) {
 
                 String pathSeparator = File.separator;
                 String folderPath = currentFolder.getId();
@@ -2654,7 +2658,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             if (currentFolder != null && currentFolder.getId() != null &&
                     !"ROOT".equals(currentFolder.getId()) &&
-                    !currentFolder.getTitle().equals("All Notes")) {
+                    !isAllNotesVirtualFolder(currentFolder)) {
                 folderService.addNoteToFolder(currentFolder, newNote);
             }
 
@@ -2692,10 +2696,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         // Determine if we should create in root or as subfolder
         boolean createInRoot = (currentFolder == null ||
-                currentFolder.getTitle().equals(getString("app.all_notes")) ||
-                currentFolder.getTitle().equals("All Notes") ||
-                currentFolder.getTitle().equals("📚 All Notes") ||
-                currentFolder.getTitle().endsWith("All Notes")); // Robust check
+                isAllNotesVirtualFolder(currentFolder));
 
         String headerText = createInRoot
                 ? getString("dialog.new_folder.header_root")
@@ -2740,8 +2741,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      */
     private void handleNewSubfolder(ActionEvent event) {
         if (currentFolder == null ||
-                currentFolder.getTitle().equals("All Notes") ||
-                currentFolder.getTitle().equals("📚 All Notes")) {
+                isAllNotesVirtualFolder(currentFolder)) {
             handleNewFolder(event);
             return;
         }
@@ -2805,7 +2805,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
                     if (isFileSystem && currentFolder != null && currentFolder.getId() != null &&
                             !"ROOT".equals(currentFolder.getId()) &&
-                            !currentFolder.getTitle().equals("All Notes")) {
+                            !isAllNotesVirtualFolder(currentFolder)) {
                         String pathSeparator = File.separator;
                         String folderPath = currentFolder.getId();
                         newNote.setId(folderPath + pathSeparator + safeTitle);
