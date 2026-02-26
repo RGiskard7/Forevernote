@@ -213,6 +213,7 @@ public class SidebarController {
                 vaultName = getString("app.my_notes");
             }
         } catch (Exception e) {
+            logger.warning("Failed to resolve vault name from preferences: " + e.getMessage());
         }
 
         Folder vaultFolder = new Folder(vaultName, null, null);
@@ -258,6 +259,8 @@ public class SidebarController {
                         else
                             count = getNoteCountForFolder(folder);
                     } catch (Exception e) {
+                        logger.warning("Failed to compute folder note count for "
+                                + (folder != null ? folder.getId() : "null") + ": " + e.getMessage());
                     }
                     HBox container = new HBox(6);
                     container.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
@@ -413,6 +416,8 @@ public class SidebarController {
                 loadSubFolders(item, f, visibleIds, comp, active);
             }
         } catch (Exception e) {
+            logger.warning("Failed to load subfolders for "
+                    + (parentFolder != null ? parentFolder.getId() : "null") + ": " + e.getMessage());
         }
     }
 
@@ -539,6 +544,7 @@ public class SidebarController {
                 }
             });
         } catch (Exception e) {
+            logger.warning("Failed to load tags: " + e.getMessage());
         }
     }
 
@@ -556,6 +562,7 @@ public class SidebarController {
             for (int i = 0; i < Math.min(10, cachedRecentNotes.size()); i++)
                 masterRecentList.add(cachedRecentNotes.get(i).getTitle());
         } catch (Exception e) {
+            logger.warning("Failed to load recent notes: " + e.getMessage());
         }
     }
 
@@ -566,6 +573,7 @@ public class SidebarController {
             for (Note n : cachedFavoriteNotes)
                 masterFavoritesList.add(n.getTitle());
         } catch (Exception e) {
+            logger.warning("Failed to load favorite notes: " + e.getMessage());
         }
     }
 
@@ -623,8 +631,9 @@ public class SidebarController {
                         if (c instanceof Folder)
                             folderService.permanentlyDeleteFolder(c.getId());
                 loadTrashTree();
-                publishStatusUpdate("Trash emptied");
+                publishStatusUpdate(getString("status.trash_emptied"));
             } catch (Exception ex) {
+                logger.warning("Failed to empty trash: " + ex.getMessage());
             }
         });
     }
@@ -642,8 +651,9 @@ public class SidebarController {
                     folderDAO.refreshCache();
                 loadFolders();
                 loadTrashTree();
-                publishStatusUpdate("Item restored");
+                publishStatusUpdate(getString("status.item_restored"));
             } catch (Exception e) {
+                logger.warning("Failed to restore trash item: " + e.getMessage());
             }
         }
     }
@@ -662,8 +672,9 @@ public class SidebarController {
                     else if (c instanceof Note)
                         noteService.permanentlyDeleteNote(c.getId());
                     loadTrashTree();
-                    publishStatusUpdate("Item deleted");
+                    publishStatusUpdate(getString("status.item_deleted"));
                 } catch (Exception e) {
+                    logger.warning("Failed to permanently delete trash item: " + e.getMessage());
                 }
             }
         }
@@ -686,6 +697,7 @@ public class SidebarController {
                 folderService.renameFolder(f, name);
                 loadFolders();
             } catch (Exception e) {
+                logger.warning("Failed to rename folder " + (f != null ? f.getId() : "null") + ": " + e.getMessage());
             }
         });
     }
@@ -698,6 +710,7 @@ public class SidebarController {
                 folderService.deleteFolder(f.getId());
                 loadFolders();
             } catch (Exception e) {
+                logger.warning("Failed to delete folder " + (f != null ? f.getId() : "null") + ": " + e.getMessage());
             }
         });
     }
@@ -719,6 +732,7 @@ public class SidebarController {
                     tagService.deleteTag(t.getId());
                     loadTags();
                 } catch (Exception ex) {
+                    logger.warning("Failed to delete tag " + t.getId() + ": " + ex.getMessage());
                 }
             });
         });
