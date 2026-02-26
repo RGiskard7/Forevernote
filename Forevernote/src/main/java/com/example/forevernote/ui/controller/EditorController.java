@@ -562,16 +562,17 @@ public class EditorController {
     private void handleLink() {
         if (noteContentArea == null)
             return;
-        TextInputDialog dialog = new TextInputDialog("https://");
-        dialog.setTitle("Insert Link");
-        dialog.setHeaderText("Enter URL:");
-        dialog.setContentText("URL:");
+        TextInputDialog dialog = new TextInputDialog(getString("dialog.link.default_url", "https://"));
+        dialog.setTitle(getString("dialog.link.title", "Insert Link"));
+        dialog.setHeaderText(getString("dialog.link.header", "Enter URL:"));
+        dialog.setContentText(getString("dialog.link.content", "URL:"));
 
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             String url = result.get().trim();
             String selectedText = noteContentArea.getSelectedText();
-            String linkText = (selectedText != null && !selectedText.isEmpty()) ? selectedText : "link text";
+            String linkText = (selectedText != null && !selectedText.isEmpty()) ? selectedText
+                    : getString("dialog.link.default_text", "link text");
             String markdownLink = "[" + linkText + "](" + url + ")";
 
             if (selectedText != null && !selectedText.isEmpty()) {
@@ -592,15 +593,16 @@ public class EditorController {
         if (noteContentArea == null)
             return;
         TextInputDialog dialog = new TextInputDialog("");
-        dialog.setTitle("Insert Image");
-        dialog.setHeaderText("Enter image URL or path:");
-        dialog.setContentText("Image:");
+        dialog.setTitle(getString("dialog.image.title", "Insert Image"));
+        dialog.setHeaderText(getString("dialog.image.header", "Enter image URL or path:"));
+        dialog.setContentText(getString("dialog.image.content", "Image:"));
 
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
             String imagePath = result.get().trim();
             String selectedText = noteContentArea.getSelectedText();
-            String altText = (selectedText != null && !selectedText.isEmpty()) ? selectedText : "image";
+            String altText = (selectedText != null && !selectedText.isEmpty()) ? selectedText
+                    : getString("dialog.image.default_alt", "image");
             String markdownImage = "![" + altText + "](" + imagePath + ")";
 
             if (selectedText != null && !selectedText.isEmpty()) {
@@ -615,5 +617,12 @@ public class EditorController {
             noteContentArea.requestFocus();
             isModified = true;
         }
+    }
+
+    private String getString(String key, String fallback) {
+        if (bundle == null) {
+            return fallback;
+        }
+        return bundle.containsKey(key) ? bundle.getString(key) : fallback;
     }
 }

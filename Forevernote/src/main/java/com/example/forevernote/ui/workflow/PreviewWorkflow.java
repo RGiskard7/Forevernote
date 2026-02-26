@@ -28,6 +28,7 @@ public class PreviewWorkflow {
         String highlightCss = isDarkTheme ? HLJS_DARK_CSS : HLJS_LIGHT_CSS;
 
         String styleBlock = isDarkTheme ? darkStyles() : lightStyles();
+        String highlightScript = highlightScriptBlock();
 
         return """
                 <!DOCTYPE html>
@@ -45,19 +46,13 @@ public class PreviewWorkflow {
                 %s
                 <script>
                     %s
-                    document.addEventListener('DOMContentLoaded', function() {
-                        document.querySelectorAll('pre code').forEach(function(block) {
-                            hljs.highlightElement(block);
-                        });
-                    });
-                    document.querySelectorAll('pre code').forEach(function(block) {
-                        hljs.highlightElement(block);
-                    });
+                    %s
                 </script>
                 %s
                 </body>
                 </html>
-                """.formatted(injections.head(), highlightCss, styleBlock, html, HLJS_SCRIPT, injections.body());
+                """.formatted(injections.head(), highlightCss, styleBlock, html, HLJS_SCRIPT, highlightScript,
+                injections.body());
     }
 
     public String buildEmptyHtml(boolean isDarkTheme) {
@@ -182,5 +177,15 @@ public class PreviewWorkflow {
             logger.warning("Failed to read preview asset " + resourcePath + ": " + e.getMessage());
             return "";
         }
+    }
+
+    private String highlightScriptBlock() {
+        return """
+                if (typeof hljs !== 'undefined' && hljs && hljs.highlightElement) {
+                    document.querySelectorAll('pre code').forEach(function(block) {
+                        hljs.highlightElement(block);
+                    });
+                }
+                """;
     }
 }

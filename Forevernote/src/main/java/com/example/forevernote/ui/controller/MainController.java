@@ -434,7 +434,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         ButtonType sqliteBtn = new ButtonType(getString("pref.storage.sqlite"));
         ButtonType filesystemBtn = new ButtonType(getString("pref.storage.filesystem"));
-        ButtonType cancelBtn = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType cancelBtn = new ButtonType(getString("action.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
 
         alert.getButtonTypes().setAll(sqliteBtn, filesystemBtn, cancelBtn);
 
@@ -3054,9 +3054,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private void handleFind(ActionEvent event) {
         if (noteContentArea != null) {
             TextInputDialog dialog = new TextInputDialog();
-            dialog.setTitle("Find");
-            dialog.setHeaderText("Find text in note");
-            dialog.setContentText("Search for:");
+            dialog.setTitle(getString("dialog.find.title"));
+            dialog.setHeaderText(getString("dialog.find.header"));
+            dialog.setContentText(getString("dialog.find.content"));
 
             Optional<String> result = dialog.showAndWait();
             if (result.isPresent() && !result.get().trim().isEmpty()) {
@@ -3082,24 +3082,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
 
         Dialog<String> dialog = new Dialog<>();
-        dialog.setTitle("Find and Replace");
-        dialog.setHeaderText("Replace text in note");
+        dialog.setTitle(getString("dialog.replace.title"));
+        dialog.setHeaderText(getString("dialog.replace.header"));
 
-        ButtonType replaceButton = new ButtonType("Replace", ButtonBar.ButtonData.OK_DONE);
-        ButtonType replaceAllButton = new ButtonType("Replace All", ButtonBar.ButtonData.APPLY);
+        ButtonType replaceButton = new ButtonType(getString("action.replace_one"), ButtonBar.ButtonData.OK_DONE);
+        ButtonType replaceAllButton = new ButtonType(getString("action.replace_all"), ButtonBar.ButtonData.APPLY);
         dialog.getDialogPane().getButtonTypes().addAll(replaceButton, replaceAllButton, ButtonType.CANCEL);
 
         VBox content = new VBox(10);
         content.setPadding(new javafx.geometry.Insets(20));
 
         TextField findField = new TextField();
-        findField.setPromptText("Find...");
+        findField.setPromptText(getString("dialog.replace.find_prompt"));
         TextField replaceField = new TextField();
-        replaceField.setPromptText("Replace with...");
+        replaceField.setPromptText(getString("dialog.replace.with_prompt"));
 
         content.getChildren().addAll(
-                new Label("Find:"), findField,
-                new Label("Replace with:"), replaceField);
+                new Label(getString("dialog.replace.find_label")), findField,
+                new Label(getString("dialog.replace.with_label")), replaceField);
 
         dialog.getDialogPane().setContent(content);
         dialog.setResultConverter(buttonType -> {
@@ -3348,7 +3348,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (tagsContainer != null) {
             tagsContainer.setVisible(show);
             tagsContainer.setManaged(show);
-            updateStatus(show ? "Tags bar shown" : "Tags bar hidden");
+            updateStatus(show ? getString("status.tags_bar_shown") : getString("status.tags_bar_hidden"));
         }
     }
 
@@ -3538,10 +3538,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             List<Tag> allTags = tagService.getAllTags();
 
             Dialog<Void> dialog = new Dialog<>();
-            dialog.setTitle("Tags Manager");
-            dialog.setHeaderText("Manage your tags");
+            dialog.setTitle(getString("dialog.tags_manager.title"));
+            dialog.setHeaderText(getString("dialog.tags_manager.header"));
 
-            ButtonType closeButton = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
+            ButtonType closeButton = new ButtonType(getString("action.close"), ButtonBar.ButtonData.CANCEL_CLOSE);
             dialog.getDialogPane().getButtonTypes().add(closeButton);
 
             VBox content = new VBox(10);
@@ -3560,15 +3560,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         HBox hbox = new HBox(10);
                         Label nameLabel = new Label(tag.getTitle());
                         nameLabel.setPrefWidth(200);
-                        Label dateLabel = new Label(tag.getCreatedDate() != null ? tag.getCreatedDate() : "N/A");
+                        Label dateLabel = new Label(
+                                tag.getCreatedDate() != null ? tag.getCreatedDate() : getString("label.not_available"));
                         dateLabel.setStyle("-fx-text-fill: gray;");
 
-                        Button deleteButton = new Button("Delete");
+                        Button deleteButton = new Button(getString("action.delete"));
                         deleteButton.setOnAction(e -> {
                             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-                            confirm.setTitle("Delete Tag");
-                            confirm.setHeaderText("Are you sure you want to delete this tag?");
-                            confirm.setContentText("This will remove the tag from all notes.");
+                            confirm.setTitle(getString("dialog.delete_tag.title"));
+                            confirm.setHeaderText(getString("dialog.tags_manager.delete_header"));
+                            confirm.setContentText(getString("dialog.tags_manager.delete_content"));
                             Optional<ButtonType> result = confirm.showAndWait();
                             if (result.isPresent() && result.get() == ButtonType.OK) {
                                 try {
@@ -3589,7 +3590,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 }
             });
 
-            content.getChildren().add(new Label("All Tags (" + allTags.size() + "):"));
+            content.getChildren().add(new Label(
+                    java.text.MessageFormat.format(getString("dialog.tags_manager.all_tags_count"), allTags.size())));
             content.getChildren().add(tagListView);
             dialog.getDialogPane().setContent(content);
             dialog.getDialogPane().setPrefSize(500, 400);
@@ -3604,26 +3606,26 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private void handlePreferences(ActionEvent event) {
         Dialog<Void> dialog = new Dialog<>();
-        dialog.setTitle("Preferences");
-        dialog.setHeaderText("Application Settings");
+        dialog.setTitle(getString("dialog.preferences.title"));
+        dialog.setHeaderText(getString("dialog.preferences.header"));
 
-        ButtonType closeButton = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType closeButton = new ButtonType(getString("action.close"), ButtonBar.ButtonData.CANCEL_CLOSE);
         dialog.getDialogPane().getButtonTypes().add(closeButton);
 
         VBox content = new VBox(15);
         content.setPadding(new javafx.geometry.Insets(20));
 
         // Database location
-        Label dbLabel = new Label("Database Location:");
+        Label dbLabel = new Label(getString("dialog.preferences.db_location"));
         Label dbPathLabel = new Label("Forevernote/data/database.db");
         dbPathLabel.setStyle("-fx-text-fill: gray;");
 
         // Auto-save option (placeholder)
-        Label autoSaveLabel = new Label("Auto-save: Coming soon");
+        Label autoSaveLabel = new Label(getString("dialog.preferences.autosave_placeholder"));
         autoSaveLabel.setStyle("-fx-text-fill: gray;");
 
         content.getChildren().addAll(
-                new Label("General Settings"),
+                new Label(getString("dialog.preferences.general_settings")),
                 dbLabel, dbPathLabel,
                 new Separator(),
                 autoSaveLabel);
@@ -3637,22 +3639,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private void handleDocumentation(ActionEvent event) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Documentation");
-        alert.setHeaderText("Forevernote - User Guide");
-        alert.setContentText(
-                "Forevernote is a free, offline note-taking application.\n\n" +
-                        "Key Features:\n" +
-                        "• Create and organize notes in folders\n" +
-                        "• Tag your notes for easy categorization\n" +
-                        "• Markdown support with live preview\n" +
-                        "• Search across all notes\n" +
-                        "• Keyboard shortcuts for quick access\n" +
-                        "• Ctrl+N: New Note\n" +
-                        "• Ctrl+S: Save\n" +
-                        "• Ctrl+F: Find in note\n" +
-                        "• F9: Toggle Sidebar\n" +
-                        "• F1: Show all shortcuts\n\n" +
-                        "For more information, visit the project repository.");
+        alert.setTitle(getString("dialog.documentation.title"));
+        alert.setHeaderText(getString("dialog.documentation.header"));
+        alert.setContentText(getString("dialog.documentation.content"));
         alert.setResizable(true);
         alert.getDialogPane().setPrefSize(500, 400);
         alert.showAndWait();
@@ -3661,32 +3650,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private void handleKeyboardShortcuts(ActionEvent event) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle("Keyboard Shortcuts");
-        alert.setHeaderText("Available Keyboard Shortcuts");
-        alert.setContentText(
-                "File Operations:\n" +
-                        "  Ctrl+N          New Note\n" +
-                        "  Ctrl+Shift+N    New Folder\n" +
-                        "  Ctrl+S          Save\n" +
-                        "  Ctrl+Shift+S    Save All\n" +
-                        "  Ctrl+E          Export\n" +
-                        "  Ctrl+Q          Exit\n\n" +
-                        "Edit Operations:\n" +
-                        "  Ctrl+Z          Undo\n" +
-                        "  Ctrl+Y          Redo\n" +
-                        "  Ctrl+X          Cut\n" +
-                        "  Ctrl+C          Copy\n" +
-                        "  Ctrl+V          Paste\n" +
-                        "  Ctrl+F          Find\n" +
-                        "  Ctrl+H          Replace\n\n" +
-                        "View Operations:\n" +
-                        "  F9              Toggle Sidebar\n" +
-                        "  Ctrl++          Zoom In\n" +
-                        "  Ctrl+-          Zoom Out\n" +
-                        "  Ctrl+0          Reset Zoom\n\n" +
-                        "Tools:\n" +
-                        "  Ctrl+Shift+F    Search\n" +
-                        "  F1              Show this help");
+        alert.setTitle(getString("dialog.shortcuts.title"));
+        alert.setHeaderText(getString("dialog.shortcuts.header"));
+        alert.setContentText(getString("dialog.shortcuts.content"));
         alert.setResizable(true);
         alert.getDialogPane().setPrefSize(450, 500);
         alert.showAndWait();
@@ -3695,9 +3661,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private void handleAbout(ActionEvent event) {
         Dialog<Void> dialog = new Dialog<>();
-        dialog.setTitle("About Forevernote");
+        dialog.setTitle(getString("dialog.about.title"));
 
-        ButtonType closeButton = new ButtonType("Close", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType closeButton = new ButtonType(getString("action.close"), ButtonBar.ButtonData.CANCEL_CLOSE);
         dialog.getDialogPane().getButtonTypes().add(closeButton);
 
         VBox content = new VBox(16);
@@ -3705,7 +3671,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         content.setAlignment(javafx.geometry.Pos.CENTER);
 
         // App icon and name
-        Label titleLabel = new Label("Forevernote");
+        Label titleLabel = new Label(getString("about.app_name"));
         titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
 
         Label versionLabel = new Label("Version " + com.example.forevernote.AppConfig.getAppVersion());
@@ -3722,7 +3688,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         separator.setPrefWidth(300);
 
         // Tech stack
-        Label techLabel = new Label("Built with Java 17, JavaFX 21, SQLite & CommonMark");
+        Label techLabel = new Label(getString("about.tech_stack"));
         techLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: gray;");
 
         // Copyright
@@ -3730,7 +3696,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         copyrightLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: gray;");
 
         // Developer credit
-        Label developerLabel = new Label("Developed by Edu Díaz (RGiskard7)");
+        Label developerLabel = new Label(getString("about.developer_credit"));
         developerLabel.setStyle("-fx-font-size: 12px; -fx-font-weight: bold;");
 
         content.getChildren().addAll(
@@ -3887,7 +3853,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             boolean isFav = getCurrentNote().isFavorite();
             favoriteButton.setSelected(isFav);
             if (favoriteButton.getTooltip() != null) {
-                favoriteButton.getTooltip().setText(isFav ? "Remove from favorites" : "Add to favorites");
+                favoriteButton.getTooltip()
+                        .setText(isFav ? getString("action.remove_favorite") : getString("action.add_favorite"));
             }
         }
     }

@@ -32,6 +32,7 @@ class PreviewWorkflowTest {
         assertTrue(html.contains("x-test"));
         assertTrue(html.contains("__enhancerLoaded"));
         assertTrue(!html.contains("cdnjs.cloudflare.com"));
+        assertTrue(html.contains("typeof hljs !== 'undefined'"));
     }
 
     @Test
