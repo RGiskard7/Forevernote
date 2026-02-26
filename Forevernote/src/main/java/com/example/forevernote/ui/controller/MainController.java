@@ -41,6 +41,7 @@ import com.example.forevernote.service.TagService;
 import com.example.forevernote.ui.components.CommandPalette;
 import com.example.forevernote.ui.components.PluginManagerDialog;
 import com.example.forevernote.ui.components.QuickSwitcher;
+import com.example.forevernote.ui.workflow.FolderWorkflow;
 import com.example.forevernote.ui.workflow.NoteWorkflow;
 
 /**
@@ -245,6 +246,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private PluginManager pluginManager;
     private PluginManagerDialog pluginManagerDialog;
     private NoteWorkflow noteWorkflow;
+    private FolderWorkflow folderWorkflow;
 
     @FXML
     private java.util.ResourceBundle resources;
@@ -399,6 +401,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             noteDAO = factoryDAO.getNoteDAO();
             tagDAO = factoryDAO.getLabelDAO();
             noteWorkflow = new NoteWorkflow(noteDAO);
+            folderWorkflow = new FolderWorkflow();
 
             // Initialize services
             noteService = new NoteService(noteDAO, folderDAO, tagDAO);
@@ -2135,51 +2138,82 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      * Load notes for selected folder via NotesListController, and update UI layout.
      */
     private void handleFolderSelection(Folder folder) {
-        try {
-            if (folder == null) {
-                return;
-            }
-
-            // Delegating directly to NotesListController
-            if (notesListController != null) {
-                currentFolder = folder;
-                currentTag = null;
-                currentFilterType = "folder";
-                notesListController.loadNotesForFolder(folder);
-            }
-
-            // Ensure notes panel is visible when folder is selected (especially in Stacked
-            // Mode)
-            if (notesPanel != null) {
-                if (isStackedLayout) {
-                    // In stacked layout, ensure navSplitPane is 50/50 (or reasonable split) to show
-                    // notes
-                    if (navSplitPane != null) {
-                        if (notesPanel.getMaxWidth() < 10 || navSplitPane.getDividerPositions().length > 0
-                                && navSplitPane.getDividerPositions()[0] > 0.95) {
-                            notesPanel.setMinWidth(180);
-                            notesPanel.setMaxWidth(Double.MAX_VALUE);
-                            navSplitPane.setDividerPositions(0.5); // Show split
-                        }
-                    }
-                } else {
-                    // In column layout, ensure contentSplitPane shows notes
-                    if (contentSplitPane != null) {
-                        if (notesPanel.getMaxWidth() < 10) {
-                            notesPanel.setMinWidth(180);
-                            notesPanel.setMaxWidth(Double.MAX_VALUE);
-                            contentSplitPane.setDividerPositions(0.25);
-                        }
-                    }
-                }
-                if (toolbarController != null && toolbarController.getNotesPanelToggleBtn() != null)
-                    toolbarController.getNotesPanelToggleBtn().setSelected(true);
-            }
-        } catch (Exception e) {
-            logger.severe(
-                    "Failed to handle folder selection " + (folder != null ? folder.getTitle() : "null") + ": "
-                            + e.getMessage());
+        if (folderWorkflow == null) {
+            folderWorkflow = new FolderWorkflow();
         }
+        folderWorkflow.handleFolderSelection(folder, isStackedLayout, new FolderWorkflow.FolderSelectionPort() {
+            @Override
+            public void setCurrentFolder(Folder selectedFolder) {
+                currentFolder = selectedFolder;
+            }
+
+            @Override
+            public void clearCurrentTag() {
+                currentTag = null;
+            }
+
+            @Override
+            public void setCurrentFilterType(String filterType) {
+                currentFilterType = filterType;
+            }
+
+            @Override
+            public void loadNotesForFolder(Folder selectedFolder) {
+                if (notesListController != null) {
+                    notesListController.loadNotesForFolder(selectedFolder);
+                }
+            }
+
+            @Override
+            public boolean hasNotesPanel() {
+                return notesPanel != null;
+            }
+
+            @Override
+            public double getNotesPanelMaxWidth() {
+                return notesPanel != null ? notesPanel.getMaxWidth() : 0;
+            }
+
+            @Override
+            public void setNotesPanelMinWidth(double width) {
+                if (notesPanel != null) {
+                    notesPanel.setMinWidth(width);
+                }
+            }
+
+            @Override
+            public void setNotesPanelMaxWidth(double width) {
+                if (notesPanel != null) {
+                    notesPanel.setMaxWidth(width);
+                }
+            }
+
+            @Override
+            public double[] getNavDividerPositions() {
+                return navSplitPane != null ? navSplitPane.getDividerPositions() : new double[0];
+            }
+
+            @Override
+            public void setNavDividerPosition(double position) {
+                if (navSplitPane != null) {
+                    navSplitPane.setDividerPositions(position);
+                }
+            }
+
+            @Override
+            public void setContentDividerPosition(double position) {
+                if (contentSplitPane != null) {
+                    contentSplitPane.setDividerPositions(position);
+                }
+            }
+
+            @Override
+            public void setNotesPanelToggleSelected(boolean selected) {
+                if (toolbarController != null && toolbarController.getNotesPanelToggleBtn() != null) {
+                    toolbarController.getNotesPanelToggleBtn().setSelected(selected);
+                }
+            }
+        });
     }
 
     /**
