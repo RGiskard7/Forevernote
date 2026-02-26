@@ -43,6 +43,7 @@ import com.example.forevernote.ui.components.PluginManagerDialog;
 import com.example.forevernote.ui.components.QuickSwitcher;
 import com.example.forevernote.ui.workflow.FolderWorkflow;
 import com.example.forevernote.ui.workflow.NoteWorkflow;
+import com.example.forevernote.ui.workflow.PreviewWorkflow;
 import com.example.forevernote.ui.workflow.TagWorkflow;
 import com.example.forevernote.ui.workflow.ThemeWorkflow;
 
@@ -251,6 +252,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private FolderWorkflow folderWorkflow;
     private TagWorkflow tagWorkflow;
     private ThemeWorkflow themeWorkflow;
+    private PreviewWorkflow previewWorkflow;
 
     @FXML
     private java.util.ResourceBundle resources;
@@ -408,6 +410,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             folderWorkflow = new FolderWorkflow();
             tagWorkflow = new TagWorkflow();
             themeWorkflow = new ThemeWorkflow();
+            previewWorkflow = new PreviewWorkflow();
 
             // Initialize services
             noteService = new NoteService(noteDAO, folderDAO, tagDAO);
@@ -2431,195 +2434,18 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     private void updatePreview() {
-        if (getCurrentNote() != null && previewWebView != null) {
-            String content = noteContentArea.getText();
-            String actualTheme = resolveThemeToApply();
-            boolean isDarkTheme = "dark".equals(actualTheme);
-
-            if (content != null && !content.trim().isEmpty()) {
-                // Convert markdown to HTML
-                String html = com.example.forevernote.util.MarkdownProcessor.markdownToHtml(content);
-
-                // highlight.js theme selection (VS Code style)
-                String highlightTheme = isDarkTheme
-                        ? "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css"
-                        : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs.min.css";
-
-                // Collect injections from plugins
-                StringBuilder headInjections = new StringBuilder();
-                StringBuilder bodyInjections = new StringBuilder();
-
-                for (PreviewEnhancer enhancer : previewEnhancers.values()) {
-                    String head = enhancer.getHeadInjections();
-                    if (head != null && !head.isEmpty()) {
-                        headInjections.append(head).append("\n");
-                    }
-                    String body = enhancer.getBodyInjections();
-                    if (body != null && !body.isEmpty()) {
-                        bodyInjections.append(body).append("\n");
-                    }
-                }
-
-                // Create a complete HTML document with theme-aware styling and syntax
-                // highlighting
-                String fullHtml = "<!DOCTYPE html>\n" +
-                        "<html>\n" +
-                        "<head>\n" +
-                        "    <meta charset=\"UTF-8\">\n" +
-                        "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n" +
-                        "    <link rel=\"stylesheet\" href=\"" + highlightTheme + "\">\n" +
-                        "    <script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js\"></script>\n"
-                        + headInjections.toString() + "\n" +
-                        "    <style>\n" +
-                        "        @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=JetBrains+Mono:wght@400;500&display=swap');\n"
-                        +
-                        "        html { " +
-                        (isDarkTheme ? "background-color: #1E1E1E;" : "background-color: #FFFFFF;") +
-                        " margin: 0; padding: 0; width: 100%; height: 100%; }\n" +
-                        (isDarkTheme ?
-                        // Dark theme styles with improved code styling
-                                "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; padding: 20px; line-height: 1.6; color: #E0E0E0; background-color: #1E1E1E; }\n"
-                                        +
-                                        "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; color: #FFFFFF; }\n"
-                                        +
-                                        "        h1 { font-size: 2em; border-bottom: 2px solid #3a3a3a; padding-bottom: 0.3em; }\n"
-                                        +
-                                        "        h2 { font-size: 1.5em; border-bottom: 1px solid #3a3a3a; padding-bottom: 0.3em; }\n"
-                                        +
-                                        "        h3 { font-size: 1.25em; }\n" +
-                                        "        /* Inline code */\n" +
-                                        "        code:not(pre code) { background-color: #2d2d2d; color: #ce9178; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.9em; }\n"
-                                        +
-                                        "        /* Code blocks with syntax highlighting */\n" +
-                                        "        pre { background-color: #1e1e1e; border: 1px solid #3a3a3a; border-radius: 6px; margin: 1em 0; overflow-x: auto; }\n"
-                                        +
-                                        "        pre code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 13px; line-height: 1.5; padding: 16px !important; display: block; background: transparent !important; color: inherit; }\n"
-                                        +
-                                        "        /* Language label */\n" +
-                                        "        pre[class*='language-']::before { content: attr(data-lang); position: absolute; top: 0; right: 0; padding: 2px 8px; font-size: 10px; color: #888; background: #2d2d2d; border-bottom-left-radius: 4px; }\n"
-                                        +
-                                        "        pre { position: relative; }\n" +
-                                        "        /* Additional highlight.js overrides for dark theme */\n" +
-                                        "        .hljs { background: transparent !important; }\n" +
-                                        "        blockquote { border-left: 4px solid #818CF8; margin: 0; padding-left: 20px; color: #B3B3B3; background-color: #252525; padding: 10px 20px; border-radius: 4px; }\n"
-                                        +
-                                        "        ul, ol { margin: 1em 0; padding-left: 2em; color: #E0E0E0; }\n" +
-                                        "        li { margin: 0.5em 0; }\n" +
-                                        "        /* Task lists */\n" +
-                                        "        input[type='checkbox'] { margin-right: 8px; transform: scale(1.2); }\n"
-                                        +
-                                        "        table { border-collapse: collapse; width: 100%; margin: 1em 0; }\n" +
-                                        "        table th, table td { border: 1px solid #3a3a3a; padding: 10px; text-align: left; }\n"
-                                        +
-                                        "        table th { background-color: #252525; font-weight: 600; color: #FFFFFF; }\n"
-                                        +
-                                        "        table td { background-color: #1E1E1E; color: #E0E0E0; }\n" +
-                                        "        table tr:hover td { background-color: #252525; }\n" +
-                                        "        a { color: #818CF8; text-decoration: none; }\n" +
-                                        "        a:hover { color: #A5B4FC; text-decoration: underline; }\n" +
-                                        "        img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }\n"
-                                        +
-                                        "        hr { border: none; border-top: 1px solid #3a3a3a; margin: 2em 0; }\n" +
-                                        "        strong { color: #FFFFFF; font-weight: 600; }\n" +
-                                        "        em { font-style: italic; }\n" +
-                                        "        mark { background-color: #564a00; color: #ffd700; padding: 1px 3px; border-radius: 2px; }\n"
-                                        +
-                                        "        /* Emoji support */\n" +
-                                        "        * { font-variant-emoji: emoji; }\n"
-                                :
-                                // Light theme styles with improved code styling
-                                "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Color Emoji', sans-serif; padding: 20px; line-height: 1.6; color: #24292e; background-color: #FFFFFF; }\n"
-                                        +
-                                        "        h1, h2, h3, h4, h5, h6 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; color: #24292e; }\n"
-                                        +
-                                        "        h1 { font-size: 2em; border-bottom: 2px solid #eaecef; padding-bottom: 0.3em; }\n"
-                                        +
-                                        "        h2 { font-size: 1.5em; border-bottom: 1px solid #eaecef; padding-bottom: 0.3em; }\n"
-                                        +
-                                        "        h3 { font-size: 1.25em; }\n" +
-                                        "        /* Inline code */\n" +
-                                        "        code:not(pre code) { background-color: #f0f0f0; color: #d63384; padding: 2px 6px; border-radius: 4px; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.9em; }\n"
-                                        +
-                                        "        /* Code blocks with syntax highlighting */\n" +
-                                        "        pre { background-color: #f8f8f8; border: 1px solid #e1e4e8; border-radius: 6px; margin: 1em 0; overflow-x: auto; }\n"
-                                        +
-                                        "        pre code { font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace; font-size: 13px; line-height: 1.5; padding: 16px !important; display: block; background: transparent !important; color: inherit; }\n"
-                                        +
-                                        "        /* Language label */\n" +
-                                        "        pre[class*='language-']::before { content: attr(data-lang); position: absolute; top: 0; right: 0; padding: 2px 8px; font-size: 10px; color: #666; background: #e8e8e8; border-bottom-left-radius: 4px; }\n"
-                                        +
-                                        "        pre { position: relative; }\n" +
-                                        "        /* Additional highlight.js overrides for light theme */\n" +
-                                        "        .hljs { background: transparent !important; }\n" +
-                                        "        blockquote { border-left: 4px solid #6366F1; margin: 0; padding-left: 20px; color: #57606a; background-color: #f6f8fa; padding: 10px 20px; border-radius: 4px; }\n"
-                                        +
-                                        "        ul, ol { margin: 1em 0; padding-left: 2em; color: #24292e; }\n" +
-                                        "        li { margin: 0.5em 0; }\n" +
-                                        "        /* Task lists */\n" +
-                                        "        input[type='checkbox'] { margin-right: 8px; transform: scale(1.2); }\n"
-                                        +
-                                        "        table { border-collapse: collapse; width: 100%; margin: 1em 0; }\n" +
-                                        "        table th, table td { border: 1px solid #e1e4e8; padding: 10px; text-align: left; }\n"
-                                        +
-                                        "        table th { background-color: #f6f8fa; font-weight: 600; color: #24292e; }\n"
-                                        +
-                                        "        table td { background-color: #FFFFFF; color: #24292e; }\n" +
-                                        "        table tr:hover td { background-color: #f6f8fa; }\n" +
-                                        "        a { color: #0969da; text-decoration: none; }\n" +
-                                        "        a:hover { color: #0550ae; text-decoration: underline; }\n" +
-                                        "        img { max-width: 100%; height: auto; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }\n"
-                                        +
-                                        "        hr { border: none; border-top: 1px solid #e1e4e8; margin: 2em 0; }\n" +
-                                        "        strong { color: #24292e; font-weight: 600; }\n" +
-                                        "        em { font-style: italic; }\n" +
-                                        "        mark { background-color: #fff8c5; padding: 1px 3px; border-radius: 2px; }\n"
-                                        +
-                                        "        /* Emoji support */\n" +
-                                        "        * { font-variant-emoji: emoji; }\n")
-                        +
-                        "    </style>\n" +
-                        "</head>\n" +
-                        "<body>\n" +
-                        html +
-                        "\n<script>\n" +
-                        "    // Initialize syntax highlighting\n" +
-                        "    document.addEventListener('DOMContentLoaded', function() {\n" +
-                        "        document.querySelectorAll('pre code').forEach(function(block) {\n" +
-                        "            hljs.highlightElement(block);\n" +
-                        "        });\n" +
-                        "    });\n" +
-                        "    // Run immediately in case DOM is already loaded\n" +
-                        "    document.querySelectorAll('pre code').forEach(function(block) {\n" +
-                        "        hljs.highlightElement(block);\n" +
-                        "    });\n" +
-                        "</script>\n" +
-                        bodyInjections.toString() + "\n" +
-                        "</body>\n" +
-                        "</html>";
-
-                previewWebView.getEngine().loadContent(fullHtml, "text/html");
-            } else {
-                // Empty preview with theme-aware background
-                String emptyHtml = "<!DOCTYPE html>\n" +
-                        "<html>\n" +
-                        "<head>\n" +
-                        "    <meta charset=\"UTF-8\">\n" +
-                        "    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n" +
-                        "    <style>\n" +
-                        "        html, body { " +
-                        (isDarkTheme ? "color: #B3B3B3; background-color: #1E1E1E;"
-                                : "color: #71717A; background-color: #FFFFFF;")
-                        +
-                        " margin: 0; padding: 0; width: 100%; height: 100%; }\n" +
-                        "        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; }\n"
-                        +
-                        "    </style>\n" +
-                        "</head>\n" +
-                        "<body></body>\n" +
-                        "</html>";
-                previewWebView.getEngine().loadContent(emptyHtml, "text/html");
-            }
+        if (previewWebView == null || getCurrentNote() == null) {
+            return;
         }
+        if (previewWorkflow == null) {
+            previewWorkflow = new PreviewWorkflow();
+        }
+        String content = noteContentArea != null ? noteContentArea.getText() : "";
+        boolean isDarkTheme = "dark".equals(resolveThemeToApply());
+        String html = (content != null && !content.trim().isEmpty())
+                ? previewWorkflow.buildPreviewHtml(content, isDarkTheme, previewEnhancers.values())
+                : previewWorkflow.buildEmptyHtml(isDarkTheme);
+        previewWebView.getEngine().loadContent(html, "text/html");
     }
 
     /**
