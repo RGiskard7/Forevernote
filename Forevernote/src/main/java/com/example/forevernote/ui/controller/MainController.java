@@ -111,10 +111,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private Tag currentTag = null;
 
     // Cached data to avoid recreating listeners
-    private List<Note> cachedAllNotes = new ArrayList<>();
-    private List<Note> cachedFavoriteNotes = new ArrayList<>();
-    private boolean recentListenerAdded = false;
-    private boolean favoritesListenerAdded = false;
     private boolean trashListenerAdded = false;
 
     // FXML UI Components
@@ -149,7 +145,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private TreeItem<Folder> vaultRootItem;
     private TreeItem<Folder> allNotesItem;
 
-    private boolean folderSortAscending = true;
+    // List References for FXML injection mapping
     private ListView<String> tagListView;
     private TextField filterTagsField;
     private ListView<String> recentNotesListView;
@@ -158,19 +154,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private TextField filterFavoritesField;
     private TreeView<Component> trashTreeView;
     private TextField filterTrashField;
-
-    // Master lists for filtering
-    private javafx.collections.ObservableList<String> masterTagsList = javafx.collections.FXCollections
-            .observableArrayList();
-    private javafx.collections.ObservableList<String> masterRecentList = javafx.collections.FXCollections
-            .observableArrayList();
-    private javafx.collections.ObservableList<String> masterFavoritesList = javafx.collections.FXCollections
-            .observableArrayList();
-
-    private boolean tagSortAscending = true;
-    private boolean recentSortAscending = true;
-    private boolean favoritesSortAscending = true;
-    private boolean trashSortAscending = true;
 
     // Layout State
     private boolean isStackedLayout = false;
@@ -415,9 +398,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             // Load initial data
             loadFolders();
-            loadRecentNotes();
-            loadTags();
-            loadFavorites();
+            loadAllNotes();
+            sidebarController.loadTags();
+            sidebarController.loadRecentNotes();
+            sidebarController.loadFavorites();
             loadTrashTree();
 
             // Initialize keyboard shortcuts after scene is ready
@@ -607,7 +591,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                             // Regular subfolder
                             handleFolderSelection(selectedFolder);
                         }
-                    } else {
                         // Deselection
                         currentFolder = null;
                         loadAllNotes();
@@ -621,58 +604,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             });
         }
 
-        // Initialize other lists and filters
-        setupFilteredList(tagListView, masterTagsList, filterTagsField);
-        setupFilteredList(recentNotesListView, masterRecentList, filterRecentField);
-        setupFilteredList(favoritesListView, masterFavoritesList, filterFavoritesField);
         if (filterTrashField != null) {
             filterTrashField.textProperty().addListener((obs, oldVal, newVal) -> loadTrashTree());
         }
     }
 
-    private void setupFilteredList(ListView<String> listView, javafx.collections.ObservableList<String> masterList,
-            TextField filterField) {
-        if (listView != null) {
-            javafx.collections.transformation.FilteredList<String> filteredList = new javafx.collections.transformation.FilteredList<>(
-                    masterList, p -> true);
-            listView.setItems(filteredList);
-
-            if (filterField != null) {
-                filterField.textProperty().addListener((observable, oldValue, newValue) -> {
-                    filteredList.setPredicate(item -> {
-                        if (newValue == null || newValue.isEmpty()) {
-                            return true;
-                        }
-                        String lowerCaseFilter = newValue.toLowerCase();
-                        return item.toLowerCase().contains(lowerCaseFilter);
-                    });
-                });
-            }
-        }
-    }
-
-    @FXML
-    private void handleSortTags(ActionEvent event) {
-        tagSortAscending = !tagSortAscending;
-        sortStringList(masterTagsList, tagSortAscending);
-    }
-
-    @FXML
-    private void handleSortRecent(ActionEvent event) {
-        recentSortAscending = !recentSortAscending;
-        sortStringList(masterRecentList, recentSortAscending);
-    }
-
-    @FXML
-    private void handleSortFavorites(ActionEvent event) {
-        favoritesSortAscending = !favoritesSortAscending;
-        sortStringList(masterFavoritesList, favoritesSortAscending);
-    }
-
     @FXML
     private void handleSortTrash(ActionEvent event) {
-        trashSortAscending = !trashSortAscending;
-        // sortStringList(masterTrashList, trashSortAscending);
         // TODO: Implement sort for Trash TreeView
         loadTrashTree();
     }
@@ -720,7 +658,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     @FXML
     private void handleSortFolders(ActionEvent event) {
-        folderSortAscending = !folderSortAscending;
+        // No longer using folderSortAscending, just reload to apply default sort
         loadFolders();
     }
 
@@ -762,6 +700,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             if (folder == null)
                 return 0;
 
+            // This method is called from setupFolderTreeDragAndDrop, where folderId is not
+            // available.
+            // It should probably be `folder.getId()`
             String folderId = folder.getId();
 
             if (folderId == null || "ALL_NOTES_VIRTUAL".equals(folderId)) {
@@ -1034,6 +975,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                                 Platform.runLater(() -> {
                                     refreshNotesList();
                                     loadFolders();
+                                    sidebarController.loadFavorites();
+                                    sidebarController.loadTags();
+                                    sidebarController.loadRecentNotes();
                                 });
                             }
                         } catch (Exception e) {
@@ -1243,7 +1187,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             commandPalette = new CommandPalette(stage);
             boolean isDark = "dark".equals(currentTheme) ||
                     ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
-            commandPalette.setDarkTheme(isDark);
             commandPalette.setCommandHandler(this::executeCommand);
 
             // Initialize Quick Switcher
@@ -1374,6 +1317,70 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 updateThemeMenuSelection();
             });
         });
+
+        // Listen for folder selections from the sidebar
+        eventBus.subscribe(FolderEvents.FolderSelectedEvent.class, event -> {
+            Platform.runLater(() -> {
+                Folder selectedFolder = event.getFolder();
+                if (selectedFolder != null) {
+                    String id = selectedFolder.getId();
+                    if (id == null && "INVISIBLE_ROOT".equals(selectedFolder.getTitle())) {
+                        return; // Ignore invisible root
+                    }
+
+                    if ("ALL_NOTES_VIRTUAL".equals(id)) {
+                        currentFolder = null;
+                        loadAllNotes();
+                    } else {
+                        currentFolder = selectedFolder;
+                        handleFolderSelection(selectedFolder);
+                    }
+                } else {
+                    currentFolder = null;
+                    loadAllNotes();
+                }
+            });
+        });
+
+        // Listen for tag selections from the sidebar
+        eventBus.subscribe(TagEvents.TagSelectedEvent.class, event -> {
+            Platform.runLater(() -> {
+                Tag tag = event.getTag();
+                if (tag != null && tag.getTitle() != null) {
+                    loadNotesForTag(tag.getTitle());
+                } else {
+                    loadAllNotes();
+                }
+            });
+        });
+
+        // Listen for Note open requests (from Recent or Favorites lists, or plugins)
+        eventBus.subscribe(NoteEvents.NoteOpenRequestEvent.class, event -> {
+            Platform.runLater(() -> {
+                Note note = event.getNote();
+                if (note != null && note.getTitle() != null) {
+                    // Find the full note object (recent/favorites lists only have titles for now)
+                    Optional<Note> fullNote = noteService.getAllNotes().stream()
+                            .filter(n -> note.getTitle().equals(n.getTitle()))
+                            .findFirst();
+                    if (fullNote.isPresent()) {
+                        loadNoteInEditor(fullNote.get());
+                    }
+                }
+            });
+        });
+
+        // Listen for trash item selections
+        eventBus.subscribe(NoteEvents.TrashItemSelectedEvent.class, event -> {
+            Platform.runLater(() -> {
+                com.example.forevernote.data.models.interfaces.Component component = event.getComponent();
+                if (component instanceof Note) {
+                    loadNoteInEditor((Note) component);
+                } else if (component instanceof Folder) {
+                    handleFolderSelection((Folder) component);
+                }
+            });
+        });
     }
 
     private void subscribeToPluginEvents() {
@@ -1391,14 +1398,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             });
         });
 
-        // Listen for notes refresh requests from plugins
+        // Plugin system events
         eventBus.subscribe(NoteEvents.NotesRefreshRequestedEvent.class, event -> {
             Platform.runLater(() -> {
                 loadFolders();
                 loadAllNotes();
-                loadRecentNotes();
-                loadTags();
-                loadFavorites();
+                sidebarController.loadRecentNotes();
+                sidebarController.loadTags();
+                sidebarController.loadFavorites();
                 logger.info("Refreshed notes from plugin request");
             });
         });
@@ -1828,7 +1835,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     /**
      * Gets the plugin manager for external access.
-     * 
+     *
      * @return The plugin manager, or null if not initialized
      */
     public PluginManager getPluginManager() {
@@ -1961,10 +1968,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 loadAllNotes();
                 break;
             case "Go to Favorites":
-                loadFavorites();
+                sidebarController.loadFavorites();
                 break;
             case "Go to Recent":
-                loadRecentNotes();
+                sidebarController.loadRecentNotes();
                 break;
 
             // Tools commands
@@ -2673,8 +2680,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             // 3. Sort
             Comparator<Folder> comparator = (f1, f2) -> f1.getTitle().compareToIgnoreCase(f2.getTitle());
-            if (!folderSortAscending)
-                comparator = comparator.reversed();
+            // No longer using folderSortAscending, default to A-Z
             Collections.sort(rootFolders, comparator);
 
             // 4. Build Tree
@@ -2896,7 +2902,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         updatePinnedButtonIcon();
 
         // Refresh favorites list to show current favorite status
-        loadFavorites();
+        sidebarController.loadFavorites();
 
         // Publish event for plugins (Outline, etc.)
         if (eventBus != null) {
@@ -3003,123 +3009,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             String sourceVal = (note.getSourceUrl() != null && !note.getSourceUrl().isEmpty()) ? note.getSourceUrl()
                     : "-";
             infoSourceUrlLabel.setText(java.text.MessageFormat.format(getString("info.source"), sourceVal));
-        }
-    }
-
-    /**
-     * Load recent notes.
-     */
-    private void loadRecentNotes() {
-        try {
-            cachedAllNotes = noteService.getAllNotes();
-            // Sort by modified date (simplified)
-            cachedAllNotes.sort((a, b) -> {
-                String dateA = a.getModifiedDate() != null ? a.getModifiedDate()
-                        : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
-                String dateB = b.getModifiedDate() != null ? b.getModifiedDate()
-                        : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
-                return dateB.compareTo(dateA);
-            });
-
-            List<String> recentTitles = cachedAllNotes.stream()
-                    .limit(10)
-                    .map(Note::getTitle)
-                    .toList();
-
-            masterRecentList.clear();
-            masterRecentList.addAll(recentTitles);
-
-            // Add listener only once
-            if (!recentListenerAdded) {
-                recentListenerAdded = true;
-                recentNotesListView.getSelectionModel().selectedItemProperty().addListener(
-                        (observable, oldValue, newValue) -> {
-                            if (newValue != null) {
-                                // Find and load the recent note from cached list
-                                Optional<Note> recentNote = cachedAllNotes.stream()
-                                        .filter(n -> n.getTitle() != null && n.getTitle().equals(newValue))
-                                        .findFirst();
-                                if (recentNote.isPresent()) {
-                                    loadNoteInEditor(recentNote.get());
-                                }
-                            }
-                        });
-            }
-        } catch (Exception e) {
-            logger.warning("Failed to load recent notes: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Load favorites.
-     */
-    private void loadFavorites() {
-        try {
-            List<Note> allNotes = noteDAO.fetchAllNotes();
-            cachedFavoriteNotes = allNotes.stream()
-                    .filter(Note::isFavorite)
-                    .toList();
-
-            List<String> favoriteTitles = cachedFavoriteNotes.stream()
-                    .map(Note::getTitle)
-                    .limit(10)
-                    .toList();
-
-            Platform.runLater(() -> {
-                masterFavoritesList.clear();
-                masterFavoritesList.addAll(favoriteTitles);
-                sortStringList(masterFavoritesList, favoritesSortAscending);
-            });
-
-            // Add listener only once
-            if (!favoritesListenerAdded) {
-                favoritesListenerAdded = true;
-                favoritesListView.getSelectionModel().selectedItemProperty().addListener(
-                        (observable, oldValue, newValue) -> {
-                            if (newValue != null) {
-                                // Find and load the favorite note from cached list
-                                Optional<Note> favoriteNote = cachedFavoriteNotes.stream()
-                                        .filter(n -> n.getTitle() != null && n.getTitle().equals(newValue))
-                                        .findFirst();
-                                if (favoriteNote.isPresent()) {
-                                    // Update context to show favorites
-                                    currentFilterType = "favorites";
-                                    currentFolder = null;
-                                    currentTag = null;
-
-                                    // Use Platform.runLater for the entire UI update to avoid race conditions
-                                    // during selection
-                                    Platform.runLater(() -> {
-                                        notesListView.getSelectionModel().clearSelection();
-                                        notesListView.getItems().clear();
-
-                                        List<Note> currentFavorites = new ArrayList<>(cachedFavoriteNotes);
-                                        if (!currentFavorites.isEmpty()) {
-                                            notesListView.getSelectionModel().clearSelection();
-                                            notesListView.getItems().setAll(currentFavorites);
-                                            sortNotes(sortComboBox.getValue());
-                                            noteCountLabel.setText(currentFavorites.size() + " favorite notes");
-
-                                            final Note noteToLoad = favoriteNote.get();
-                                            try {
-                                                int index = notesListView.getItems().indexOf(noteToLoad);
-                                                if (index >= 0 && index < notesListView.getItems().size()) {
-                                                    notesListView.getSelectionModel().select(index);
-                                                }
-                                                loadNoteInEditor(noteToLoad);
-                                            } catch (Exception e) {
-                                                logger.warning(
-                                                        "Could not select favorite note in list: " + e.getMessage());
-                                                loadNoteInEditor(noteToLoad);
-                                            }
-                                        }
-                                    });
-                                }
-                            }
-                        });
-            }
-        } catch (Exception e) {
-            logger.warning("Failed to load favorites: " + e.getMessage());
         }
     }
 
@@ -3449,80 +3338,28 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     /**
-     * Load tags with context menu support.
+     * Load notes for a specific tag.
      */
-    private void loadTags() {
+    private void loadNotesForTag(String tagName) {
         try {
-            List<Tag> tags = tagService.getAllTags();
-            // Do not clear listView directly if bound
-            // tagListView.getItems().clear();
-
-            tagListView.setCellFactory(lv -> {
-                ListCell<String> cell = new ListCell<String>() {
-                    @Override
-                    protected void updateItem(String item, boolean empty) {
-                        super.updateItem(item, empty);
-                        if (empty || item == null) {
-                            setText(null);
-                            setContextMenu(null);
-                        } else {
-                            setText("# " + item);
-                            Tag tag = findTagByTitle(item);
-                            if (tag != null) {
-                                setContextMenu(createTagContextMenu(tag));
-                            }
-                        }
-                    }
-                };
-                return cell;
-            });
-
-            masterTagsList.clear(); // Update master list instead of ListView items directly
-            for (Tag tag : tags) {
-                masterTagsList.add(tag.getTitle());
-            }
-            // Sort tags A-Z by default or current sort
-            Collections.sort(masterTagsList,
-                    (s1, s2) -> tagSortAscending ? s1.compareToIgnoreCase(s2) : s2.compareToIgnoreCase(s1));
-
-            tagListView.getSelectionModel().selectedItemProperty().addListener(
-                    (observable, oldValue, newValue) -> {
-                        if (newValue != null) {
-                            handleTagSelection(newValue);
-                        } else {
-                            loadAllNotes();
-                        }
-                    });
-        } catch (Exception e) {
-            logger.warning("Failed to load tags: " + e.getMessage());
-        }
-    }
-
-    /**
-     * Handle tag selection to filter notes.
-     */
-    private void handleTagSelection(String tagName) {
-        try {
-            // Find tag by name
-            List<Tag> allTags = tagService.getAllTags();
-            Optional<Tag> selectedTag = allTags.stream()
-                    .filter(t -> t.getTitle().equals(tagName))
-                    .findFirst();
-
-            if (selectedTag.isPresent()) {
-                Tag tag = selectedTag.get();
-                currentTag = tag;
-                currentFolder = null; // Clear folder selection when filtering by tag
-                currentFilterType = "tag";
-                List<Note> notesWithTag = tagService.getNotesWithTag(tag);
-                notesListView.getSelectionModel().clearSelection();
-                notesListView.getItems().setAll(notesWithTag);
-                sortNotes(sortComboBox.getValue());
-                noteCountLabel.setText(notesWithTag.size() + " notes with tag: " + tagName);
-                updateStatus(java.text.MessageFormat.format(getString("status.filtered_tag"), tagName));
+            if (tagName != null && !tagName.isEmpty()) {
+                Tag tag = tagService.getTagByTitle(tagName).orElse(null);
+                if (tag != null) {
+                    currentFolder = null; // Clear folder selection when filtering by tag
+                    currentFilterType = "tag";
+                    currentTag = tag;
+                    List<Note> notesWithTag = tagService.getNotesWithTag(tag);
+                    notesListView.getSelectionModel().clearSelection();
+                    notesListView.getItems().setAll(notesWithTag);
+                    sortNotes(sortComboBox.getValue());
+                    noteCountLabel.setText(notesWithTag.size() + " notes with tag: " + tagName);
+                    updateStatus(java.text.MessageFormat.format(getString("status.filtered_tag"),
+                            tagName));
+                }
             }
         } catch (Exception e) {
-            logger.severe("Failed to filter notes by tag " + tagName + ": " + e.getMessage());
+            logger.severe("Failed to filter notes by tag " + tagName + ": " +
+                    e.getMessage());
             updateStatus("Error filtering by tag");
         }
     }
@@ -3536,7 +3373,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             if (currentFolder != null) {
                 handleFolderSelection(currentFolder);
             } else if (currentTag != null) {
-                handleTagSelection(currentTag.getTitle());
+                loadNotesForTag(currentTag.getTitle());
             } else {
                 loadAllNotes();
             }
@@ -3986,7 +3823,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     noteDAO.addTag(currentNote, tag);
                     loadNoteTags(currentNote);
                     // Update tags list in sidebar
-                    loadTags();
+                    sidebarController.loadTags();
                     updateStatus(java.text.MessageFormat.format(getString("status.tag_added"), tagName));
                 }
             }
@@ -4180,7 +4017,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             loadNoteInEditor(newNote);
 
             // Refresh recent notes to include new note
-            loadRecentNotes();
+            sidebarController.loadRecentNotes();
 
             // Refresh folder tree note counts and list visually
             folderTreeView.refresh();
@@ -4344,7 +4181,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             // Refresh lists
             refreshNotesList();
-            loadRecentNotes();
+            sidebarController.loadRecentNotes();
 
             // Show result
             String message = java.text.MessageFormat.format(getString("status.imported_notes"), imported);
@@ -4384,7 +4221,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         });
 
                 // Refresh favorites list in case favorite status changed
-                loadFavorites();
+                sidebarController.loadFavorites();
 
                 // Publish NoteSavedEvent for plugins (Outline, etc.)
                 if (eventBus != null) {
@@ -4499,8 +4336,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
                 // Refresh ALL lists
                 refreshNotesList();
-                loadRecentNotes();
-                loadFavorites();
+                sidebarController.loadRecentNotes();
+                sidebarController.loadFavorites();
                 loadTrashTree();
                 folderTreeView.refresh(); // Update note counts in UI
 
@@ -5040,7 +4877,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         // Determine actual theme to use (especially for 'system' mode)
         String themeToApply = currentTheme;
-        if ("system".equalsIgnoreCase(currentTheme)) {
+        if ("system".equalsIgnoreCase(themeToApply)) {
             themeToApply = detectSystemTheme();
         }
 
@@ -5153,7 +4990,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                                 try {
                                     tagService.deleteTag(tag.getId());
                                     tagListView.getItems().remove(tag);
-                                    loadTags(); // Refresh sidebar
+                                    sidebarController.loadTags(); // Refresh sidebar
                                     updateStatus(java.text.MessageFormat.format(getString("status.tag_deleted"),
                                             tag.getTitle()));
                                 } catch (Exception ex) {
@@ -5225,8 +5062,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         "• Tag your notes for easy categorization\n" +
                         "• Markdown support with live preview\n" +
                         "• Search across all notes\n" +
-                        "• Keyboard shortcuts for quick access\n\n" +
-                        "Keyboard Shortcuts:\n" +
+                        "• Keyboard shortcuts for quick access\n" +
                         "• Ctrl+N: New Note\n" +
                         "• Ctrl+S: Save\n" +
                         "• Ctrl+F: Find in note\n" +
@@ -5338,7 +5174,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     break;
                 case "tag":
                     if (currentTag != null) {
-                        handleTagSelection(currentTag.getTitle());
+                        // Assuming currentTag is a String based on current codebase context
+                        loadNotesForTag(currentTag instanceof com.example.forevernote.data.models.Tag
+                                ? ((com.example.forevernote.data.models.Tag) (Object) currentTag).getTitle()
+                                : currentTag.toString());
                     } else {
                         loadAllNotes();
                     }
@@ -5410,7 +5249,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             // Refresh lists
             refreshNotesList();
-            loadFavorites();
+            sidebarController.loadFavorites();
 
             updateStatus(newFavoriteStatus ? "Note marked as favorite" : "Note unmarked as favorite");
         } catch (Exception e) {
@@ -5497,7 +5336,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     Tag newTag = new Tag(tagName);
                     Tag createdTag = tagService.createTag(newTag.getTitle());
                     newTag.setId(createdTag.getId());
-                    loadTags(); // Refresh tag list
+                    sidebarController.loadTags(); // Refresh tag list
                     updateStatus(java.text.MessageFormat.format(getString("status.tag_created"), tagName));
                 }
             } catch (Exception e) {
@@ -5867,7 +5706,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (result.isPresent() && result.get() == ButtonType.OK) {
             try {
                 tagService.deleteTag(tag.getId());
-                loadTags();
+                sidebarController.loadTags();
                 if (currentNote != null)
                     loadNoteTags(currentNote);
                 updateStatus(java.text.MessageFormat.format(getString("status.deleted_tag"), tag.getTitle()));
@@ -5895,7 +5734,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             try {
                 tag.setTitle(result.get().trim());
                 tagService.updateTag(tag);
-                loadTags();
+                sidebarController.loadTags();
                 if (currentNote != null)
                     loadNoteTags(currentNote);
                 updateStatus(java.text.MessageFormat.format(getString("status.renamed_tag"), result.get()));
@@ -6034,13 +5873,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     handleCollapseAllFolders(null);
                     break;
                 case SORT_TAGS:
-                    handleSortTags(null);
+                    // Re-routed to SidebarController natively
                     break;
                 case SORT_RECENT:
-                    handleSortRecent(null);
+                    // Re-routed
                     break;
                 case SORT_FAVORITES:
-                    handleSortFavorites(null);
+                    // Re-routed
                     break;
                 case SORT_TRASH:
                     handleSortTrash(null);
