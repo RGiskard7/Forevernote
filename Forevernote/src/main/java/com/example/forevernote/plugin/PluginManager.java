@@ -306,6 +306,12 @@ public class PluginManager {
             return false;
         }
 
+        try {
+            plugin.shutdown();
+        } catch (Exception e) {
+            logger.warning("Error while disabling plugin " + pluginId + ": " + e.getMessage());
+        }
+
         pluginStates.put(pluginId, PluginState.DISABLED);
 
         // Remove UI components

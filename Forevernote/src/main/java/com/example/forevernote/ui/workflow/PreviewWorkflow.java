@@ -1,5 +1,8 @@
 package com.example.forevernote.ui.workflow;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.logging.Logger;
 
@@ -12,13 +15,17 @@ import com.example.forevernote.util.MarkdownProcessor;
  */
 public class PreviewWorkflow {
     private static final Logger logger = LoggerConfig.getLogger(PreviewWorkflow.class);
+    private static final String HLJS_SCRIPT = loadResourceText(
+            "/com/example/forevernote/ui/preview/highlightjs/highlight.min.js");
+    private static final String HLJS_LIGHT_CSS = loadResourceText(
+            "/com/example/forevernote/ui/preview/highlightjs/vs.min.css");
+    private static final String HLJS_DARK_CSS = loadResourceText(
+            "/com/example/forevernote/ui/preview/highlightjs/vs2015.min.css");
 
     public String buildPreviewHtml(String markdownContent, boolean isDarkTheme, Collection<PreviewEnhancer> enhancers) {
         String html = MarkdownProcessor.markdownToHtml(markdownContent != null ? markdownContent : "");
         Injections injections = collectInjections(enhancers);
-        String highlightTheme = isDarkTheme
-                ? "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs2015.min.css"
-                : "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/vs.min.css";
+        String highlightCss = isDarkTheme ? HLJS_DARK_CSS : HLJS_LIGHT_CSS;
 
         String styleBlock = isDarkTheme ? darkStyles() : lightStyles();
 
@@ -28,17 +35,16 @@ public class PreviewWorkflow {
                 <head>
                     <meta charset="UTF-8">
                     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-                    <link rel="stylesheet" href="%s">
-                    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
                     %s
                     <style>
-                        @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=JetBrains+Mono:wght@400;500&display=swap');
+                        %s
                         %s
                     </style>
                 </head>
                 <body>
                 %s
                 <script>
+                    %s
                     document.addEventListener('DOMContentLoaded', function() {
                         document.querySelectorAll('pre code').forEach(function(block) {
                             hljs.highlightElement(block);
@@ -51,7 +57,7 @@ public class PreviewWorkflow {
                 %s
                 </body>
                 </html>
-                """.formatted(highlightTheme, injections.head(), styleBlock, html, injections.body());
+                """.formatted(injections.head(), highlightCss, styleBlock, html, HLJS_SCRIPT, injections.body());
     }
 
     public String buildEmptyHtml(boolean isDarkTheme) {
@@ -163,5 +169,18 @@ public class PreviewWorkflow {
     }
 
     private record Injections(String head, String body) {
+    }
+
+    private static String loadResourceText(String resourcePath) {
+        try (InputStream in = PreviewWorkflow.class.getResourceAsStream(resourcePath)) {
+            if (in == null) {
+                logger.warning("Preview asset not found: " + resourcePath);
+                return "";
+            }
+            return new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            logger.warning("Failed to read preview asset " + resourcePath + ": " + e.getMessage());
+            return "";
+        }
     }
 }
