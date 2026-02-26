@@ -358,12 +358,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             // Initialize plugin system after scene is ready
             Platform.runLater(this::initializePluginSystem);
 
-            updateStatus("Ready");
+            updateStatus(getString("status.ready"));
             logger.info("MainController initialized successfully");
 
         } catch (Exception e) {
             logger.severe("Failed to initialize MainController: " + e.getMessage());
-            updateStatus("Error: " + e.getMessage());
+            updateStatus(java.text.MessageFormat.format(getString("status.error_details"), e.getMessage()));
         }
     }
 
@@ -661,7 +661,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             logger.info("Command Palette opened");
         } else {
             logger.warning("Command Palette not initialized yet");
-            updateStatus("Command Palette not ready. Please wait...");
+            updateStatus(getString("status.command_palette_not_ready"));
         }
     }
 
@@ -940,9 +940,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             pluginManagerDialog.show();
         } else {
             Alert alert = new Alert(Alert.AlertType.WARNING);
-            alert.setTitle("Plugin Manager");
-            alert.setHeaderText("Plugin system not initialized");
-            alert.setContentText("Please restart the application.");
+            alert.setTitle(getString("dialog.plugin_manager.title"));
+            alert.setHeaderText(getString("dialog.plugin_manager.not_initialized_header"));
+            alert.setContentText(getString("dialog.plugin_manager.restart_required_content"));
             alert.showAndWait();
         }
     }
@@ -1013,7 +1013,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 if (pluginManager != null && pluginManager.isPluginEnabled(pluginId)) {
                     action.run();
                 } else {
-                    updateStatus("Plugin '" + pluginId + "' is not enabled");
+                    updateStatus(java.text.MessageFormat.format(getString("status.plugin_not_enabled"), pluginId));
                 }
             });
 
@@ -2250,7 +2250,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 if (result.get().getButtonData() == ButtonBar.ButtonData.CANCEL_CLOSE) {
                     return;
                 }
-                if (result.get().getText().equals("Save")) {
+                if (result.get().getText().equals(getString("action.save"))) {
                     handleSave(new ActionEvent());
                 }
             }
@@ -2460,13 +2460,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      */
     private Optional<ButtonType> showSaveDialog() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Save Changes");
-        alert.setHeaderText("Do you want to save changes to the current note?");
-        alert.setContentText("Your changes will be lost if you don't save them.");
+        alert.setTitle(getString("dialog.save_changes.title"));
+        alert.setHeaderText(getString("dialog.save_changes.header"));
+        alert.setContentText(getString("dialog.save_changes.content"));
 
-        ButtonType saveButton = new ButtonType("Save");
-        ButtonType dontSaveButton = new ButtonType("Don't Save");
-        ButtonType cancelButton = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
+        ButtonType saveButton = new ButtonType(getString("action.save"));
+        ButtonType dontSaveButton = new ButtonType(getString("action.dont_save"));
+        ButtonType cancelButton = new ButtonType(getString("action.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
 
         alert.getButtonTypes().setAll(saveButton, dontSaveButton, cancelButton);
 
@@ -2497,13 +2497,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             // Create dialog for adding tag
             Dialog<String> dialog = new Dialog<>();
-            dialog.setTitle("Add Tag");
+            dialog.setTitle(getString("dialog.add_tag.title"));
             dialog.setHeaderText(availableTagNames.isEmpty()
-                    ? "No existing tags available. Enter a new tag name:"
-                    : "Select an existing tag or enter a new tag name:");
+                    ? getString("dialog.add_tag.header_new")
+                    : getString("dialog.add_tag.header_select"));
 
             // Set buttons
-            ButtonType addButtonType = new ButtonType("Add", ButtonBar.ButtonData.OK_DONE);
+            ButtonType addButtonType = new ButtonType(getString("action.add"), ButtonBar.ButtonData.OK_DONE);
             dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
 
             // Create layout
@@ -2511,9 +2511,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             ComboBox<String> tagComboBox = new ComboBox<>();
             tagComboBox.setEditable(true);
             tagComboBox.getItems().addAll(availableTagNames);
-            tagComboBox.setPromptText("Select or type a tag name...");
+            tagComboBox.setPromptText(getString("dialog.add_tag.prompt"));
             tagComboBox.setPrefWidth(300);
-            content.getChildren().add(new Label("Tag:"));
+            content.getChildren().add(new Label(getString("label.tag")));
             content.getChildren().add(tagComboBox);
             dialog.getDialogPane().setContent(content);
 
@@ -2551,8 +2551,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
                 if (alreadyHasTag) {
                     Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                    alert.setTitle("Tag Already Assigned");
-                    alert.setHeaderText("This note already has the tag: " + tagName);
+                    alert.setTitle(getString("dialog.tag_already_assigned.title"));
+                    alert.setHeaderText(
+                            java.text.MessageFormat.format(getString("dialog.tag_already_assigned.header"), tagName));
                     alert.showAndWait();
                 } else {
                     noteDAO.addTag(getCurrentNote(), tag);
@@ -2729,7 +2730,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 updateStatus(java.text.MessageFormat.format(getString("status.folder_created"), newFolder.getTitle()));
             } catch (Exception e) {
                 logger.severe("Failed to create folder: " + e.getMessage());
-                updateStatus(getString("status.error") + ": " + e.getMessage());
+                    updateStatus(java.text.MessageFormat.format(getString("status.error_details"), e.getMessage()));
             }
         }
     }
@@ -2745,10 +2746,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             return;
         }
 
-        TextInputDialog dialog = new TextInputDialog("New Subfolder");
-        dialog.setTitle("New Subfolder");
-        dialog.setHeaderText("Create a new subfolder in: " + currentFolder.getTitle());
-        dialog.setContentText("Subfolder name:");
+        TextInputDialog dialog = new TextInputDialog(getString("dialog.new_subfolder.default_name"));
+        dialog.setTitle(getString("dialog.new_subfolder.title"));
+        dialog.setHeaderText(
+                java.text.MessageFormat.format(getString("dialog.new_subfolder.header"), currentFolder.getTitle()));
+        dialog.setContentText(getString("dialog.new_subfolder.content"));
 
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
@@ -2773,12 +2775,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private void handleImport(ActionEvent event) {
         FileChooser fileChooser = new FileChooser();
-        fileChooser.setTitle("Import Notes");
+        fileChooser.setTitle(getString("dialog.import.title"));
         fileChooser.getExtensionFilters().addAll(
-                new FileChooser.ExtensionFilter("Supported Files", "*.md", "*.txt", "*.markdown"),
-                new FileChooser.ExtensionFilter("Markdown Files", "*.md", "*.markdown"),
-                new FileChooser.ExtensionFilter("Text Files", "*.txt"),
-                new FileChooser.ExtensionFilter("All Files", "*.*"));
+                new FileChooser.ExtensionFilter(getString("file_filter.supported"), "*.md", "*.txt", "*.markdown"),
+                new FileChooser.ExtensionFilter(getString("file_filter.markdown"), "*.md", "*.markdown"),
+                new FileChooser.ExtensionFilter(getString("file_filter.text"), "*.txt"),
+                new FileChooser.ExtensionFilter(getString("file_filter.all"), "*.*"));
 
         List<File> files = fileChooser.showOpenMultipleDialog(mainSplitPane.getScene().getWindow());
         if (files != null && !files.isEmpty()) {
@@ -2921,7 +2923,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 if (result.get().getButtonData() == ButtonBar.ButtonData.CANCEL_CLOSE) {
                     return;
                 }
-                if (result.get().getText().equals("Save")) {
+                if (result.get().getText().equals(getString("action.save"))) {
                     handleSave(event);
                 }
             }
