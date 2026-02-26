@@ -51,9 +51,38 @@ public class TagDAOFileSystem implements TagDAO {
 
     @Override
     public void updateTag(Tag tag) {
-        // Renaming a tag implies updating all notes that have this tag.
-        // Expensive operation.
-        // TODO: Implement rename
+        if (tag == null || tag.getId() == null || tag.getId().isEmpty()) {
+            return;
+        }
+
+        // In filesystem mode, tag ID and title are effectively the same logical key.
+        // A rename means replacing occurrences across all notes.
+        String oldKey = tag.getId();
+        String newKey = tag.getTitle();
+
+        if (newKey == null || newKey.trim().isEmpty() || oldKey.equals(newKey)) {
+            return;
+        }
+
+        List<Note> notes = noteDAO.fetchAllNotes();
+        for (Note note : notes) {
+            List<Tag> noteTags = note.getTags();
+            boolean changed = false;
+            for (Tag existing : noteTags) {
+                boolean sameById = existing.getId() != null && existing.getId().equals(oldKey);
+                boolean sameByTitle = existing.getTitle() != null && existing.getTitle().equals(oldKey);
+                if (sameById || sameByTitle) {
+                    existing.setId(newKey);
+                    existing.setTitle(newKey);
+                    changed = true;
+                }
+            }
+
+            if (changed) {
+                note.setTags(noteTags);
+                noteDAO.updateNote(note);
+            }
+        }
     }
 
     @Override

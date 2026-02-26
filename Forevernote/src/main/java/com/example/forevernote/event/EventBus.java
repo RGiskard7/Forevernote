@@ -1,10 +1,11 @@
 package com.example.forevernote.event;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.example.forevernote.config.LoggerConfig;
@@ -45,7 +46,7 @@ public class EventBus {
      * Private constructor for singleton pattern.
      */
     private EventBus() {
-        this.subscribers = new HashMap<>();
+        this.subscribers = new ConcurrentHashMap<>();
         logger.info("EventBus initialized");
     }
     
@@ -149,7 +150,9 @@ public class EventBus {
             try {
                 ((Consumer<T>) handler).accept(event);
             } catch (Exception e) {
-                logger.severe("Error handling event " + event.getClass().getSimpleName() + ": " + e.getMessage());
+                logger.log(Level.SEVERE,
+                        "Error handling event " + event.getClass().getSimpleName(),
+                        e);
             }
         }
     }

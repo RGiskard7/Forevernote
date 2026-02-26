@@ -482,11 +482,34 @@ public class NoteDAOFileSystem implements NoteDAO {
 
     @Override
     public Folder getFolderOfNote(String noteId) {
-        return null;
+        if (noteId == null || noteId.isEmpty()) {
+            return new Folder("ROOT", "All Notes");
+        }
+
+        Path notePath = Paths.get(noteId.replace("\\", "/"));
+        Path parent = notePath.getParent();
+        if (parent == null) {
+            return new Folder("ROOT", "All Notes");
+        }
+
+        String folderId = parent.toString().replace("\\", "/");
+        String folderName = parent.getFileName() != null ? parent.getFileName().toString() : "All Notes";
+        return new Folder(folderId, folderName);
     }
 
     @Override
     public void addTag(String noteId, String tagId) {
+        if (noteId == null || noteId.isEmpty() || tagId == null || tagId.isEmpty()) {
+            return;
+        }
+
+        Note note = getNoteById(noteId);
+        if (note == null) {
+            return;
+        }
+
+        Tag tag = new Tag(tagId, tagId);
+        addTag(note, tag);
     }
 
     @Override
@@ -497,6 +520,17 @@ public class NoteDAOFileSystem implements NoteDAO {
 
     @Override
     public void removeTag(String noteId, String tagId) {
+        if (noteId == null || noteId.isEmpty() || tagId == null || tagId.isEmpty()) {
+            return;
+        }
+
+        Note note = getNoteById(noteId);
+        if (note == null) {
+            return;
+        }
+
+        Tag tag = new Tag(tagId, tagId);
+        removeTag(note, tag);
     }
 
     @Override
@@ -515,6 +549,16 @@ public class NoteDAOFileSystem implements NoteDAO {
 
     @Override
     public void loadTags(Note note) {
+        if (note == null || note.getId() == null) {
+            return;
+        }
+
+        Note persisted = getNoteById(note.getId());
+        if (persisted == null) {
+            return;
+        }
+
+        note.setTags(persisted.getTags());
     }
 
     @Override

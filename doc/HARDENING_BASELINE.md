@@ -45,3 +45,10 @@
 ## Notes
 - This file is the baseline reference for hardening execution.
 - Update this file at the end of every completed phase.
+
+## Execution status
+- Phase 0: completed
+- Phase 1: completed
+- Phase 2: completed
+- Phase 3: in progress
+- Phase 4+: pending

@@ -274,6 +274,9 @@ public class FolderDAOFileSystem implements FolderDAO {
     public Folder getFolderById(String id) {
         if (id == null)
             return null;
+        if ("ROOT".equals(id)) {
+            return new Folder("ROOT", "All Notes");
+        }
         Path path = idToPathMap.get(id);
         if (path != null) {
             return new Folder(id, path.getFileName().toString());
@@ -314,8 +317,8 @@ public class FolderDAOFileSystem implements FolderDAO {
         if (folder == null || note == null)
             return;
 
-        Path sourcePath = idToPathMap.get(note.getId());
-        if (sourcePath == null)
+        Path sourcePath = rootPath.resolve(note.getId());
+        if (!Files.exists(sourcePath))
             return;
 
         Path targetDir;
@@ -356,17 +359,92 @@ public class FolderDAOFileSystem implements FolderDAO {
 
     @Override
     public void removeNote(Folder folder, Note note) {
+        if (folder == null || note == null || note.getId() == null) {
+            return;
+        }
+
+        Path sourcePath = rootPath.resolve(note.getId());
+        if (!Files.exists(sourcePath)) {
+            return;
+        }
+
+        Path targetPath = rootPath.resolve(sourcePath.getFileName());
+        if (Files.exists(targetPath)) {
+            String filename = sourcePath.getFileName().toString();
+            String name = filename.endsWith(".md") ? filename.substring(0, filename.length() - 3) : filename;
+            targetPath = rootPath.resolve(name + "_" + System.currentTimeMillis() + ".md");
+        }
+
+        try {
+            Files.move(sourcePath, targetPath);
+            note.setId(rootPath.relativize(targetPath).toString());
+            note.setParent(getFolderById("ROOT"));
+        } catch (IOException e) {
+            logger.log(Level.SEVERE, "Failed to remove note from folder: " + folder.getId(), e);
+        }
     }
 
     @Override
     public void loadNotes(Folder folder) {
-        // This is now redundant if NoteDAO handles it, but UI might call it
-        // We rely on MainController using NoteDAO for notes
+        if (folder == null) {
+            return;
+        }
+
+        Path path = "ROOT".equals(folder.getId()) ? rootPath : idToPathMap.get(folder.getId());
+        if (path == null || !Files.exists(path)) {
+            return;
+        }
+
+        List<com.example.forevernote.data.models.interfaces.Component> notes = new java.util.ArrayList<>();
+        try (Stream<Path> stream = Files.list(path)) {
+            stream.filter(Files::isRegularFile)
+                    .filter(p -> p.toString().endsWith(".md"))
+                    .filter(p -> !p.getFileName().toString().startsWith("."))
+                    .forEach(p -> {
+                        String id = rootPath.relativize(p).toString().replace("\\", "/");
+                        String title = p.getFileName().toString().replaceFirst("\\.md$", "");
+                        Note note = new Note(id, title, "");
+                        note.setParent(folder);
+                        notes.add(note);
+                    });
+        } catch (IOException e) {
+            logger.warning("Error loading notes for folder " + folder.getTitle() + ": " + e.getMessage());
+        }
+
+        folder.addAll(notes);
     }
 
     @Override
     public void addSubFolder(Folder parent, Folder subFolder) {
-        // Logic handled in createFolder or updateFolder typically
+        if (parent == null || subFolder == null || subFolder.getId() == null) {
+            return;
+        }
+
+        Path parentPath = "ROOT".equals(parent.getId()) ? rootPath : idToPathMap.get(parent.getId());
+        Path subPath = idToPathMap.get(subFolder.getId());
+        if (parentPath == null || subPath == null || !Files.exists(subPath)) {
+            return;
+        }
+
+        Path targetPath = parentPath.resolve(subPath.getFileName());
+        if (subPath.equals(targetPath)) {
+            subFolder.setParent(parent);
+            return;
+        }
+
+        if (Files.exists(targetPath)) {
+            return;
+        }
+
+        try {
+            Files.move(subPath, targetPath);
+            refreshCache();
+            String newId = rootPath.relativize(targetPath).toString();
+            subFolder.setId(newId);
+            subFolder.setParent(parent);
+        } catch (IOException e) {
+            logger.warning("Failed to move subfolder under parent: " + e.getMessage());
+        }
     }
 
     @Override
@@ -405,17 +483,34 @@ public class FolderDAOFileSystem implements FolderDAO {
 
     @Override
     public void loadParentFolders(Folder folder) {
-        // Not implemented strictly
+        loadParentFolders(folder, Integer.MAX_VALUE);
     }
 
     @Override
     public void loadParentFolders(Folder folder, int maxDepth) {
-        // Not implemented strictly
+        if (folder == null || maxDepth <= 0) {
+            return;
+        }
+
+        Folder current = folder;
+        int depth = 0;
+        while (depth < maxDepth) {
+            Folder parent = getParentFolder(current.getId());
+            if (parent == null) {
+                break;
+            }
+            current.setParent(parent);
+            current = parent;
+            depth++;
+        }
     }
 
     @Override
     public void loadParentFolder(Folder folder) {
-        // Not implemented strictly
+        if (folder == null) {
+            return;
+        }
+        folder.setParent(getParentFolder(folder.getId()));
     }
 
     @Override
