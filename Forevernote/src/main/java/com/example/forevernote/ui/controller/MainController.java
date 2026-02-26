@@ -43,6 +43,8 @@ import com.example.forevernote.ui.components.PluginManagerDialog;
 import com.example.forevernote.ui.components.QuickSwitcher;
 import com.example.forevernote.ui.workflow.FolderWorkflow;
 import com.example.forevernote.ui.workflow.NoteWorkflow;
+import com.example.forevernote.ui.workflow.TagWorkflow;
+import com.example.forevernote.ui.workflow.ThemeWorkflow;
 
 /**
  * Main controller for the Forevernote application.
@@ -247,6 +249,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private PluginManagerDialog pluginManagerDialog;
     private NoteWorkflow noteWorkflow;
     private FolderWorkflow folderWorkflow;
+    private TagWorkflow tagWorkflow;
+    private ThemeWorkflow themeWorkflow;
 
     @FXML
     private java.util.ResourceBundle resources;
@@ -402,6 +406,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             tagDAO = factoryDAO.getLabelDAO();
             noteWorkflow = new NoteWorkflow(noteDAO);
             folderWorkflow = new FolderWorkflow();
+            tagWorkflow = new TagWorkflow();
+            themeWorkflow = new ThemeWorkflow();
 
             // Initialize services
             noteService = new NoteService(noteDAO, folderDAO, tagDAO);
@@ -606,8 +612,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             // Initialize Command Palette
             commandPalette = new CommandPalette(stage);
-            boolean isDark = "dark".equals(currentTheme) ||
-                    ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
+            boolean isDark = isDarkThemeActive();
             commandPalette.setCommandHandler(this::executeCommand);
 
             // Initialize Quick Switcher
@@ -648,9 +653,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      */
     public void showCommandPalette() {
         if (commandPalette != null) {
-            boolean isDark = "dark".equals(currentTheme) ||
-                    ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
-            commandPalette.setDarkTheme(isDark);
+            commandPalette.setDarkTheme(isDarkThemeActive());
             commandPalette.show();
             logger.info("Command Palette opened");
         } else {
@@ -664,9 +667,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      */
     public void showQuickSwitcher() {
         if (quickSwitcher != null) {
-            boolean isDark = "dark".equals(currentTheme) ||
-                    ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
-            quickSwitcher.setDarkTheme(isDark);
+            quickSwitcher.setDarkTheme(isDarkThemeActive());
             // Update notes list before showing
             quickSwitcher.setNotes(noteService.getAllNotes());
             quickSwitcher.show();
@@ -844,10 +845,32 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         eventBus.subscribe(TagEvents.TagSelectedEvent.class, event -> {
             Platform.runLater(() -> {
                 Tag tag = event.getTag();
-                if (tag != null && tag.getTitle() != null) {
-                    loadNotesForTag(tag.getTitle());
-                } else {
+                if (tagWorkflow == null) {
+                    tagWorkflow = new TagWorkflow();
                 }
+                tagWorkflow.selectTag(tag, new TagWorkflow.TagSelectionPort() {
+                    @Override
+                    public void setCurrentFolderToNull() {
+                        currentFolder = null;
+                    }
+
+                    @Override
+                    public void setCurrentTag(Tag selectedTag) {
+                        currentTag = selectedTag;
+                    }
+
+                    @Override
+                    public void setCurrentFilterType(String filterType) {
+                        currentFilterType = filterType;
+                    }
+
+                    @Override
+                    public void loadNotesForTag(String tagTitle) {
+                        if (notesListController != null) {
+                            notesListController.loadNotesForTag(tagTitle);
+                        }
+                    }
+                });
             });
         });
 
@@ -910,9 +933,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      */
     public void showPluginManager() {
         if (pluginManagerDialog != null) {
-            boolean isDark = "dark".equals(currentTheme) ||
-                    ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
-            pluginManagerDialog.setDarkTheme(isDark);
+            pluginManagerDialog.setDarkTheme(isDarkThemeActive());
             pluginManagerDialog.show();
         } else {
             Alert alert = new Alert(Alert.AlertType.WARNING);
@@ -1786,8 +1807,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         card.getStyleClass().add("note-card");
 
         // Determine theme colors
-        boolean isDark = "dark".equals(currentTheme) ||
-                ("system".equals(currentTheme) && "dark".equals(detectSystemTheme()));
+        boolean isDark = isDarkThemeActive();
 
         String bgColor = isDark ? "#2d2d2d" : "#ffffff";
         String borderColor = isDark ? "#404040" : "#e0e0e0";
@@ -2313,11 +2333,32 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      * Load notes for a specific tag via NotesListController.
      */
     private void loadNotesForTag(String tagName) {
-        if (notesListController != null && tagName != null && !tagName.isEmpty()) {
-            currentFolder = null;
-            currentFilterType = "tag";
-            notesListController.loadNotesForTag(tagName);
+        if (tagWorkflow == null) {
+            tagWorkflow = new TagWorkflow();
         }
+        tagWorkflow.selectTagByTitle(tagName, new TagWorkflow.TagSelectionPort() {
+            @Override
+            public void setCurrentFolderToNull() {
+                currentFolder = null;
+            }
+
+            @Override
+            public void setCurrentTag(Tag selectedTag) {
+                currentTag = selectedTag;
+            }
+
+            @Override
+            public void setCurrentFilterType(String filterType) {
+                currentFilterType = filterType;
+            }
+
+            @Override
+            public void loadNotesForTag(String tagTitle) {
+                if (notesListController != null) {
+                    notesListController.loadNotesForTag(tagTitle);
+                }
+            }
+        });
     }
 
     /**
@@ -2392,11 +2433,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private void updatePreview() {
         if (getCurrentNote() != null && previewWebView != null) {
             String content = noteContentArea.getText();
-            // Determine if dark theme is active (handle system mode)
-            String actualTheme = currentTheme;
-            if ("system".equals(currentTheme)) {
-                actualTheme = detectSystemTheme();
-            }
+            String actualTheme = resolveThemeToApply();
             boolean isDarkTheme = "dark".equals(actualTheme);
 
             if (content != null && !content.trim().isEmpty()) {
@@ -3584,10 +3621,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 stylesheet.contains("dark-theme.css"));
 
         // Determine actual theme to use (especially for 'system' mode)
-        String themeToApply = currentTheme;
-        if ("system".equalsIgnoreCase(themeToApply)) {
-            themeToApply = detectSystemTheme();
-        }
+        String themeToApply = resolveThemeToApply();
 
         // Add the appropriate theme stylesheet
         java.net.URL themeResource;
@@ -3645,6 +3679,20 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
 
         return isSystemDark ? "dark" : "light";
+    }
+
+    private String resolveThemeToApply() {
+        if (themeWorkflow == null) {
+            themeWorkflow = new ThemeWorkflow();
+        }
+        return themeWorkflow.resolveThemeToApply(currentTheme, this::detectSystemTheme);
+    }
+
+    private boolean isDarkThemeActive() {
+        if (themeWorkflow == null) {
+            themeWorkflow = new ThemeWorkflow();
+        }
+        return themeWorkflow.isDarkTheme(currentTheme, this::detectSystemTheme);
     }
 
     @FXML
@@ -3881,10 +3929,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     break;
                 case "tag":
                     if (currentTag != null) {
-                        // Assuming currentTag is a String based on current codebase context
-                        loadNotesForTag(currentTag instanceof com.example.forevernote.data.models.Tag
-                                ? ((com.example.forevernote.data.models.Tag) (Object) currentTag).getTitle()
-                                : currentTag.toString());
+                        loadNotesForTag(currentTag.getTitle());
                     } else {
                     }
                     break;
