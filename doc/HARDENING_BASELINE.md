@@ -51,4 +51,6 @@
 - Phase 1: completed
 - Phase 2: completed
 - Phase 3: in progress
-- Phase 4+: pending
+- Phase 4: in progress (initial NoteWorkflow extraction)
+- Phase 5: in progress
+- Phase 6+: pending
