@@ -352,6 +352,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
             if (notesListController != null) {
                 notesListController.setEventBus(eventBus);
+                notesListController.setServices(noteService, tagService);
+                notesListController.setBundle(resources);
                 notesPanel = notesListController.getNotesPanel();
                 notesPanelTitleLabel = notesListController.getNotesPanelTitleLabel();
                 sortComboBox = notesListController.getSortComboBox();
@@ -1315,6 +1317,20 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 prefs.put("theme", currentTheme);
                 applyTheme();
                 updateThemeMenuSelection();
+            });
+        });
+
+        // Listen for notes loaded event to refresh UI portions managed directly by Main
+        eventBus.subscribe(NoteEvents.NotesLoadedEvent.class, event -> {
+            Platform.runLater(() -> {
+                if (noteCountLabel != null) {
+                    noteCountLabel.setText(event.getStatusMessage());
+                }
+                updateStatus(event.getStatusMessage());
+
+                if (currentNotesViewMode == NotesViewMode.GRID) {
+                    refreshGridView();
+                }
             });
         });
 
@@ -2739,33 +2755,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     /**
-     * Load all notes.
+     * Load all notes via NotesListController.
      */
     private void loadAllNotes() {
-        try {
-            List<Note> notes = noteService.getAllNotes();
-            notesListView.getSelectionModel().clearSelection();
-            notesListView.getItems().setAll(notes);
-            sortNotes(sortComboBox.getValue());
-            noteCountLabel.setText(java.text.MessageFormat.format(getString("info.notes_count"), notes.size()));
+        if (notesListController != null) {
             currentFolder = null;
             currentTag = null;
             currentFilterType = "all";
-
-            // Refresh grid view if active
-            if (currentNotesViewMode == NotesViewMode.GRID) {
-                Platform.runLater(this::refreshGridView);
-            }
-
-            updateStatus(getString("status.loaded_all"));
-        } catch (Exception e) {
-            logger.severe("Failed to load all notes: " + e.getMessage());
-            updateStatus(getString("status.error_loading"));
+            notesListController.loadAllNotes();
         }
     }
 
     /**
-     * Load notes for selected folder.
+     * Load notes for selected folder via NotesListController, and update UI layout.
      */
     private void handleFolderSelection(Folder folder) {
         try {
@@ -2774,78 +2776,45 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 return;
             }
 
-            // Reload folder from database to ensure we have the latest data
-            Folder loadedFolder = folderDAO.getFolderById(folder.getId());
-            if (loadedFolder == null && "ROOT".equals(folder.getId())) {
-                // Fallback for virtual root
-                loadedFolder = folder;
+            // Delegating directly to NotesListController
+            if (notesListController != null) {
+                currentFolder = folder;
+                currentTag = null;
+                currentFilterType = "folder";
+                notesListController.loadNotesForFolder(folder);
             }
 
-            if (loadedFolder != null) {
-                currentFolder = loadedFolder;
-
-                // DATA ACCESS FIX: Explicitly use NoteService to fetch notes for the folder
-                // This ensures we get the latest file list directly from disk
-                List<Note> notes = noteService.getNotesByFolder(currentFolder);
-
-                // Add notes to the folder object implicitly for UI consistency if needed,
-                // but primarily use the returned list for the ListView.
-                currentFolder.getChildren().removeIf(c -> c instanceof Note);
-                currentFolder.addAll(new ArrayList<>(notes));
-
-                // FIX: Clear selection in list view before refreshing items to avoid out of
-                // bounds exception
-                notesListView.getSelectionModel().clearSelection();
-                notesListView.getItems().setAll(notes);
-                sortNotes(sortComboBox.getValue());
-                noteCountLabel.setText(notes.size() + " notes");
-                currentFilterType = "folder";
-                currentTag = null;
-
-                if (currentNotesViewMode == NotesViewMode.GRID) {
-                    Platform.runLater(this::refreshGridView);
-                }
-
-                // Ensure notes panel is visible when folder is selected (especially in Stacked
-                // Mode)
-                if (notesPanel != null) {
-                    if (isStackedLayout) {
-                        // In stacked layout, ensure navSplitPane is 50/50 (or reasonable split) to show
-                        // notes
-                        if (navSplitPane != null) {
-                            // Check if notes might be hidden (divider roughly at 1.0 or notesPanel
-                            // collapsed)
-                            if (notesPanel.getMaxWidth() < 10 || navSplitPane.getDividerPositions().length > 0
-                                    && navSplitPane.getDividerPositions()[0] > 0.95) {
-                                notesPanel.setMinWidth(180);
-                                notesPanel.setMaxWidth(Double.MAX_VALUE);
-                                navSplitPane.setDividerPositions(0.5); // Show split
-                            }
-                        }
-                    } else {
-                        // In column layout, ensure contentSplitPane shows notes
-                        if (contentSplitPane != null) {
-                            if (notesPanel.getMaxWidth() < 10) {
-                                notesPanel.setMinWidth(180);
-                                notesPanel.setMaxWidth(Double.MAX_VALUE);
-                                contentSplitPane.setDividerPositions(0.25);
-                            }
+            // Ensure notes panel is visible when folder is selected (especially in Stacked
+            // Mode)
+            if (notesPanel != null) {
+                if (isStackedLayout) {
+                    // In stacked layout, ensure navSplitPane is 50/50 (or reasonable split) to show
+                    // notes
+                    if (navSplitPane != null) {
+                        if (notesPanel.getMaxWidth() < 10 || navSplitPane.getDividerPositions().length > 0
+                                && navSplitPane.getDividerPositions()[0] > 0.95) {
+                            notesPanel.setMinWidth(180);
+                            notesPanel.setMaxWidth(Double.MAX_VALUE);
+                            navSplitPane.setDividerPositions(0.5); // Show split
                         }
                     }
-                    if (toolbarController != null && toolbarController.getNotesPanelToggleBtn() != null)
-                        toolbarController.getNotesPanelToggleBtn().setSelected(true);
+                } else {
+                    // In column layout, ensure contentSplitPane shows notes
+                    if (contentSplitPane != null) {
+                        if (notesPanel.getMaxWidth() < 10) {
+                            notesPanel.setMinWidth(180);
+                            notesPanel.setMaxWidth(Double.MAX_VALUE);
+                            contentSplitPane.setDividerPositions(0.25);
+                        }
+                    }
                 }
-
-                updateStatus(
-                        java.text.MessageFormat.format(getString("status.loaded_folder"), currentFolder.getTitle()));
-                if (notesPanelTitleLabel != null) {
-                    notesPanelTitleLabel.setText(getString("panel.notes.title") + " - " + currentFolder.getTitle());
-                }
+                if (toolbarController != null && toolbarController.getNotesPanelToggleBtn() != null)
+                    toolbarController.getNotesPanelToggleBtn().setSelected(true);
             }
         } catch (Exception e) {
             logger.severe(
-                    "Failed to load folder " + (folder != null ? folder.getTitle() : "null") + ": " + e.getMessage());
-            updateStatus(getString("status.error_loading_folder"));
+                    "Failed to handle folder selection " + (folder != null ? folder.getTitle() : "null") + ": "
+                            + e.getMessage());
         }
     }
 
@@ -3338,132 +3307,32 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     /**
-     * Load notes for a specific tag.
+     * Load notes for a specific tag via NotesListController.
      */
     private void loadNotesForTag(String tagName) {
-        try {
-            if (tagName != null && !tagName.isEmpty()) {
-                Tag tag = tagService.getTagByTitle(tagName).orElse(null);
-                if (tag != null) {
-                    currentFolder = null; // Clear folder selection when filtering by tag
-                    currentFilterType = "tag";
-                    currentTag = tag;
-                    List<Note> notesWithTag = tagService.getNotesWithTag(tag);
-                    notesListView.getSelectionModel().clearSelection();
-                    notesListView.getItems().setAll(notesWithTag);
-                    sortNotes(sortComboBox.getValue());
-                    noteCountLabel.setText(notesWithTag.size() + " notes with tag: " + tagName);
-                    updateStatus(java.text.MessageFormat.format(getString("status.filtered_tag"),
-                            tagName));
-                }
-            }
-        } catch (Exception e) {
-            logger.severe("Failed to filter notes by tag " + tagName + ": " +
-                    e.getMessage());
-            updateStatus("Error filtering by tag");
+        if (notesListController != null && tagName != null && !tagName.isEmpty()) {
+            currentFolder = null;
+            currentFilterType = "tag";
+            notesListController.loadNotesForTag(tagName);
         }
     }
 
     /**
-     * Perform search.
+     * Perform search via NotesListController.
      */
     private void performSearch(String searchText) {
-        if (searchText == null || searchText.trim().isEmpty()) {
-            // Restore previous context if search is cleared
-            if (currentFolder != null) {
-                handleFolderSelection(currentFolder);
-            } else if (currentTag != null) {
-                loadNotesForTag(currentTag.getTitle());
-            } else {
-                loadAllNotes();
-            }
-            return;
-        }
-
-        try {
-            List<Note> allNotes = noteService.getAllNotes();
-            String searchLower = searchText.toLowerCase();
-            List<Note> filteredNotes = allNotes.stream()
-                    .filter(note -> {
-                        String title = note.getTitle() != null ? note.getTitle().toLowerCase() : "";
-                        String content = note.getContent() != null ? note.getContent().toLowerCase() : "";
-                        return title.contains(searchLower) || content.contains(searchLower);
-                    })
-                    .toList();
-
-            notesListView.getSelectionModel().clearSelection();
-            notesListView.getItems().setAll(filteredNotes);
-            sortNotes(sortComboBox.getValue());
-            noteCountLabel.setText(java.text.MessageFormat.format(getString("info.notes_found"), filteredNotes.size()));
+        if (notesListController != null) {
             currentFilterType = "search";
-
-            // Refresh grid view if active
-            if (currentNotesViewMode == NotesViewMode.GRID) {
-                Platform.runLater(this::refreshGridView);
-            }
-
-            updateStatus(java.text.MessageFormat.format(getString("status.search_active"), searchText));
-        } catch (Exception e) {
-            logger.severe("Failed to perform search: " + e.getMessage());
-            updateStatus(getString("status.search_failed"));
+            notesListController.performSearch(searchText);
         }
     }
 
     /**
-     * Sort notes with null-safe comparisons.
+     * Sort notes via NotesListController.
      */
     private void sortNotes(String sortOption) {
-        if (sortOption == null)
-            return;
-
-        List<Note> notes = new ArrayList<>(notesListView.getItems());
-
-        notes.sort((a, b) -> {
-            // High priority: Pinned notes always on top
-            if (a.isPinned() != b.isPinned()) {
-                return a.isPinned() ? -1 : 1;
-            }
-
-            // Normal matching based on selection
-            if (sortOption.equals(getString("sort.title_az"))) {
-                String titleA = a.getTitle() != null ? a.getTitle() : "";
-                String titleB = b.getTitle() != null ? b.getTitle() : "";
-                return titleA.compareToIgnoreCase(titleB);
-            } else if (sortOption.equals(getString("sort.title_za"))) {
-                String titleZA = a.getTitle() != null ? a.getTitle() : "";
-                String titleZB = b.getTitle() != null ? b.getTitle() : "";
-                return titleZB.compareToIgnoreCase(titleZA);
-            } else if (sortOption.equals(getString("sort.created_newest"))) {
-                String cDateA = a.getCreatedDate() != null ? a.getCreatedDate() : "";
-                String cDateB = b.getCreatedDate() != null ? b.getCreatedDate() : "";
-                return cDateB.compareTo(cDateA);
-            } else if (sortOption.equals(getString("sort.created_oldest"))) {
-                String coDateA = a.getCreatedDate() != null ? a.getCreatedDate() : "";
-                String coDateB = b.getCreatedDate() != null ? b.getCreatedDate() : "";
-                return coDateA.compareTo(coDateB);
-            } else if (sortOption.equals(getString("sort.modified_newest"))) {
-                String mDateA = a.getModifiedDate() != null ? a.getModifiedDate()
-                        : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
-                String mDateB = b.getModifiedDate() != null ? b.getModifiedDate()
-                        : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
-                return mDateB.compareTo(mDateA);
-            } else if (sortOption.equals(getString("sort.modified_oldest"))) {
-                String moDateA = a.getModifiedDate() != null ? a.getModifiedDate()
-                        : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
-                String moDateB = b.getModifiedDate() != null ? b.getModifiedDate()
-                        : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
-                return moDateA.compareTo(moDateB);
-            } else {
-                return 0;
-            }
-        });
-
-        notesListView.getSelectionModel().clearSelection();
-        notesListView.getItems().setAll(notes);
-
-        // Refresh grid view if active
-        if (currentNotesViewMode == NotesViewMode.GRID) {
-            Platform.runLater(this::refreshGridView);
+        if (notesListController != null) {
+            notesListController.sortNotes(sortOption);
         }
     }
 

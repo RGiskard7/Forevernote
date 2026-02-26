@@ -2,6 +2,7 @@ package com.example.forevernote.event.events;
 
 import com.example.forevernote.data.models.Note;
 import com.example.forevernote.event.AppEvent;
+import java.util.List;
 
 /**
  * Note-related events for the application.
@@ -162,6 +163,28 @@ public final class NoteEvents {
 
         public com.example.forevernote.data.models.interfaces.Component getComponent() {
             return component;
+        }
+    }
+
+    /**
+     * Event fired when the notes list has finished loading or sorting.
+     */
+    public static class NotesLoadedEvent extends AppEvent {
+        private final List<Note> notes;
+        private final String statusMessage;
+
+        public NotesLoadedEvent(List<Note> notes, String statusMessage) {
+            super("NotesList");
+            this.notes = notes;
+            this.statusMessage = statusMessage;
+        }
+
+        public List<Note> getNotes() {
+            return notes;
+        }
+
+        public String getStatusMessage() {
+            return statusMessage;
         }
     }
 }
