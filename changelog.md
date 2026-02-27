@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [5.0.5] - 2026-02-27
+
+### Hardening Mega Batch: Command Palette Fix + Command Routing + Docs/Playbook
+
+**Fixed (Critical):**
+- **Command Palette not showing** from toolbar/menu events.
+  - `MainController` now subscribes to:
+    - `UIEvents.ShowCommandPaletteEvent`
+    - `UIEvents.ShowQuickSwitcherEvent`
+  - Added robust lazy initialization for Command Palette / Quick Switcher when showing.
+  - Keyboard shortcuts hardened: `Ctrl+P` and `Ctrl+Shift+P` open palette; `Ctrl+O` opens quick switcher.
+  - Improved palette window visibility behavior (bounds sync with parent stage, focus/front handling).
+
+**Changed (Architecture):**
+- Replaced command execution giant switch path with **stable command IDs + routing map**:
+  - `cmd.*` IDs in `CommandPalette.Command`
+  - Routing and alias table in `MainController`
+  - Backward compatibility maintained for legacy command names and plugins
+- Added command lookup by internal id (`findCommandById`) in `CommandPalette`.
+
+**Added (Tests/Guards):**
+- `AllNotesContractGuardTest` (prevents behavior depending on `"All Notes"` literal)
+- `CommandRoutingGuardTest` (prevents reintroducing monolithic switch dispatch)
+- `CommandPaletteEventWiringGuardTest` (ensures UI event subscriptions for palette/switcher)
+
+**Added (Documentation):**
+- `doc/ADRS/ADR-0002-command-routing-and-palette-events.md`
+- `doc/RELEASE_ROLLBACK_PLAYBOOK.md`
+- `doc/HARDENING_EXECUTION_STATUS.md`
+
+**Validation:**
+- ✅ `mvn -f Forevernote/pom.xml clean test`
+- ✅ `mvn -f Forevernote/pom.xml -DskipTests clean package`
+
+---
+
 ## [5.0.4] - 2026-01-21
 
 ### Plugin System Fixes & macOS Support

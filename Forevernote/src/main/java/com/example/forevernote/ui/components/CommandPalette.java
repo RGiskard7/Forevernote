@@ -259,6 +259,7 @@ public class CommandPalette {
      * Shows the Command Palette.
      */
     public void show() {
+        syncWithParentStageBounds();
         if (paletteStage != null && paletteStage.isShowing()) {
             paletteStage.toFront();
             searchField.requestFocus();
@@ -266,7 +267,10 @@ public class CommandPalette {
         }
         
         createPaletteStage();
+        syncWithParentStageBounds();
         paletteStage.show();
+        paletteStage.toFront();
+        paletteStage.requestFocus();
         animateEntrance();
         
         Platform.runLater(() -> {
@@ -422,6 +426,20 @@ public class CommandPalette {
         paletteStage.setY(parentStage.getY());
         
         setupEventHandlers();
+    }
+
+    private void syncWithParentStageBounds() {
+        if (parentStage == null) {
+            return;
+        }
+        if (paletteStage != null) {
+            double width = Math.max(parentStage.getWidth(), 900);
+            double height = Math.max(parentStage.getHeight(), 600);
+            paletteStage.setWidth(width);
+            paletteStage.setHeight(height);
+            paletteStage.setX(parentStage.getX());
+            paletteStage.setY(parentStage.getY());
+        }
     }
     
     /**

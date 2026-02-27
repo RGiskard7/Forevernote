@@ -246,6 +246,8 @@ public class MyPlugin implements Plugin {
 - Keyboard-driven command execution (Ctrl+P)
 - Fuzzy search across all commands
 - Category organization
+- Stable internal command IDs (`cmd.*`) with backward-compatible aliases
+- Command dispatch in `MainController` via routing table (`Map<String, Runnable>`) to reduce cyclomatic complexity and decouple from visible labels
 
 ### Quick Switcher
 
