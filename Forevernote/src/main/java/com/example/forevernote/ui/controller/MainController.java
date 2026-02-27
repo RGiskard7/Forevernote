@@ -148,6 +148,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     // Preview Enhancers
     private final Map<String, PreviewEnhancer> previewEnhancers = new HashMap<>();
+    // Command routing (stable IDs + backward compatible aliases)
+    private final Map<String, Runnable> commandRoutes = new HashMap<>();
+    private final Map<String, String> commandAliases = new HashMap<>();
     @FXML
     private Separator toolbarSeparator2;
     @FXML
@@ -287,6 +290,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             if (toolbarController != null) {
                 toolbarController.setEventBus(eventBus);
             }
+            initializeCommandRouting();
             if (eventBus != null) {
                 eventBus.subscribe(SystemActionEvent.class, this::handleSystemAction);
                 subscribeToUIEvents();
@@ -602,8 +606,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             javafx.scene.Scene scene = null;
             if (mainSplitPane != null && mainSplitPane.getScene() != null) {
                 scene = mainSplitPane.getScene();
-            } else if (mainSplitPane != null && mainSplitPane.getScene() != null) {
-                scene = mainSplitPane.getScene();
             }
 
             if (scene == null) {
@@ -617,26 +619,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 return;
             }
 
-            // Initialize Command Palette
-            commandPalette = new CommandPalette(stage);
-            boolean isDark = isDarkThemeActive();
-            commandPalette.setCommandHandler(this::executeCommand);
-
-            // Initialize Quick Switcher
-            quickSwitcher = new QuickSwitcher(stage);
-            quickSwitcher.setDarkTheme(isDark);
-            quickSwitcher.setOnNoteSelected(this::loadNoteInEditor);
+            ensureCommandUisInitialized(stage);
 
             // Set up global key handler
             scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
                 if (event.isControlDown()) {
                     switch (event.getCode()) {
                         case P:
-                            // Ctrl+P - Command Palette
-                            if (!event.isShiftDown()) {
-                                showCommandPalette();
-                                event.consume();
-                            }
+                            // Ctrl+P / Ctrl+Shift+P - Command Palette
+                            showCommandPalette();
+                            event.consume();
                             break;
                         case O:
                             // Ctrl+O - Quick Switcher
@@ -659,6 +651,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      * Shows the Command Palette (Ctrl+P).
      */
     public void showCommandPalette() {
+        ensureCommandUisInitialized(getPrimaryStage());
         if (commandPalette != null) {
             commandPalette.setDarkTheme(isDarkThemeActive());
             commandPalette.show();
@@ -673,6 +666,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      * Shows the Quick Switcher (Ctrl+O).
      */
     public void showQuickSwitcher() {
+        ensureCommandUisInitialized(getPrimaryStage());
         if (quickSwitcher != null) {
             quickSwitcher.setDarkTheme(isDarkThemeActive());
             // Update notes list before showing
@@ -774,6 +768,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         eventBus.subscribe(UIEvents.StatusUpdateEvent.class, event -> {
             Platform.runLater(() -> updateStatus(event.getMessage()));
+        });
+
+        eventBus.subscribe(UIEvents.ShowCommandPaletteEvent.class, event -> {
+            Platform.runLater(this::showCommandPalette);
+        });
+
+        eventBus.subscribe(UIEvents.ShowQuickSwitcherEvent.class, event -> {
+            Platform.runLater(this::showQuickSwitcher);
         });
 
         eventBus.subscribe(NoteEvents.NoteCreatedEvent.class, event -> {
@@ -1373,226 +1375,127 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         String resolvedCommand = resolveCommandToken(commandName);
         logger.info("Executing command: " + resolvedCommand);
 
-        switch (resolvedCommand) {
-            // File commands
-            case "New Note":
-                handleNewNote(null);
-                break;
-            case "New Folder":
-                handleNewFolder(null);
-                break;
-            case "Save":
-                handleSave(null);
-                break;
-            case "Save All":
-                handleSaveAll(null);
-                break;
-            case "Import":
-                handleImport(null);
-                break;
-            case "Export":
-                handleExport(null);
-                break;
-            case "Delete Note":
-                handleDelete(null);
-                break;
-
-            // Edit commands
-            case "Undo":
-                handleUndo(null);
-                break;
-            case "Redo":
-                handleRedo(null);
-                break;
-            case "Find":
-                handleFind(null);
-                break;
-            case "Find and Replace":
-                handleReplace(null);
-                break;
-            case "Cut":
-                handleCut(null);
-                break;
-            case "Copy":
-                handleCopy(null);
-                break;
-            case "Paste":
-                handlePaste(null);
-                break;
-
-            // Format commands
-            case "Bold":
-                handleBold(null);
-                break;
-            case "Italic":
-                handleItalic(null);
-                break;
-            case "Underline":
-                handleUnderline(null);
-                break;
-            case "Insert Link":
-                handleLink(null);
-                break;
-            case "Insert Image":
-                handleImage(null);
-                break;
-            case "Insert Todo":
-                handleTodoList(null);
-                break;
-            case "Insert List":
-                handleNumberedList(null);
-                break;
-
-            // View commands
-            case "Toggle Sidebar":
-                handleToggleSidebar(null);
-                break;
-            case "Toggle Info Panel":
-            case "Toggle Right Panel":
-                handleToggleRightPanel(null);
-                break;
-            case "Editor Mode":
-                handleEditorOnlyMode(null);
-                break;
-            case "Preview Mode":
-                handlePreviewOnlyMode(null);
-                break;
-            case "Split Mode":
-                handleSplitViewMode(null);
-                break;
-            case "Zoom In":
-                handleZoomIn(null);
-                break;
-            case "Zoom Out":
-                handleZoomOut(null);
-                break;
-            case "Reset Zoom":
-                handleResetZoom(null);
-                break;
-
-            // Theme commands
-            case "Light Theme":
-                handleLightTheme(null);
-                break;
-            case "Dark Theme":
-                handleDarkTheme(null);
-                break;
-            case "System Theme":
-                handleSystemTheme(null);
-                break;
-
-            // Navigation commands
-            case "Quick Switcher":
-                showQuickSwitcher();
-                break;
-            case "Global Search":
-                if (toolbarController != null && toolbarController.getSearchField() != null)
-                    toolbarController.getSearchField().requestFocus();
-                break;
-            case "Go to All Notes":
-                goToAllNotes();
-                break;
-            case "Go to Favorites":
-                sidebarController.loadFavorites();
-                break;
-            case "Go to Recent":
-                sidebarController.loadRecentNotes();
-                break;
-
-            // Tools commands
-            case "Tag Manager":
-                handleTagsManager(null);
-                break;
-            case "Preferences":
-                handlePreferences(null);
-                break;
-            case "Toggle Favorite":
-                handleToggleFavorite(null);
-                break;
-            case "Refresh":
-                handleRefresh(null);
-                break;
-            case "Plugins: Manage Plugins":
-                showPluginManager();
-                break;
-
-            // Help commands
-            case "Keyboard Shortcuts":
-                handleKeyboardShortcuts(null);
-                break;
-            case "Documentation":
-                handleDocumentation(null);
-                break;
-            case "About Forevernote":
-                handleAbout(null);
-                break;
-
-            default:
-                // Try to find command in Command Palette (for plugin commands)
-                if (commandPalette != null) {
-                    CommandPalette.Command cmd = commandPalette.findCommand(commandName);
-                    if (cmd != null) {
-                        cmd.execute();
-                        return;
-                    }
-                }
-                logger.warning("Unknown command: " + resolvedCommand);
-                updateStatus(java.text.MessageFormat.format(getString("status.unknown_command"), resolvedCommand));
+        Runnable route = commandRoutes.get(resolvedCommand);
+        if (route != null) {
+            route.run();
+            return;
         }
+
+        // Fallback for plugin commands
+        if (commandPalette != null) {
+            CommandPalette.Command cmd = commandPalette.findCommand(commandName);
+            if (cmd == null) {
+                cmd = commandPalette.findCommandById(commandName);
+            }
+            if (cmd != null) {
+                cmd.execute();
+                return;
+            }
+        }
+
+        logger.warning("Unknown command: " + resolvedCommand);
+        updateStatus(java.text.MessageFormat.format(getString("status.unknown_command"), resolvedCommand));
     }
 
     private String resolveCommandToken(String commandToken) {
         if (commandToken == null) {
             return "";
         }
-        return switch (commandToken) {
-            case "cmd.new_note" -> "New Note";
-            case "cmd.new_folder" -> "New Folder";
-            case "cmd.save" -> "Save";
-            case "cmd.save_all" -> "Save All";
-            case "cmd.import" -> "Import";
-            case "cmd.export" -> "Export";
-            case "cmd.delete_note" -> "Delete Note";
-            case "cmd.undo" -> "Undo";
-            case "cmd.redo" -> "Redo";
-            case "cmd.find" -> "Find";
-            case "cmd.replace" -> "Find and Replace";
-            case "cmd.cut" -> "Cut";
-            case "cmd.copy" -> "Copy";
-            case "cmd.paste" -> "Paste";
-            case "cmd.bold" -> "Bold";
-            case "cmd.italic" -> "Italic";
-            case "cmd.underline" -> "Underline";
-            case "cmd.insert_link" -> "Insert Link";
-            case "cmd.insert_image" -> "Insert Image";
-            case "cmd.insert_todo" -> "Insert Todo";
-            case "cmd.insert_list" -> "Insert List";
-            case "cmd.toggle_sidebar" -> "Toggle Sidebar";
-            case "cmd.toggle_info_panel" -> "Toggle Info Panel";
-            case "cmd.editor_mode" -> "Editor Mode";
-            case "cmd.preview_mode" -> "Preview Mode";
-            case "cmd.split_mode" -> "Split Mode";
-            case "cmd.zoom_in" -> "Zoom In";
-            case "cmd.zoom_out" -> "Zoom Out";
-            case "cmd.reset_zoom" -> "Reset Zoom";
-            case "cmd.theme_light" -> "Light Theme";
-            case "cmd.theme_dark" -> "Dark Theme";
-            case "cmd.theme_system" -> "System Theme";
-            case "cmd.quick_switcher" -> "Quick Switcher";
-            case "cmd.global_search" -> "Global Search";
-            case "cmd.goto_all_notes" -> "Go to All Notes";
-            case "cmd.goto_favorites" -> "Go to Favorites";
-            case "cmd.goto_recent" -> "Go to Recent";
-            case "cmd.tag_manager" -> "Tag Manager";
-            case "cmd.preferences" -> "Preferences";
-            case "cmd.toggle_favorite" -> "Toggle Favorite";
-            case "cmd.refresh" -> "Refresh";
-            case "cmd.plugins.manage" -> "Plugins: Manage Plugins";
-            case "cmd.keyboard_shortcuts" -> "Keyboard Shortcuts";
-            case "cmd.documentation" -> "Documentation";
-            case "cmd.about" -> "About Forevernote";
-            default -> commandToken;
-        };
+        return commandAliases.getOrDefault(commandToken, commandToken);
+    }
+
+    private void initializeCommandRouting() {
+        if (!commandRoutes.isEmpty()) {
+            return;
+        }
+
+        registerCommandRoute("cmd.new_note", "New Note", () -> handleNewNote(null));
+        registerCommandRoute("cmd.new_folder", "New Folder", () -> handleNewFolder(null));
+        registerCommandRoute("cmd.save", "Save", () -> handleSave(null));
+        registerCommandRoute("cmd.save_all", "Save All", () -> handleSaveAll(null));
+        registerCommandRoute("cmd.import", "Import", () -> handleImport(null));
+        registerCommandRoute("cmd.export", "Export", () -> handleExport(null));
+        registerCommandRoute("cmd.delete_note", "Delete Note", () -> handleDelete(null));
+
+        registerCommandRoute("cmd.undo", "Undo", () -> handleUndo(null));
+        registerCommandRoute("cmd.redo", "Redo", () -> handleRedo(null));
+        registerCommandRoute("cmd.find", "Find", () -> handleFind(null));
+        registerCommandRoute("cmd.replace", "Find and Replace", () -> handleReplace(null));
+        registerCommandRoute("cmd.cut", "Cut", () -> handleCut(null));
+        registerCommandRoute("cmd.copy", "Copy", () -> handleCopy(null));
+        registerCommandRoute("cmd.paste", "Paste", () -> handlePaste(null));
+
+        registerCommandRoute("cmd.bold", "Bold", () -> handleBold(null));
+        registerCommandRoute("cmd.italic", "Italic", () -> handleItalic(null));
+        registerCommandRoute("cmd.underline", "Underline", () -> handleUnderline(null));
+        registerCommandRoute("cmd.insert_link", "Insert Link", () -> handleLink(null));
+        registerCommandRoute("cmd.insert_image", "Insert Image", () -> handleImage(null));
+        registerCommandRoute("cmd.insert_todo", "Insert Todo", () -> handleTodoList(null));
+        registerCommandRoute("cmd.insert_list", "Insert List", () -> handleNumberedList(null));
+
+        registerCommandRoute("cmd.toggle_sidebar", "Toggle Sidebar", () -> handleToggleSidebar(null));
+        registerCommandRoute("cmd.toggle_info_panel", "Toggle Info Panel", () -> handleToggleRightPanel(null));
+        commandAliases.put("Toggle Right Panel", "cmd.toggle_info_panel");
+        registerCommandRoute("cmd.editor_mode", "Editor Mode", () -> handleEditorOnlyMode(null));
+        registerCommandRoute("cmd.preview_mode", "Preview Mode", () -> handlePreviewOnlyMode(null));
+        registerCommandRoute("cmd.split_mode", "Split Mode", () -> handleSplitViewMode(null));
+        registerCommandRoute("cmd.zoom_in", "Zoom In", () -> handleZoomIn(null));
+        registerCommandRoute("cmd.zoom_out", "Zoom Out", () -> handleZoomOut(null));
+        registerCommandRoute("cmd.reset_zoom", "Reset Zoom", () -> handleResetZoom(null));
+
+        registerCommandRoute("cmd.theme_light", "Light Theme", () -> handleLightTheme(null));
+        registerCommandRoute("cmd.theme_dark", "Dark Theme", () -> handleDarkTheme(null));
+        registerCommandRoute("cmd.theme_system", "System Theme", () -> handleSystemTheme(null));
+
+        registerCommandRoute("cmd.quick_switcher", "Quick Switcher", this::showQuickSwitcher);
+        registerCommandRoute("cmd.global_search", "Global Search", () -> {
+            if (toolbarController != null && toolbarController.getSearchField() != null) {
+                toolbarController.getSearchField().requestFocus();
+            }
+        });
+        registerCommandRoute("cmd.goto_all_notes", "Go to All Notes", this::goToAllNotes);
+        registerCommandRoute("cmd.goto_favorites", "Go to Favorites", () -> sidebarController.loadFavorites());
+        registerCommandRoute("cmd.goto_recent", "Go to Recent", () -> sidebarController.loadRecentNotes());
+
+        registerCommandRoute("cmd.tag_manager", "Tag Manager", () -> handleTagsManager(null));
+        registerCommandRoute("cmd.preferences", "Preferences", () -> handlePreferences(null));
+        registerCommandRoute("cmd.toggle_favorite", "Toggle Favorite", () -> handleToggleFavorite(null));
+        registerCommandRoute("cmd.refresh", "Refresh", () -> handleRefresh(null));
+        registerCommandRoute("cmd.plugins.manage", "Plugins: Manage Plugins", this::showPluginManager);
+
+        registerCommandRoute("cmd.keyboard_shortcuts", "Keyboard Shortcuts", () -> handleKeyboardShortcuts(null));
+        registerCommandRoute("cmd.documentation", "Documentation", () -> handleDocumentation(null));
+        registerCommandRoute("cmd.about", "About Forevernote", () -> handleAbout(null));
+    }
+
+    private void registerCommandRoute(String id, String legacyName, Runnable action) {
+        commandRoutes.put(id, action);
+        commandAliases.put(id, id);
+        commandAliases.put(legacyName, id);
+    }
+
+    private Stage getPrimaryStage() {
+        if (mainSplitPane != null && mainSplitPane.getScene() != null) {
+            javafx.stage.Window window = mainSplitPane.getScene().getWindow();
+            if (window instanceof Stage stage) {
+                return stage;
+            }
+        }
+        return null;
+    }
+
+    private void ensureCommandUisInitialized(Stage stage) {
+        if (stage == null) {
+            return;
+        }
+        if (commandPalette == null) {
+            commandPalette = new CommandPalette(stage);
+            commandPalette.setCommandHandler(this::executeCommand);
+        }
+        if (quickSwitcher == null) {
+            quickSwitcher = new QuickSwitcher(stage);
+            quickSwitcher.setOnNoteSelected(this::loadNoteInEditor);
+        }
     }
 
     /**

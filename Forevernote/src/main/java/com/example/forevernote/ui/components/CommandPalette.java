@@ -127,6 +127,19 @@ public class CommandPalette {
             .findFirst()
             .orElse(null);
     }
+
+    /**
+     * Finds a command by internal ID.
+     *
+     * @param commandId The internal command id
+     * @return The command, or null if not found
+     */
+    public Command findCommandById(String commandId) {
+        return commands.stream()
+            .filter(c -> c.getId().equals(commandId))
+            .findFirst()
+            .orElse(null);
+    }
     
     /**
      * Clears all commands.
