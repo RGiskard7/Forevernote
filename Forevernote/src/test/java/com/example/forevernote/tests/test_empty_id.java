@@ -1,5 +1,8 @@
+package com.example.forevernote.tests;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
 public class test_empty_id {
     public static void main(String[] args) {
         String originalRelativePath = "folderA";

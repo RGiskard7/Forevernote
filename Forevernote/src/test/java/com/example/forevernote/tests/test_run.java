@@ -1,3 +1,5 @@
+package com.example.forevernote.tests;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
