@@ -64,6 +64,7 @@ public class CommandPalette {
      * Represents a command in the palette.
      */
     public static class Command {
+        private final String id;
         private final String name;
         private final String description;
         private final String shortcut;
@@ -72,10 +73,16 @@ public class CommandPalette {
         private Runnable action;
         
         public Command(String name, String description, String shortcut, Runnable action) {
-            this(name, description, shortcut, ">", "General", action);
+            this(name, name, description, shortcut, ">", "General", action);
         }
         
         public Command(String name, String description, String shortcut, String icon, String category, Runnable action) {
+            this(name, name, description, shortcut, icon, category, action);
+        }
+
+        public Command(String id, String name, String description, String shortcut, String icon, String category,
+                Runnable action) {
+            this.id = id;
             this.name = name;
             this.description = description;
             this.shortcut = shortcut;
@@ -84,6 +91,7 @@ public class CommandPalette {
             this.action = action;
         }
         
+        public String getId() { return id; }
         public String getName() { return name; }
         public String getDescription() { return description; }
         public String getShortcut() { return shortcut; }
@@ -132,64 +140,83 @@ public class CommandPalette {
      */
     private void initializeDefaultCommands() {
         // File commands - using simple ASCII/text symbols
-        commands.add(new Command("New Note", "Create a new note", "Ctrl+N", "+", "File", null));
-        commands.add(new Command("New Folder", "Create a new folder", "Ctrl+Shift+N", "+", "File", null));
-        commands.add(new Command("Save", "Save current note", "Ctrl+S", "*", "File", null));
-        commands.add(new Command("Save All", "Save all notes", "Ctrl+Shift+S", "*", "File", null));
-        commands.add(new Command("Import", "Import notes from files", "Ctrl+I", "<", "File", null));
-        commands.add(new Command("Export", "Export current note", "Ctrl+E", ">", "File", null));
-        commands.add(new Command("Delete Note", "Delete current note", "Del", "x", "File", null));
+        commands.add(new Command("cmd.new_note", "New Note", "Create a new note", "Ctrl+N", "+", "File", null));
+        commands.add(
+                new Command("cmd.new_folder", "New Folder", "Create a new folder", "Ctrl+Shift+N", "+", "File", null));
+        commands.add(new Command("cmd.save", "Save", "Save current note", "Ctrl+S", "*", "File", null));
+        commands.add(new Command("cmd.save_all", "Save All", "Save all notes", "Ctrl+Shift+S", "*", "File", null));
+        commands.add(new Command("cmd.import", "Import", "Import notes from files", "Ctrl+I", "<", "File", null));
+        commands.add(new Command("cmd.export", "Export", "Export current note", "Ctrl+E", ">", "File", null));
+        commands.add(new Command("cmd.delete_note", "Delete Note", "Delete current note", "Del", "x", "File", null));
         
         // Edit commands
-        commands.add(new Command("Undo", "Undo last action", "Ctrl+Z", "<", "Edit", null));
-        commands.add(new Command("Redo", "Redo last action", "Ctrl+Y", ">", "Edit", null));
-        commands.add(new Command("Find", "Find text in note", "Ctrl+F", "?", "Edit", null));
-        commands.add(new Command("Find and Replace", "Find and replace text", "Ctrl+H", "~", "Edit", null));
-        commands.add(new Command("Cut", "Cut selection", "Ctrl+X", "x", "Edit", null));
-        commands.add(new Command("Copy", "Copy selection", "Ctrl+C", "=", "Edit", null));
-        commands.add(new Command("Paste", "Paste from clipboard", "Ctrl+V", "v", "Edit", null));
+        commands.add(new Command("cmd.undo", "Undo", "Undo last action", "Ctrl+Z", "<", "Edit", null));
+        commands.add(new Command("cmd.redo", "Redo", "Redo last action", "Ctrl+Y", ">", "Edit", null));
+        commands.add(new Command("cmd.find", "Find", "Find text in note", "Ctrl+F", "?", "Edit", null));
+        commands.add(new Command("cmd.replace", "Find and Replace", "Find and replace text", "Ctrl+H", "~", "Edit",
+                null));
+        commands.add(new Command("cmd.cut", "Cut", "Cut selection", "Ctrl+X", "x", "Edit", null));
+        commands.add(new Command("cmd.copy", "Copy", "Copy selection", "Ctrl+C", "=", "Edit", null));
+        commands.add(new Command("cmd.paste", "Paste", "Paste from clipboard", "Ctrl+V", "v", "Edit", null));
         
         // Format commands
-        commands.add(new Command("Bold", "Make text bold", "Ctrl+B", "B", "Format", null));
-        commands.add(new Command("Italic", "Make text italic", "Ctrl+I", "I", "Format", null));
-        commands.add(new Command("Underline", "Underline text", "Ctrl+U", "U", "Format", null));
-        commands.add(new Command("Insert Link", "Insert a hyperlink", "Ctrl+K", "@", "Format", null));
-        commands.add(new Command("Insert Image", "Insert an image", null, "#", "Format", null));
-        commands.add(new Command("Insert Todo", "Insert a todo item", null, "[]", "Format", null));
-        commands.add(new Command("Insert List", "Insert numbered list", null, "1.", "Format", null));
+        commands.add(new Command("cmd.bold", "Bold", "Make text bold", "Ctrl+B", "B", "Format", null));
+        commands.add(new Command("cmd.italic", "Italic", "Make text italic", "Ctrl+I", "I", "Format", null));
+        commands.add(new Command("cmd.underline", "Underline", "Underline text", "Ctrl+U", "U", "Format", null));
+        commands.add(new Command("cmd.insert_link", "Insert Link", "Insert a hyperlink", "Ctrl+K", "@", "Format",
+                null));
+        commands.add(new Command("cmd.insert_image", "Insert Image", "Insert an image", null, "#", "Format", null));
+        commands.add(new Command("cmd.insert_todo", "Insert Todo", "Insert a todo item", null, "[]", "Format", null));
+        commands.add(
+                new Command("cmd.insert_list", "Insert List", "Insert numbered list", null, "1.", "Format", null));
         
         // View commands
-        commands.add(new Command("Toggle Sidebar", "Show/hide sidebar", "F9", "|", "View", null));
-        commands.add(new Command("Toggle Info Panel", "Show/hide info panel", "Ctrl+Shift+I", "i", "View", null));
-        commands.add(new Command("Editor Mode", "Show only editor", null, "E", "View", null));
-        commands.add(new Command("Preview Mode", "Show only preview", null, "P", "View", null));
-        commands.add(new Command("Split Mode", "Show editor and preview", null, "||", "View", null));
-        commands.add(new Command("Zoom In", "Increase text size", "Ctrl++", "+", "View", null));
-        commands.add(new Command("Zoom Out", "Decrease text size", "Ctrl+-", "-", "View", null));
-        commands.add(new Command("Reset Zoom", "Reset text size to 100%", "Ctrl+0", "0", "View", null));
+        commands.add(
+                new Command("cmd.toggle_sidebar", "Toggle Sidebar", "Show/hide sidebar", "F9", "|", "View", null));
+        commands.add(new Command("cmd.toggle_info_panel", "Toggle Info Panel", "Show/hide info panel",
+                "Ctrl+Shift+I", "i", "View", null));
+        commands.add(new Command("cmd.editor_mode", "Editor Mode", "Show only editor", null, "E", "View", null));
+        commands.add(new Command("cmd.preview_mode", "Preview Mode", "Show only preview", null, "P", "View", null));
+        commands.add(
+                new Command("cmd.split_mode", "Split Mode", "Show editor and preview", null, "||", "View", null));
+        commands.add(new Command("cmd.zoom_in", "Zoom In", "Increase text size", "Ctrl++", "+", "View", null));
+        commands.add(new Command("cmd.zoom_out", "Zoom Out", "Decrease text size", "Ctrl+-", "-", "View", null));
+        commands.add(
+                new Command("cmd.reset_zoom", "Reset Zoom", "Reset text size to 100%", "Ctrl+0", "0", "View", null));
         
         // Theme commands
-        commands.add(new Command("Light Theme", "Switch to light theme", null, "O", "Theme", null));
-        commands.add(new Command("Dark Theme", "Switch to dark theme", null, "*", "Theme", null));
-        commands.add(new Command("System Theme", "Use system theme", null, "S", "Theme", null));
+        commands.add(new Command("cmd.theme_light", "Light Theme", "Switch to light theme", null, "O", "Theme", null));
+        commands.add(new Command("cmd.theme_dark", "Dark Theme", "Switch to dark theme", null, "*", "Theme", null));
+        commands.add(
+                new Command("cmd.theme_system", "System Theme", "Use system theme", null, "S", "Theme", null));
         
         // Navigation commands
-        commands.add(new Command("Quick Switcher", "Switch between notes", "Ctrl+O", "/", "Navigation", null));
-        commands.add(new Command("Global Search", "Search all notes", "Ctrl+Shift+F", "?", "Navigation", null));
-        commands.add(new Command("Go to All Notes", "Show all notes", null, "*", "Navigation", null));
-        commands.add(new Command("Go to Favorites", "Show favorite notes", null, "*", "Navigation", null));
-        commands.add(new Command("Go to Recent", "Show recent notes", null, "~", "Navigation", null));
+        commands.add(new Command("cmd.quick_switcher", "Quick Switcher", "Switch between notes", "Ctrl+O", "/",
+                "Navigation", null));
+        commands.add(new Command("cmd.global_search", "Global Search", "Search all notes", "Ctrl+Shift+F", "?",
+                "Navigation", null));
+        commands.add(
+                new Command("cmd.goto_all_notes", "Go to All Notes", "Show all notes", null, "*", "Navigation", null));
+        commands.add(new Command("cmd.goto_favorites", "Go to Favorites", "Show favorite notes", null, "*",
+                "Navigation", null));
+        commands.add(
+                new Command("cmd.goto_recent", "Go to Recent", "Show recent notes", null, "~", "Navigation", null));
         
         // Tools commands
-        commands.add(new Command("Tag Manager", "Manage tags", null, "#", "Tools", null));
-        commands.add(new Command("Preferences", "Open settings", "Ctrl+,", "=", "Tools", null));
-        commands.add(new Command("Toggle Favorite", "Mark/unmark as favorite", null, "*", "Tools", null));
-        commands.add(new Command("Refresh", "Refresh current view", "F5", "~", "Tools", null));
+        commands.add(new Command("cmd.tag_manager", "Tag Manager", "Manage tags", null, "#", "Tools", null));
+        commands.add(
+                new Command("cmd.preferences", "Preferences", "Open settings", "Ctrl+,", "=", "Tools", null));
+        commands.add(new Command("cmd.toggle_favorite", "Toggle Favorite", "Mark/unmark as favorite", null, "*",
+                "Tools", null));
+        commands.add(new Command("cmd.refresh", "Refresh", "Refresh current view", "F5", "~", "Tools", null));
         
         // Help commands
-        commands.add(new Command("Keyboard Shortcuts", "View all shortcuts", "F1", "?", "Help", null));
-        commands.add(new Command("Documentation", "View user guide", null, "?", "Help", null));
-        commands.add(new Command("About Forevernote", "About this application", null, "i", "Help", null));
+        commands.add(new Command("cmd.keyboard_shortcuts", "Keyboard Shortcuts", "View all shortcuts", "F1", "?",
+                "Help", null));
+        commands.add(
+                new Command("cmd.documentation", "Documentation", "View user guide", null, "?", "Help", null));
+        commands.add(new Command("cmd.about", "About Forevernote", "About this application", null, "i", "Help",
+                null));
     }
     
     /**
@@ -206,10 +233,10 @@ public class CommandPalette {
         this.commandHandler = handler;
         // Update all commands to use this handler
         for (Command cmd : commands) {
-            final String cmdName = cmd.getName();
+            final String cmdToken = cmd.getId() != null ? cmd.getId() : cmd.getName();
             cmd.setAction(() -> {
                 if (commandHandler != null) {
-                    commandHandler.accept(cmdName);
+                    commandHandler.accept(cmdToken);
                 }
             });
         }

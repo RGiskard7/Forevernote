@@ -715,6 +715,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             // Register plugin manager command in Command Palette
             commandPalette.addCommand(new CommandPalette.Command(
+                    "cmd.plugins.manage",
                     "Plugins: Manage Plugins",
                     "Open plugin manager to enable/disable plugins",
                     "Ctrl+Shift+P",
@@ -1369,9 +1370,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      * Execute a command from the Command Palette.
      */
     private void executeCommand(String commandName) {
-        logger.info("Executing command: " + commandName);
+        String resolvedCommand = resolveCommandToken(commandName);
+        logger.info("Executing command: " + resolvedCommand);
 
-        switch (commandName) {
+        switch (resolvedCommand) {
             // File commands
             case "New Note":
                 handleNewNote(null);
@@ -1534,9 +1536,63 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         return;
                     }
                 }
-                logger.warning("Unknown command: " + commandName);
-                updateStatus(java.text.MessageFormat.format(getString("status.unknown_command"), commandName));
+                logger.warning("Unknown command: " + resolvedCommand);
+                updateStatus(java.text.MessageFormat.format(getString("status.unknown_command"), resolvedCommand));
         }
+    }
+
+    private String resolveCommandToken(String commandToken) {
+        if (commandToken == null) {
+            return "";
+        }
+        return switch (commandToken) {
+            case "cmd.new_note" -> "New Note";
+            case "cmd.new_folder" -> "New Folder";
+            case "cmd.save" -> "Save";
+            case "cmd.save_all" -> "Save All";
+            case "cmd.import" -> "Import";
+            case "cmd.export" -> "Export";
+            case "cmd.delete_note" -> "Delete Note";
+            case "cmd.undo" -> "Undo";
+            case "cmd.redo" -> "Redo";
+            case "cmd.find" -> "Find";
+            case "cmd.replace" -> "Find and Replace";
+            case "cmd.cut" -> "Cut";
+            case "cmd.copy" -> "Copy";
+            case "cmd.paste" -> "Paste";
+            case "cmd.bold" -> "Bold";
+            case "cmd.italic" -> "Italic";
+            case "cmd.underline" -> "Underline";
+            case "cmd.insert_link" -> "Insert Link";
+            case "cmd.insert_image" -> "Insert Image";
+            case "cmd.insert_todo" -> "Insert Todo";
+            case "cmd.insert_list" -> "Insert List";
+            case "cmd.toggle_sidebar" -> "Toggle Sidebar";
+            case "cmd.toggle_info_panel" -> "Toggle Info Panel";
+            case "cmd.editor_mode" -> "Editor Mode";
+            case "cmd.preview_mode" -> "Preview Mode";
+            case "cmd.split_mode" -> "Split Mode";
+            case "cmd.zoom_in" -> "Zoom In";
+            case "cmd.zoom_out" -> "Zoom Out";
+            case "cmd.reset_zoom" -> "Reset Zoom";
+            case "cmd.theme_light" -> "Light Theme";
+            case "cmd.theme_dark" -> "Dark Theme";
+            case "cmd.theme_system" -> "System Theme";
+            case "cmd.quick_switcher" -> "Quick Switcher";
+            case "cmd.global_search" -> "Global Search";
+            case "cmd.goto_all_notes" -> "Go to All Notes";
+            case "cmd.goto_favorites" -> "Go to Favorites";
+            case "cmd.goto_recent" -> "Go to Recent";
+            case "cmd.tag_manager" -> "Tag Manager";
+            case "cmd.preferences" -> "Preferences";
+            case "cmd.toggle_favorite" -> "Toggle Favorite";
+            case "cmd.refresh" -> "Refresh";
+            case "cmd.plugins.manage" -> "Plugins: Manage Plugins";
+            case "cmd.keyboard_shortcuts" -> "Keyboard Shortcuts";
+            case "cmd.documentation" -> "Documentation";
+            case "cmd.about" -> "About Forevernote";
+            default -> commandToken;
+        };
     }
 
     /**
