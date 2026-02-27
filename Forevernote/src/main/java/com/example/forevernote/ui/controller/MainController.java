@@ -1488,6 +1488,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     toolbarController.getSearchField().requestFocus();
                 break;
             case "Go to All Notes":
+                goToAllNotes();
                 break;
             case "Go to Favorites":
                 sidebarController.loadFavorites();
@@ -2158,7 +2159,22 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             currentFolder = null;
             currentTag = null;
             currentFilterType = "all";
+            notesListController.loadAllNotes();
         }
+    }
+
+    private void goToAllNotes() {
+        if (folderTreeView != null && folderTreeView.getRoot() != null) {
+            for (TreeItem<Folder> child : folderTreeView.getRoot().getChildren()) {
+                Folder folder = child.getValue();
+                if (folder != null && "ALL_NOTES_VIRTUAL".equals(folder.getId())) {
+                    folderTreeView.getSelectionModel().select(child);
+                    child.setExpanded(true);
+                    return;
+                }
+            }
+        }
+        loadAllNotes();
     }
 
     /**
@@ -2398,7 +2414,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         int wordCount = countWords(content);
 
         if (wordCountLabel != null) {
-            wordCountLabel.setText(wordCount + " words");
+            wordCountLabel.setText(java.text.MessageFormat.format(getString("info.words_count"), wordCount));
         }
         if (infoWordsLabel != null) {
             infoWordsLabel.setText(String.valueOf(wordCount));
@@ -3736,7 +3752,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     notesListView.getSelectionModel().clearSelection();
                     notesListView.getItems().setAll(favoriteNotes);
                     sortNotes(sortComboBox.getValue());
-                    noteCountLabel.setText(favoriteNotes.size() + " favorite notes");
+                    noteCountLabel.setText(java.text.MessageFormat.format(getString("info.favorite_notes_count"),
+                            favoriteNotes.size()));
                     currentFilterType = "favorites";
                     currentFolder = null;
                     currentTag = null;
