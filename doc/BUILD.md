@@ -105,6 +105,22 @@ For phase-by-phase hardening validation (tests + package + manual smoke checklis
 ./scripts/smoke-phase-gate.sh
 ```
 
+Windows PowerShell:
+
+```powershell
+.\scripts\smoke-phase-gate.ps1
+```
+
+For explicit storage parity validation (SQLite vs FileSystem contracts):
+
+```bash
+./scripts/hardening-storage-matrix.sh
+```
+
+```powershell
+.\scripts\hardening-storage-matrix.ps1
+```
+
 ## Build Methods
 
 ### Method 1: Using Build Scripts (Recommended)

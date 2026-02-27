@@ -63,6 +63,18 @@ mvn -f Forevernote/pom.xml clean compile exec:java -Dexec.mainClass="com.example
 mvn -f Forevernote/pom.xml test
 ```
 
+- Gate de hardening por fase:
+
+```bash
+./scripts/smoke-phase-gate.sh
+./scripts/hardening-storage-matrix.sh
+```
+
+```powershell
+.\scripts\smoke-phase-gate.ps1
+.\scripts\hardening-storage-matrix.ps1
+```
+
 - Empaquetado (sin tests):
 
 ```bash

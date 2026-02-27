@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [5.0.6] - 2026-02-27
+
+### Hardening Closeout: Gates, Matrix y Definition of Done
+
+**Added:**
+- `doc/DEFINITION_OF_DONE.md` con criterios obligatorios, criterios de rechazo y reglas de entrega segura.
+- `scripts/smoke-phase-gate.ps1` para ejecutar el gate completo en Windows PowerShell.
+- `scripts/hardening-storage-matrix.sh` para validación dual SQLite/FileSystem.
+- `scripts/hardening-storage-matrix.ps1` equivalente para Windows PowerShell.
+
+**Changed:**
+- `doc/HARDENING_BASELINE.md`: estado de fases actualizado a completado.
+- `doc/HARDENING_EXECUTION_STATUS.md`: cierre de fases 0-11 y entregables finales.
+- `doc/HARDENING_PHASE_CHECKLIST.md`: incluye gates automáticos multiplataforma y matrix de storage.
+- `doc/BUILD.md`: documentación de nuevos scripts de gate y validación dual.
+
+**Validation:**
+- ✅ `mvn -f Forevernote/pom.xml clean test`
+- ✅ `mvn -f Forevernote/pom.xml -DskipTests clean package`
+
+---
+
 ## [5.0.5] - 2026-02-27
 
 ### Hardening Mega Batch: Command Palette Fix + Command Routing + Docs/Playbook

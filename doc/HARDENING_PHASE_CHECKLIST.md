@@ -6,6 +6,8 @@ Use this checklist at the end of each phase.
 - [ ] `mvn -f Forevernote/pom.xml clean test`
 - [ ] `mvn -f Forevernote/pom.xml -DskipTests clean package`
 - [ ] `./scripts/smoke-phase-gate.sh` (if running on macOS/Linux)
+- [ ] `.\scripts\smoke-phase-gate.ps1` (if running on Windows PowerShell)
+- [ ] `./scripts/hardening-storage-matrix.sh` or `.\scripts\hardening-storage-matrix.ps1`
 
 ## Manual smoke checks
 - [ ] Create, edit and save a note
