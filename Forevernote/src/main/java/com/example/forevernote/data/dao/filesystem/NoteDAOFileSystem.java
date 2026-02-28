@@ -33,6 +33,9 @@ import com.example.forevernote.exceptions.InvalidParameterException;
 public class NoteDAOFileSystem implements NoteDAO {
 
     private static final Logger logger = LoggerConfig.getLogger(NoteDAOFileSystem.class);
+    private static final String ROOT_ID = "ROOT";
+    // DAO layer must stay locale-neutral; UI is responsible for localized labels.
+    private static final String ROOT_TITLE = "ROOT";
     private final Path rootPath;
 
     // Cache to map Note ID (Relative Path) -> Absolute Path
@@ -436,7 +439,7 @@ public class NoteDAOFileSystem implements NoteDAO {
         }
 
         List<Note> notes = new ArrayList<>();
-        String prefix = (folderId == null || folderId.equals("ROOT")) ? "" : folderId + File.separator;
+        String prefix = (folderId == null || folderId.equals(ROOT_ID)) ? "" : folderId + File.separator;
 
         for (Note note : cachedNotes.values()) {
             if (note.isDeleted())
@@ -445,7 +448,7 @@ public class NoteDAOFileSystem implements NoteDAO {
             String id = note.getId().replace("\\", "/");
             String normalizedPrefix = prefix.replace("\\", "/");
 
-            if (folderId == null || folderId.equals("ROOT")) {
+            if (folderId == null || folderId.equals(ROOT_ID)) {
                 // Root folder: direct children have no separator
                 if (!id.contains("/")) {
                     notes.add(note);
@@ -483,17 +486,17 @@ public class NoteDAOFileSystem implements NoteDAO {
     @Override
     public Folder getFolderOfNote(String noteId) {
         if (noteId == null || noteId.isEmpty()) {
-            return new Folder("ROOT", "All Notes");
+            return new Folder(ROOT_ID, ROOT_TITLE);
         }
 
         Path notePath = Paths.get(noteId.replace("\\", "/"));
         Path parent = notePath.getParent();
         if (parent == null) {
-            return new Folder("ROOT", "All Notes");
+            return new Folder(ROOT_ID, ROOT_TITLE);
         }
 
         String folderId = parent.toString().replace("\\", "/");
-        String folderName = parent.getFileName() != null ? parent.getFileName().toString() : "All Notes";
+        String folderName = parent.getFileName() != null ? parent.getFileName().toString() : ROOT_TITLE;
         return new Folder(folderId, folderName);
     }
 

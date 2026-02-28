@@ -29,6 +29,9 @@ import com.example.forevernote.exceptions.InvalidParameterException;
 public class FolderDAOFileSystem implements FolderDAO {
 
     private static final Logger logger = LoggerConfig.getLogger(FolderDAOFileSystem.class);
+    private static final String ROOT_ID = "ROOT";
+    // DAO layer must stay locale-neutral; UI is responsible for localized labels.
+    private static final String ROOT_TITLE = "ROOT";
     private final Path rootPath;
 
     // Cache is less critical if we rely on paths, but useful for performance
@@ -51,7 +54,7 @@ public class FolderDAOFileSystem implements FolderDAO {
     public void refreshCache() {
         idToPathMap.clear();
         // ID "" (empty string) or "ROOT" maps to rootPath
-        idToPathMap.put("ROOT", rootPath);
+        idToPathMap.put(ROOT_ID, rootPath);
 
         try (Stream<Path> walk = Files.walk(rootPath)) {
             walk.filter(Files::isDirectory)
@@ -74,7 +77,7 @@ public class FolderDAOFileSystem implements FolderDAO {
 
         // Logic: ID is path. If ID is provided, use it. If not, use Title as name in
         // root.
-        String parentId = "ROOT";
+        String parentId = ROOT_ID;
         if (folder.getParent() != null) {
             parentId = folder.getParent().getId();
         }
@@ -274,8 +277,8 @@ public class FolderDAOFileSystem implements FolderDAO {
     public Folder getFolderById(String id) {
         if (id == null)
             return null;
-        if ("ROOT".equals(id)) {
-            return new Folder("ROOT", "All Notes");
+        if (ROOT_ID.equals(id)) {
+            return new Folder(ROOT_ID, ROOT_TITLE);
         }
         Path path = idToPathMap.get(id);
         if (path != null) {
@@ -291,7 +294,7 @@ public class FolderDAOFileSystem implements FolderDAO {
         Path notePath = Paths.get(noteId);
         Path parent = notePath.getParent();
         if (parent == null)
-            return getFolderById("ROOT"); // Root folder
+            return getFolderById(ROOT_ID); // Root folder
 
         return getFolderById(parent.toString());
     }
@@ -299,7 +302,7 @@ public class FolderDAOFileSystem implements FolderDAO {
     @Override
     public List<Folder> fetchAllFoldersAsList() {
         return idToPathMap.entrySet().stream()
-                .filter(e -> !e.getKey().equals("ROOT") && !e.getKey().isEmpty()) // Exclude ROOT
+                .filter(e -> !e.getKey().equals(ROOT_ID) && !e.getKey().isEmpty()) // Exclude ROOT
                 .filter(e -> !e.getValue().getFileName().toString().startsWith(".")) // Exclude hidden
                 .map(e -> new Folder(e.getKey(), e.getValue().getFileName().toString()))
                 .collect(Collectors.toList());
@@ -307,7 +310,7 @@ public class FolderDAOFileSystem implements FolderDAO {
 
     @Override
     public Folder fetchAllFoldersAsTree() {
-        Folder root = new Folder("ROOT", "All Notes");
+        Folder root = new Folder(ROOT_ID, ROOT_TITLE);
         loadSubFolders(root);
         return root;
     }
@@ -322,7 +325,7 @@ public class FolderDAOFileSystem implements FolderDAO {
             return;
 
         Path targetDir;
-        if ("ROOT".equals(folder.getId())) {
+        if (ROOT_ID.equals(folder.getId())) {
             targetDir = rootPath;
         } else {
             targetDir = idToPathMap.get(folder.getId());
@@ -378,7 +381,7 @@ public class FolderDAOFileSystem implements FolderDAO {
         try {
             Files.move(sourcePath, targetPath);
             note.setId(rootPath.relativize(targetPath).toString());
-            note.setParent(getFolderById("ROOT"));
+            note.setParent(getFolderById(ROOT_ID));
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to remove note from folder: " + folder.getId(), e);
         }
@@ -390,7 +393,7 @@ public class FolderDAOFileSystem implements FolderDAO {
             return;
         }
 
-        Path path = "ROOT".equals(folder.getId()) ? rootPath : idToPathMap.get(folder.getId());
+        Path path = ROOT_ID.equals(folder.getId()) ? rootPath : idToPathMap.get(folder.getId());
         if (path == null || !Files.exists(path)) {
             return;
         }
@@ -420,7 +423,7 @@ public class FolderDAOFileSystem implements FolderDAO {
             return;
         }
 
-        Path parentPath = "ROOT".equals(parent.getId()) ? rootPath : idToPathMap.get(parent.getId());
+        Path parentPath = ROOT_ID.equals(parent.getId()) ? rootPath : idToPathMap.get(parent.getId());
         Path subPath = idToPathMap.get(subFolder.getId());
         if (parentPath == null || subPath == null || !Files.exists(subPath)) {
             return;
@@ -462,7 +465,7 @@ public class FolderDAOFileSystem implements FolderDAO {
         if (maxDepth <= 0)
             return;
 
-        Path path = (folder.getId().equals("ROOT")) ? rootPath : idToPathMap.get(folder.getId());
+        Path path = (folder.getId().equals(ROOT_ID)) ? rootPath : idToPathMap.get(folder.getId());
         if (path == null || !Files.exists(path))
             return;
 
@@ -520,7 +523,7 @@ public class FolderDAOFileSystem implements FolderDAO {
             Path parent = path.getParent();
             if (parent != null && parent.startsWith(rootPath)) {
                 if (parent.equals(rootPath))
-                    return getFolderById("ROOT");
+                    return getFolderById(ROOT_ID);
                 return getFolderById(rootPath.relativize(parent).toString());
             }
         }

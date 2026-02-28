@@ -52,6 +52,28 @@ public class PluginLoader {
     private static final List<URLClassLoader> activeClassLoaders = new ArrayList<>();
 
     /**
+     * Detailed report for plugin loading operations.
+     * Provides loaded plugins and non-fatal load failures.
+     */
+    public static final class PluginLoadReport {
+        private final List<Plugin> plugins;
+        private final List<String> failures;
+
+        public PluginLoadReport(List<Plugin> plugins, List<String> failures) {
+            this.plugins = plugins;
+            this.failures = failures;
+        }
+
+        public List<Plugin> getPlugins() {
+            return plugins;
+        }
+
+        public List<String> getFailures() {
+            return failures;
+        }
+    }
+
+    /**
      * Scans the plugins directory and loads all available plugins.
      * Checks multiple locations: app bundle (jpackage), AppData, and relative path.
      * On first run of a packaged app, copies bundled plugins to AppData so they are
@@ -60,10 +82,22 @@ public class PluginLoader {
      * @return List of loaded plugin instances
      */
     public static List<Plugin> loadExternalPlugins() {
+        return loadExternalPluginsWithReport().getPlugins();
+    }
+
+    /**
+     * Scans and loads plugins and returns a detailed report.
+     *
+     * This is additive and keeps {@link #loadExternalPlugins()} behavior intact.
+     *
+     * @return plugin loading report with loaded plugins and failures
+     */
+    public static PluginLoadReport loadExternalPluginsWithReport() {
         // Copy bundled plugins to AppData on first run (packaged apps: DMG, MSI, etc.)
         copyBundledPluginsToAppDataIfNeeded();
 
         List<Plugin> plugins = new ArrayList<>();
+        List<String> failures = new ArrayList<>();
         Set<Path> scannedDirs = new HashSet<>();
 
         for (Path pluginsPath : getPluginSearchPaths()) {
@@ -87,19 +121,25 @@ public class PluginLoader {
                                     plugins.add(plugin);
                                     logger.info(
                                             "Loaded external plugin: " + plugin.getName() + " v" + plugin.getVersion());
+                                } else {
+                                    failures.add("Could not load plugin from " + jarPath.getFileName());
                                 }
                             } catch (Exception e) {
-                                logger.warning(
-                                        "Failed to load plugin from " + jarPath.getFileName() + ": " + e.getMessage());
+                                String message = "Failed to load plugin from " + jarPath.getFileName() + ": "
+                                        + e.getMessage();
+                                logger.warning(message);
+                                failures.add(message);
                             }
                         });
             } catch (IOException e) {
-                logger.warning("Failed to scan plugins directory " + pluginsPath + ": " + e.getMessage());
+                String message = "Failed to scan plugins directory " + pluginsPath + ": " + e.getMessage();
+                logger.warning(message);
+                failures.add(message);
             }
         }
 
         logger.info("Loaded " + plugins.size() + " external plugin(s)");
-        return plugins;
+        return new PluginLoadReport(plugins, failures);
     }
 
     /**
