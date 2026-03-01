@@ -9,6 +9,7 @@ import javafx.event.ActionEvent;
 import java.util.*;
 import java.io.File;
 import java.util.prefs.Preferences;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.kordamp.ikonli.javafx.FontIcon;
 
@@ -20,6 +21,7 @@ import com.example.forevernote.data.models.Folder;
 import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.Tag;
 import com.example.forevernote.data.models.interfaces.Component;
+import com.example.forevernote.event.AppEvent;
 import com.example.forevernote.event.EventBus;
 import com.example.forevernote.event.events.*;
 import com.example.forevernote.service.FolderService;
@@ -145,9 +147,9 @@ public class SidebarController {
             if (newVal != null && newVal.getValue() != null) {
                 Folder f = newVal.getValue();
                 if ("ALL_NOTES_VIRTUAL".equals(f.getId())) {
-                    eventBus.publish(new FolderEvents.FolderSelectedEvent(f));
+                    publishEvent(new FolderEvents.FolderSelectedEvent(f));
                 } else if (!"INVISIBLE_ROOT".equals(f.getTitle())) {
-                    eventBus.publish(new FolderEvents.FolderSelectedEvent(f));
+                    publishEvent(new FolderEvents.FolderSelectedEvent(f));
                 }
             }
         });
@@ -155,7 +157,7 @@ public class SidebarController {
         tagListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 tagService.getAllTags().stream().filter(t -> t.getTitle().equals(newVal)).findFirst().ifPresent(t -> {
-                    eventBus.publish(new TagEvents.TagSelectedEvent(t));
+                    publishEvent(new TagEvents.TagSelectedEvent(t));
                 });
             }
         });
@@ -163,7 +165,7 @@ public class SidebarController {
         recentNotesListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 cachedRecentNotes.stream().filter(n -> n.getTitle().equals(newVal)).findFirst().ifPresent(n -> {
-                    eventBus.publish(new NoteEvents.NoteOpenRequestEvent(n));
+                    publishEvent(new NoteEvents.NoteOpenRequestEvent(n));
                 });
             }
         });
@@ -171,14 +173,14 @@ public class SidebarController {
         favoritesListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 cachedFavoriteNotes.stream().filter(n -> n.getTitle().equals(newVal)).findFirst().ifPresent(n -> {
-                    eventBus.publish(new NoteEvents.NoteOpenRequestEvent(n));
+                    publishEvent(new NoteEvents.NoteOpenRequestEvent(n));
                 });
             }
         });
 
         trashTreeView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null && newVal.getValue() != null) {
-                eventBus.publish(new NoteEvents.TrashItemSelectedEvent(newVal.getValue()));
+                publishEvent(new NoteEvents.TrashItemSelectedEvent(newVal.getValue()));
             }
         });
 
@@ -214,7 +216,7 @@ public class SidebarController {
                 vaultName = getString("app.my_notes");
             }
         } catch (Exception e) {
-            logger.warning("Failed to resolve vault name from preferences: " + e.getMessage());
+            logger.log(Level.WARNING, "Failed to resolve vault name from preferences", e);
         }
 
         Folder vaultFolder = new Folder(vaultName, null, null);
@@ -236,7 +238,7 @@ public class SidebarController {
                     vaultRootItem.getValue().setTitle(getString("app.my_notes"));
                 }
             } catch (Exception e) {
-                logger.warning("Failed to refresh localized root labels: " + e.getMessage());
+                logger.log(Level.WARNING, "Failed to refresh localized root labels", e);
             }
         }
         if (folderTreeView != null) {
@@ -372,6 +374,10 @@ public class SidebarController {
     }
 
     public void loadFolders() {
+        if (folderService == null) {
+            logger.warning("Cannot load folders: folderService is null");
+            return;
+        }
         try {
             if (vaultRootItem == null)
                 return;
@@ -417,7 +423,7 @@ public class SidebarController {
                 expandCollapseRecursive(vaultRootItem, true);
             vaultRootItem.setExpanded(true);
         } catch (Exception e) {
-            logger.severe("Failed to load folders: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to load folders", e);
         }
     }
 
@@ -443,6 +449,10 @@ public class SidebarController {
     }
 
     public void loadTrashTree() {
+        if (folderService == null || noteService == null) {
+            logger.warning("Cannot load trash tree: services are not initialized");
+            return;
+        }
         try {
             Folder trashRoot = folderService.getTrashFolders();
             List<Note> allNotes = noteService.getTrashNotes();
@@ -495,7 +505,7 @@ public class SidebarController {
             trashTreeView.setRoot(rootItem);
             trashTreeView.setShowRoot(false);
         } catch (Exception e) {
-            logger.severe("Failed to load trash: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to load trash", e);
         }
     }
 
@@ -546,6 +556,10 @@ public class SidebarController {
     }
 
     public void loadTags() {
+        if (tagService == null) {
+            logger.warning("Cannot load tags: tagService is null");
+            return;
+        }
         try {
             List<Tag> tags = tagService.getAllTags();
             masterTagsList.clear();
@@ -565,11 +579,15 @@ public class SidebarController {
                 }
             });
         } catch (Exception e) {
-            logger.warning("Failed to load tags: " + e.getMessage());
+            logger.log(Level.WARNING, "Failed to load tags", e);
         }
     }
 
     public void loadRecentNotes() {
+        if (noteService == null) {
+            logger.warning("Cannot load recent notes: noteService is null");
+            return;
+        }
         try {
             cachedRecentNotes = noteService.getAllNotes();
             cachedRecentNotes.sort((a, b) -> {
@@ -583,18 +601,22 @@ public class SidebarController {
             for (int i = 0; i < Math.min(10, cachedRecentNotes.size()); i++)
                 masterRecentList.add(cachedRecentNotes.get(i).getTitle());
         } catch (Exception e) {
-            logger.warning("Failed to load recent notes: " + e.getMessage());
+            logger.log(Level.WARNING, "Failed to load recent notes", e);
         }
     }
 
     public void loadFavorites() {
+        if (noteService == null) {
+            logger.warning("Cannot load favorites: noteService is null");
+            return;
+        }
         try {
             cachedFavoriteNotes = noteService.getAllNotes().stream().filter(Note::isFavorite).toList();
             masterFavoritesList.clear();
             for (Note n : cachedFavoriteNotes)
                 masterFavoritesList.add(n.getTitle());
         } catch (Exception e) {
-            logger.warning("Failed to load favorite notes: " + e.getMessage());
+            logger.log(Level.WARNING, "Failed to load favorite notes", e);
         }
     }
 
@@ -640,8 +662,16 @@ public class SidebarController {
 
     @FXML
     public void handleEmptyTrash(ActionEvent e) {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION, getString("action.empty_trash") + "?", ButtonType.OK,
-                ButtonType.CANCEL);
+        if (noteService == null || folderService == null) {
+            logger.warning("Cannot empty trash: services are not initialized");
+            publishStatusUpdate(getString("status.error"));
+            return;
+        }
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle(getString("dialog.empty_trash.title"));
+        alert.setHeaderText(getString("dialog.empty_trash.header"));
+        alert.setContentText(getString("dialog.empty_trash.content"));
+        alert.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
         alert.showAndWait().filter(r -> r == ButtonType.OK).ifPresent(r -> {
             try {
                 for (Note n : noteService.getTrashNotes())
@@ -654,7 +684,7 @@ public class SidebarController {
                 loadTrashTree();
                 publishStatusUpdate(getString("status.trash_emptied"));
             } catch (Exception ex) {
-                logger.warning("Failed to empty trash: " + ex.getMessage());
+                logger.log(Level.WARNING, "Failed to empty trash", ex);
             }
         });
     }
@@ -662,6 +692,11 @@ public class SidebarController {
     private void handleRestoreTrashItem() {
         TreeItem<Component> sel = trashTreeView.getSelectionModel().getSelectedItem();
         if (sel != null) {
+            if (folderService == null || noteService == null) {
+                logger.warning("Cannot restore trash item: services are not initialized");
+                publishStatusUpdate(getString("status.error"));
+                return;
+            }
             try {
                 Component c = sel.getValue();
                 if (c instanceof Folder)
@@ -674,7 +709,7 @@ public class SidebarController {
                 loadTrashTree();
                 publishStatusUpdate(getString("status.item_restored"));
             } catch (Exception e) {
-                logger.warning("Failed to restore trash item: " + e.getMessage());
+                logger.log(Level.WARNING, "Failed to restore trash item", e);
             }
         }
     }
@@ -683,9 +718,16 @@ public class SidebarController {
         TreeItem<Component> sel = trashTreeView.getSelectionModel().getSelectedItem();
         if (sel != null) {
             Component c = sel.getValue();
-            Alert a = new Alert(Alert.AlertType.CONFIRMATION,
-                    getString("action.delete") + " " + c.getTitle() + " " + getString("app.permanently") + "?",
-                    ButtonType.OK, ButtonType.CANCEL);
+            if (folderService == null || noteService == null) {
+                logger.warning("Cannot permanently delete trash item: services are not initialized");
+                publishStatusUpdate(getString("status.error"));
+                return;
+            }
+            Alert a = new Alert(Alert.AlertType.CONFIRMATION);
+            a.setTitle(getString("dialog.delete_permanently.title"));
+            a.setHeaderText(java.text.MessageFormat.format(getString("dialog.delete_permanently.header"), c.getTitle()));
+            a.setContentText(getString("dialog.delete_permanently.content"));
+            a.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
             if (a.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
                 try {
                     if (c instanceof Folder)
@@ -695,7 +737,7 @@ public class SidebarController {
                     loadTrashTree();
                     publishStatusUpdate(getString("status.item_deleted"));
                 } catch (Exception e) {
-                    logger.warning("Failed to permanently delete trash item: " + e.getMessage());
+                    logger.log(Level.WARNING, "Failed to permanently delete trash item", e);
                 }
             }
         }
@@ -703,35 +745,72 @@ public class SidebarController {
 
     private ContextMenu createFolderContextMenu(Folder f) {
         ContextMenu m = new ContextMenu();
+        MenuItem newNote = new MenuItem(getString("action.new_note"));
+        newNote.setOnAction(e -> handleCreateNoteInFolder(f));
+
+        MenuItem newSubfolder = new MenuItem(getString("action.new_subfolder"));
+        newSubfolder.setOnAction(e -> handleCreateSubfolderInFolder(f));
+
         MenuItem r = new MenuItem(getString("action.rename"));
         r.setOnAction(e -> handleRenameFolder(f));
         MenuItem d = new MenuItem(getString("action.delete"));
         d.setOnAction(e -> handleDeleteFolder(f));
-        m.getItems().addAll(r, d);
+        m.getItems().addAll(newNote, newSubfolder, new SeparatorMenuItem(), r, d);
         return m;
     }
 
+    private void handleCreateNoteInFolder(Folder folder) {
+        if (eventBus == null || folder == null) {
+            return;
+        }
+        eventBus.publish(new FolderEvents.FolderSelectedEvent(folder));
+        eventBus.publish(new SystemActionEvent(SystemActionEvent.ActionType.NEW_NOTE));
+    }
+
+    private void handleCreateSubfolderInFolder(Folder folder) {
+        if (eventBus == null || folder == null) {
+            return;
+        }
+        eventBus.publish(new FolderEvents.FolderSelectedEvent(folder));
+        eventBus.publish(new SystemActionEvent(SystemActionEvent.ActionType.NEW_FOLDER));
+    }
+
     private void handleRenameFolder(Folder f) {
+        if (folderService == null) {
+            logger.warning("Cannot rename folder: folderService is null");
+            publishStatusUpdate(getString("status.error_renaming_folder"));
+            return;
+        }
         TextInputDialog d = new TextInputDialog(f.getTitle());
         d.showAndWait().ifPresent(name -> {
             try {
                 folderService.renameFolder(f, name);
                 loadFolders();
             } catch (Exception e) {
-                logger.warning("Failed to rename folder " + (f != null ? f.getId() : "null") + ": " + e.getMessage());
+                logger.log(Level.WARNING, "Failed to rename folder " + (f != null ? f.getId() : "null"), e);
+                publishStatusUpdate(getString("status.error_renaming_folder"));
             }
         });
     }
 
     private void handleDeleteFolder(Folder f) {
-        Alert a = new Alert(Alert.AlertType.CONFIRMATION, getString("action.delete") + "?", ButtonType.OK,
-                ButtonType.CANCEL);
+        if (folderService == null) {
+            logger.warning("Cannot delete folder: folderService is null");
+            publishStatusUpdate(getString("status.error_deleting_folder"));
+            return;
+        }
+        Alert a = new Alert(Alert.AlertType.CONFIRMATION);
+        a.setTitle(getString("dialog.delete_folder.title"));
+        a.setHeaderText(getString("dialog.delete_folder.header"));
+        a.setContentText(getString("dialog.delete_folder.content"));
+        a.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
         a.showAndWait().filter(r -> r == ButtonType.OK).ifPresent(r -> {
             try {
                 folderService.deleteFolder(f.getId());
                 loadFolders();
             } catch (Exception e) {
-                logger.warning("Failed to delete folder " + (f != null ? f.getId() : "null") + ": " + e.getMessage());
+                logger.log(Level.WARNING, "Failed to delete folder " + (f != null ? f.getId() : "null"), e);
+                publishStatusUpdate(getString("status.error_deleting_folder"));
             }
         });
     }
@@ -745,15 +824,24 @@ public class SidebarController {
     }
 
     private void handleDeleteTag(String tagName) {
-        Alert a = new Alert(Alert.AlertType.CONFIRMATION, getString("action.delete") + " tag #" + tagName + "?",
-                ButtonType.OK, ButtonType.CANCEL);
+        if (tagService == null) {
+            logger.warning("Cannot delete tag: tagService is null");
+            publishStatusUpdate(getString("status.error_deleting_tag"));
+            return;
+        }
+        Alert a = new Alert(Alert.AlertType.CONFIRMATION);
+        a.setTitle(getString("dialog.delete_tag.title"));
+        a.setHeaderText(getString("dialog.delete_tag.header"));
+        a.setContentText(java.text.MessageFormat.format(getString("dialog.delete_tag.content"), tagName));
+        a.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
         a.showAndWait().filter(r -> r == ButtonType.OK).ifPresent(r -> {
             tagService.getAllTags().stream().filter(t -> t.getTitle().equals(tagName)).findFirst().ifPresent(t -> {
                 try {
                     tagService.deleteTag(t.getId());
                     loadTags();
                 } catch (Exception ex) {
-                    logger.warning("Failed to delete tag " + t.getId() + ": " + ex.getMessage());
+                    logger.log(Level.WARNING, "Failed to delete tag " + t.getId(), ex);
+                    publishStatusUpdate(getString("status.error_deleting_tag"));
                 }
             });
         });
@@ -777,6 +865,7 @@ public class SidebarController {
             Optional<Folder> op = folderService.getFolderById(id);
             return op.map(folder -> noteService.getNotesByFolder(folder).size()).orElse(0);
         } catch (Exception e) {
+            logger.log(Level.WARNING, "Failed to count notes for folder " + (f != null ? f.getId() : "null"), e);
             return 0;
         }
     }
@@ -788,6 +877,12 @@ public class SidebarController {
     private void publishStatusUpdate(String m) {
         if (eventBus != null)
             eventBus.publish(new UIEvents.StatusUpdateEvent(m));
+    }
+
+    private void publishEvent(AppEvent event) {
+        if (eventBus != null) {
+            eventBus.publish(event);
+        }
     }
 
     public VBox getSidebarPane() {

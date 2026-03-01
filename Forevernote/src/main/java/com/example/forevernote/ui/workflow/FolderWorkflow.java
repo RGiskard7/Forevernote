@@ -3,6 +3,7 @@ package com.example.forevernote.ui.workflow;
 import java.util.logging.Logger;
 
 import com.example.forevernote.config.LoggerConfig;
+import com.example.forevernote.data.dao.interfaces.FolderDAO;
 import com.example.forevernote.data.models.Folder;
 
 /**
@@ -10,6 +11,9 @@ import com.example.forevernote.data.models.Folder;
  */
 public class FolderWorkflow {
     private static final Logger logger = LoggerConfig.getLogger(FolderWorkflow.class);
+
+    public record FolderCreationResult(boolean success, Folder folder, String errorMessage) {
+    }
 
     public interface FolderSelectionPort {
         void setCurrentFolder(Folder folder);
@@ -73,5 +77,54 @@ public class FolderWorkflow {
             logger.severe("Failed to handle folder selection " + (folder != null ? folder.getTitle() : "null") + ": "
                     + e.getMessage());
         }
+    }
+
+    /**
+     * Creates a folder in root or inside current folder based on createInRoot flag.
+     */
+    public FolderCreationResult createFolder(
+            FolderDAO folderDAO,
+            String folderName,
+            Folder currentFolder,
+            boolean createInRoot) {
+        if (folderDAO == null) {
+            return new FolderCreationResult(false, null, "FolderDAO is null");
+        }
+        if (folderName == null || folderName.isBlank()) {
+            return new FolderCreationResult(false, null, "Folder name is empty");
+        }
+
+        try {
+            Folder newFolder = new Folder(folderName.trim());
+            if (!createInRoot && currentFolder != null) {
+                newFolder.setParent(currentFolder);
+            }
+
+            String folderId = folderDAO.createFolder(newFolder);
+            if (folderId == null || folderId.isBlank()) {
+                return new FolderCreationResult(false, null, "Folder ID is null/blank");
+            }
+
+            newFolder.setId(folderId);
+
+            if (!createInRoot && currentFolder != null) {
+                folderDAO.addSubFolder(currentFolder, newFolder);
+            }
+
+            return new FolderCreationResult(true, newFolder, null);
+        } catch (Exception e) {
+            logger.warning("Failed to create folder: " + e.getMessage());
+            return new FolderCreationResult(false, null, e.getMessage());
+        }
+    }
+
+    /**
+     * Creates a subfolder under a specific parent folder.
+     */
+    public FolderCreationResult createSubfolder(FolderDAO folderDAO, String subfolderName, Folder parentFolder) {
+        if (parentFolder == null) {
+            return new FolderCreationResult(false, null, "Parent folder is null");
+        }
+        return createFolder(folderDAO, subfolderName, parentFolder, false);
     }
 }

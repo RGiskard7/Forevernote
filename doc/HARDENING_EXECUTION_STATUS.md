@@ -1,4 +1,4 @@
-# Hardening Execution Status (2026-02-27)
+# Hardening Execution Status (2026-03-01)
 
 ## Resumen
 Se avanzó en bloques conclusivos con gate verde por bloque (test + package), priorizando robustez funcional, desacople y calidad operativa.
@@ -20,19 +20,36 @@ Se avanzó en bloques conclusivos con gate verde por bloque (test + package), pr
 ## Entregables recientes destacados
 1. Fix crítico Command Palette no visible (event wiring + init robusta + atajos).
 2. Routing de comandos por IDs estables (`cmd.*`) con aliases backward-compatible.
-3. Guard tests:
+3. Extracción incremental de flujos desde `MainController`:
+   - `CommandRoutingWorkflow`
+   - `CommandUIWorkflow`
+   - `PluginLifecycleWorkflow`
+   - `FolderWorkflow` (create/createSubfolder)
+   - `NoteWorkflow` (createNewNote)
+   - `DocumentIOWorkflow` (import/export)
+4. Hardening i18n de fallback:
+   - `messages.properties` base añadido para evitar claves visibles (`app.all_notes`) en locales no soportados.
+   - Guard test `I18nBundleFallbackGuardTest`.
+5. Guard tests:
    - `AllNotesContractGuardTest`
    - `CommandRoutingGuardTest`
    - `CommandPaletteEventWiringGuardTest`
-4. Documentación operativa final:
+   - `MainControllerFolderWorkflowDelegationGuardTest`
+   - `MainControllerNoteWorkflowDelegationGuardTest`
+   - `MainControllerDocumentIODelegationGuardTest`
+   - `SidebarFolderContextMenuGuardTest`
+   - `MainControllerFolderCreationRefreshGuardTest`
+   - `DocumentIOWorkflowTest`
+6. Documentación operativa final:
    - `doc/ADRS/ADR-0002-command-routing-and-palette-events.md`
    - `doc/RELEASE_ROLLBACK_PLAYBOOK.md`
    - `doc/DEFINITION_OF_DONE.md`
 
-5. Automatización de verificación dual por storage:
+7. Automatización de verificación dual por storage:
    - `scripts/hardening-storage-matrix.sh`
    - `scripts/hardening-storage-matrix.ps1`
 
 ## Gate actual
 - `mvn -f Forevernote/pom.xml clean test`: verde
 - `mvn -f Forevernote/pom.xml -DskipTests clean package`: verde
+- `./scripts/hardening-storage-matrix.sh`: verde

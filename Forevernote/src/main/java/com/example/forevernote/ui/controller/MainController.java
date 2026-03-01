@@ -12,7 +12,7 @@ import java.util.*;
 import java.io.*;
 import java.util.prefs.Preferences;
 import java.sql.Connection;
-import java.nio.file.Files;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.kordamp.ikonli.javafx.FontIcon;
 import com.example.forevernote.event.events.UIEvents;
@@ -46,6 +46,10 @@ import com.example.forevernote.ui.workflow.NoteWorkflow;
 import com.example.forevernote.ui.workflow.PreviewWorkflow;
 import com.example.forevernote.ui.workflow.TagWorkflow;
 import com.example.forevernote.ui.workflow.ThemeWorkflow;
+import com.example.forevernote.ui.workflow.CommandRoutingWorkflow;
+import com.example.forevernote.ui.workflow.PluginLifecycleWorkflow;
+import com.example.forevernote.ui.workflow.CommandUIWorkflow;
+import com.example.forevernote.ui.workflow.DocumentIOWorkflow;
 
 /**
  * Main controller for the Forevernote application.
@@ -148,9 +152,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     // Preview Enhancers
     private final Map<String, PreviewEnhancer> previewEnhancers = new HashMap<>();
-    // Command routing (stable IDs + backward compatible aliases)
-    private final Map<String, Runnable> commandRoutes = new HashMap<>();
-    private final Map<String, String> commandAliases = new HashMap<>();
+    // Command routing (stable IDs + backward-compatible aliases)
+    private final CommandRoutingWorkflow commandRoutingWorkflow = new CommandRoutingWorkflow();
     @FXML
     private Separator toolbarSeparator2;
     @FXML
@@ -256,6 +259,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private TagWorkflow tagWorkflow;
     private ThemeWorkflow themeWorkflow;
     private PreviewWorkflow previewWorkflow;
+    private final PluginLifecycleWorkflow pluginLifecycleWorkflow = new PluginLifecycleWorkflow();
+    private final CommandUIWorkflow commandUIWorkflow = new CommandUIWorkflow();
+    private final DocumentIOWorkflow documentIOWorkflow = new DocumentIOWorkflow();
 
     @FXML
     private java.util.ResourceBundle resources;
@@ -370,7 +376,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             logger.info("MainController initialized successfully");
 
         } catch (Exception e) {
-            logger.severe("Failed to initialize MainController: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to initialize MainController", e);
             updateStatus(java.text.MessageFormat.format(getString("status.error_details"), e.getMessage()));
         }
     }
@@ -428,7 +434,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             logger.info("Database connections and services initialized");
         } catch (Exception e) {
-            logger.severe("Failed to initialize database: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to initialize database", e);
             throw new RuntimeException("Database initialization failed", e);
         }
     }
@@ -620,30 +626,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
 
             ensureCommandUisInitialized(stage);
-
-            // Set up global key handler
-            scene.addEventFilter(javafx.scene.input.KeyEvent.KEY_PRESSED, event -> {
-                if (event.isControlDown()) {
-                    switch (event.getCode()) {
-                        case P:
-                            // Ctrl+P / Ctrl+Shift+P - Command Palette
-                            showCommandPalette();
-                            event.consume();
-                            break;
-                        case O:
-                            // Ctrl+O - Quick Switcher
-                            showQuickSwitcher();
-                            event.consume();
-                            break;
-                        default:
-                            break;
-                    }
-                }
-            });
-
-            logger.info("Keyboard shortcuts initialized (Ctrl+P: Command Palette, Ctrl+O: Quick Switcher)");
+            commandUIWorkflow.initializeKeyboardShortcuts(
+                    scene,
+                    this::showCommandPalette,
+                    this::showQuickSwitcher,
+                    logger::info,
+                    logger::warning);
         } catch (Exception e) {
-            logger.warning("Failed to initialize keyboard shortcuts: " + e.getMessage());
+            logger.log(Level.WARNING, "Failed to initialize keyboard shortcuts", e);
         }
     }
 
@@ -695,8 +685,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     this, this);
 
             // Load plugins from plugins/ directory (completely decoupled - no hardcoded
-            // plugins)
-            loadExternalPlugins();
+            // optional plugins)
+            PluginLifecycleWorkflow.LoadResult pluginLoadResult = pluginLifecycleWorkflow
+                    .registerCoreAndExternalPlugins(pluginManager, logger::warning);
 
             // Initialize all registered plugins (they will register their menu items during
             // init)
@@ -720,9 +711,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             // Subscribe to plugin events
             subscribeToPluginEvents();
 
+            if (!pluginLoadResult.loadFailures().isEmpty()) {
+                for (String failure : pluginLoadResult.loadFailures()) {
+                    logger.warning("Plugin load warning: " + failure);
+                }
+            }
             logger.info("Plugin system initialized with " + pluginManager.getPluginCount() + " plugins");
         } catch (Exception e) {
-            logger.warning("Failed to initialize plugin system: " + e.getMessage());
+            logger.log(Level.WARNING, "Failed to initialize plugin system", e);
         }
     }
 
@@ -1029,7 +1025,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 try {
                     menuItem.setAccelerator(KeyCombination.keyCombination(shortcut));
                 } catch (Exception e) {
-                    logger.warning("Invalid shortcut for menu item: " + shortcut);
+                    logger.log(Level.WARNING, "Invalid shortcut for menu item: " + shortcut, e);
                 }
             }
 
@@ -1330,36 +1326,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     /**
-     * Loads plugins from the plugins/ directory.
-     * Policy:
-     * - Keep a minimal core plugin set bundled with the app (currently Mermaid).
-     * - Load all optional/community plugins from plugins/ as external JAR files.
-     */
-    private void loadExternalPlugins() {
-        try {
-            // Register built-in plugins
-            pluginManager.registerPlugin(new com.example.forevernote.plugin.mermaid.MermaidPlugin());
-
-            List<Plugin> externalPlugins = com.example.forevernote.plugin.PluginLoader.loadExternalPlugins();
-            int registeredCount = 0;
-
-            for (Plugin plugin : externalPlugins) {
-                if (pluginManager.registerPlugin(plugin)) {
-                    registeredCount++;
-                } else {
-                    logger.warning("Failed to register external plugin: " + plugin.getName());
-                }
-            }
-
-            if (registeredCount > 0) {
-                logger.info("Registered " + registeredCount + " external plugin(s)");
-            }
-        } catch (Exception e) {
-            logger.warning("Failed to load external plugins: " + e.getMessage());
-        }
-    }
-
-    /**
      * Gets the plugin manager for external access.
      *
      * @return The plugin manager, or null if not initialized
@@ -1372,40 +1338,33 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      * Execute a command from the Command Palette.
      */
     private void executeCommand(String commandName) {
-        String resolvedCommand = resolveCommandToken(commandName);
-        logger.info("Executing command: " + resolvedCommand);
-
-        Runnable route = commandRoutes.get(resolvedCommand);
-        if (route != null) {
-            route.run();
+        CommandRoutingWorkflow.DispatchResult result = commandRoutingWorkflow
+                .dispatch(commandName, this::executePluginCommandToken);
+        logger.info("Executing command: " + result.resolvedToken());
+        if (result.handled()) {
             return;
         }
-
-        // Fallback for plugin commands
-        if (commandPalette != null) {
-            CommandPalette.Command cmd = commandPalette.findCommand(commandName);
-            if (cmd == null) {
-                cmd = commandPalette.findCommandById(commandName);
-            }
-            if (cmd != null) {
-                cmd.execute();
-                return;
-            }
-        }
-
-        logger.warning("Unknown command: " + resolvedCommand);
-        updateStatus(java.text.MessageFormat.format(getString("status.unknown_command"), resolvedCommand));
+        logger.warning("Unknown command: " + result.resolvedToken());
+        updateStatus(java.text.MessageFormat.format(getString("status.unknown_command"), result.resolvedToken()));
     }
 
-    private String resolveCommandToken(String commandToken) {
-        if (commandToken == null) {
-            return "";
+    private boolean executePluginCommandToken(String token) {
+        if (commandPalette == null || token == null || token.isBlank()) {
+            return false;
         }
-        return commandAliases.getOrDefault(commandToken, commandToken);
+        CommandPalette.Command cmd = commandPalette.findCommand(token);
+        if (cmd == null) {
+            cmd = commandPalette.findCommandById(token);
+        }
+        if (cmd == null) {
+            return false;
+        }
+        cmd.execute();
+        return true;
     }
 
     private void initializeCommandRouting() {
-        if (!commandRoutes.isEmpty()) {
+        if (!commandRoutingWorkflow.isEmpty()) {
             return;
         }
 
@@ -1435,7 +1394,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         registerCommandRoute("cmd.toggle_sidebar", "Toggle Sidebar", () -> handleToggleSidebar(null));
         registerCommandRoute("cmd.toggle_info_panel", "Toggle Info Panel", () -> handleToggleRightPanel(null));
-        commandAliases.put("Toggle Right Panel", "cmd.toggle_info_panel");
+        commandRoutingWorkflow.registerAlias("Toggle Right Panel", "cmd.toggle_info_panel");
         registerCommandRoute("cmd.editor_mode", "Editor Mode", () -> handleEditorOnlyMode(null));
         registerCommandRoute("cmd.preview_mode", "Preview Mode", () -> handlePreviewOnlyMode(null));
         registerCommandRoute("cmd.split_mode", "Split Mode", () -> handleSplitViewMode(null));
@@ -1469,9 +1428,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     private void registerCommandRoute(String id, String legacyName, Runnable action) {
-        commandRoutes.put(id, action);
-        commandAliases.put(id, id);
-        commandAliases.put(legacyName, id);
+        commandRoutingWorkflow.registerRoute(id, legacyName, action);
     }
 
     private Stage getPrimaryStage() {
@@ -1485,17 +1442,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     private void ensureCommandUisInitialized(Stage stage) {
-        if (stage == null) {
-            return;
-        }
-        if (commandPalette == null) {
-            commandPalette = new CommandPalette(stage);
-            commandPalette.setCommandHandler(this::executeCommand);
-        }
-        if (quickSwitcher == null) {
-            quickSwitcher = new QuickSwitcher(stage);
-            quickSwitcher.setOnNoteSelected(this::loadNoteInEditor);
-        }
+        CommandUIWorkflow.CommandUiComponents components = commandUIWorkflow.ensureCommandUiComponents(
+                stage,
+                commandPalette,
+                quickSwitcher,
+                this::executeCommand,
+                this::loadNoteInEditor);
+        commandPalette = components.commandPalette();
+        quickSwitcher = components.quickSwitcher();
     }
 
     /**
@@ -2543,7 +2497,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 }
             }
         } catch (Exception e) {
-            logger.severe("Failed to add tag: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to add tag", e);
             updateStatus(getString("status.tag_add_error"));
         }
     }
@@ -2574,7 +2528,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 loadNoteTags(getCurrentNote());
                 updateStatus(java.text.MessageFormat.format(getString("status.tag_removed"), tag.getTitle()));
             } catch (Exception e) {
-                logger.severe("Failed to remove tag: " + e.getMessage());
+                logger.log(Level.SEVERE, "Failed to remove tag", e);
                 updateStatus(java.text.MessageFormat.format(getString("status.tag_remove_error"), e.getMessage()));
             }
         }
@@ -2595,52 +2549,32 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private void handleNewNote(ActionEvent event) {
         try {
-            Note newNote = new Note(getString("action.new_note"), "");
-
-            // Set parent folder regardless of storage
-            if (currentFolder != null && currentFolder.getId() != null &&
-                    !"ROOT".equals(currentFolder.getId()) &&
-                    !isAllNotesVirtualFolder(currentFolder)) {
-                newNote.setParent(currentFolder);
-            }
-
-            // Fix: If a folder is selected, prepare the ID with the folder path
-            // Data Access Logic: Only do this for FileSystem, SQLite handles ID generation
             Preferences prefs = Preferences.userNodeForPackage(MainController.class);
             boolean isFileSystem = !"sqlite".equals(prefs.get("storage_type", "sqlite"));
-
-            if (isFileSystem && currentFolder != null && currentFolder.getId() != null &&
-                    !"ROOT".equals(currentFolder.getId()) &&
-                    !isAllNotesVirtualFolder(currentFolder)) {
-
-                String pathSeparator = File.separator;
-                String folderPath = currentFolder.getId();
-                String safeTitle = newNote.getTitle().replaceAll("[^a-zA-Z0-9\\.\\-_ ]", "_");
-
-                // We set an ID like "Folder/New Note" so NoteDAOFileSystem detects the parent
-                // folder
-                newNote.setId(folderPath + pathSeparator + safeTitle);
+            if (noteWorkflow == null) {
+                noteWorkflow = new NoteWorkflow(noteDAO);
             }
+            NoteWorkflow.NoteCreationResult creation = noteWorkflow.createNewNote(
+                    getString("action.new_note"),
+                    currentFolder,
+                    isFileSystem,
+                    new NoteWorkflow.NoteCreationPort() {
+                        @Override
+                        public Note createNote(Note note) {
+                            return noteService.createNote(note);
+                        }
 
-            Note createdNote = noteService.createNote(newNote);
-            String noteId = createdNote.getId();
-            if (noteId == null) {
-                // If creation failed, do not proceed
+                        @Override
+                        public void addNoteToFolder(Folder folder, Note note) {
+                            folderService.addNoteToFolder(folder, note);
+                        }
+                    });
+
+            if (!creation.success() || creation.note() == null) {
                 updateStatus(getString("status.error_creating_note"));
                 return;
             }
-            newNote.setId(noteId);
-
-            if (currentFolder != null && currentFolder.getId() != null &&
-                    !"ROOT".equals(currentFolder.getId()) &&
-                    !isAllNotesVirtualFolder(currentFolder)) {
-                folderService.addNoteToFolder(currentFolder, newNote);
-            }
-
-            // With FS DAO and our fix, the file is already in the right place.
-            // We don't need to manually add it to the Folder object's children list
-            // because refreshNotesList() will re-fetch from disk correctly.
-
+            Note newNote = creation.note();
             notesListView.getItems().add(0, newNote);
             notesListView.getSelectionModel().select(newNote);
             loadNoteInEditor(newNote);
@@ -2658,7 +2592,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             updateStatus(getString("status.note_created"));
         } catch (Exception e) {
-            logger.severe("Failed to create new note: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to create new note", e);
             updateStatus(getString("status.error_creating_note"));
         }
     }
@@ -2682,32 +2616,29 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
-            try {
-                Folder newFolder = new Folder(result.get().trim());
-
-                // Only add as subfolder if currentFolder is set and not "All Notes"
-                if (!createInRoot && currentFolder != null) {
-                    newFolder.setParent(currentFolder);
-                }
-
-                String folderId = folderDAO.createFolder(newFolder);
-                newFolder.setId(folderId);
-
-                if (!createInRoot && currentFolder != null) {
-                    folderDAO.addSubFolder(currentFolder, newFolder);
-                }
-                // Otherwise, it's created in root (parent_id will be NULL)
-
-                // Select "All Notes" root to make it clear where new folders are created
-                if (folderTreeView.getRoot() != null) {
-                    folderTreeView.getSelectionModel().select(folderTreeView.getRoot());
-                }
-                currentFolder = null;
-                updateStatus(java.text.MessageFormat.format(getString("status.folder_created"), newFolder.getTitle()));
-            } catch (Exception e) {
-                logger.severe("Failed to create folder: " + e.getMessage());
-                    updateStatus(java.text.MessageFormat.format(getString("status.error_details"), e.getMessage()));
+            if (folderWorkflow == null) {
+                folderWorkflow = new FolderWorkflow();
             }
+            FolderWorkflow.FolderCreationResult creation = folderWorkflow.createFolder(
+                    folderDAO,
+                    result.get().trim(),
+                    currentFolder,
+                    createInRoot);
+            if (!creation.success() || creation.folder() == null) {
+                if (creation.errorMessage() != null && !creation.errorMessage().isBlank()) {
+                    updateStatus(java.text.MessageFormat.format(getString("status.error_details"), creation.errorMessage()));
+                } else {
+                    updateStatus(getString("status.error_creating_folder"));
+                }
+                return;
+            }
+
+            // Keep folder tree in sync and avoid selecting invisible root.
+            if (sidebarController != null) {
+                sidebarController.loadFolders();
+            }
+            folderTreeView.refresh();
+            updateStatus(java.text.MessageFormat.format(getString("status.folder_created"), creation.folder().getTitle()));
         }
     }
 
@@ -2729,21 +2660,25 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         Optional<String> result = dialog.showAndWait();
         if (result.isPresent() && !result.get().trim().isEmpty()) {
-            try {
-                Folder newSubfolder = new Folder(result.get().trim());
-                newSubfolder.setParent(currentFolder);
-
-                String folderId = folderDAO.createFolder(newSubfolder);
-                newSubfolder.setId(folderId);
-
-                folderDAO.addSubFolder(currentFolder, newSubfolder);
-
-                updateStatus(
-                        java.text.MessageFormat.format(getString("status.subfolder_created"), newSubfolder.getTitle()));
-            } catch (Exception e) {
-                logger.severe("Failed to create subfolder: " + e.getMessage());
-                updateStatus(getString("status.subfolder_error"));
+            if (folderWorkflow == null) {
+                folderWorkflow = new FolderWorkflow();
             }
+            FolderWorkflow.FolderCreationResult creation = folderWorkflow.createSubfolder(
+                    folderDAO,
+                    result.get().trim(),
+                    currentFolder);
+            if (!creation.success() || creation.folder() == null) {
+                updateStatus(getString("status.subfolder_error"));
+                return;
+            }
+
+            if (sidebarController != null) {
+                sidebarController.loadFolders();
+            }
+            folderTreeView.refresh();
+
+            updateStatus(
+                    java.text.MessageFormat.format(getString("status.subfolder_created"), creation.folder().getTitle()));
         }
     }
 
@@ -2759,58 +2694,33 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         List<File> files = fileChooser.showOpenMultipleDialog(mainSplitPane.getScene().getWindow());
         if (files != null && !files.isEmpty()) {
-            int imported = 0;
-            int failed = 0;
+            Preferences prefs = Preferences.userNodeForPackage(MainController.class);
+            boolean isFileSystem = !"sqlite".equals(prefs.get("storage_type", "sqlite"));
+            DocumentIOWorkflow.ImportResult importResult = documentIOWorkflow.importFiles(
+                    files,
+                    currentFolder,
+                    isFileSystem,
+                    new DocumentIOWorkflow.ImportPort() {
+                        @Override
+                        public Note createNote(Note note) {
+                            return noteService.createNote(note);
+                        }
 
-            for (File file : files) {
-                try {
-                    String content = Files.readString(file.toPath());
-                    String title = file.getName();
-                    // Remove extension from title
-                    int dotIndex = title.lastIndexOf('.');
-                    if (dotIndex > 0) {
-                        title = title.substring(0, dotIndex);
-                    }
-
-                    // Create new note
-                    Note newNote = new Note(title, content);
-                    String safeTitle = title.replaceAll("[^a-zA-Z0-9\\.\\-_ ]", "_");
-                    Preferences prefs = Preferences.userNodeForPackage(MainController.class);
-                    boolean isFileSystem = !"sqlite".equals(prefs.get("storage_type", "sqlite"));
-
-                    if (isFileSystem && currentFolder != null && currentFolder.getId() != null &&
-                            !"ROOT".equals(currentFolder.getId()) &&
-                            !isAllNotesVirtualFolder(currentFolder)) {
-                        String pathSeparator = File.separator;
-                        String folderPath = currentFolder.getId();
-                        newNote.setId(folderPath + pathSeparator + safeTitle);
-                    }
-
-                    Note createdNote = noteService.createNote(newNote);
-                    newNote.setId(createdNote.getId());
-
-                    if (!isFileSystem && currentFolder != null && currentFolder.getId() != null &&
-                            !"ROOT".equals(currentFolder.getId())) {
-                        // For non-filesystem storage (SQLite), createNote produces the ID safely
-                        // Then we add it to the folder. Since SQLite doesn't use path folders on disk.
-                        folderService.addNoteToFolder(currentFolder, createdNote);
-                    }
-
-                    imported++;
-                } catch (Exception e) {
-                    logger.warning("Failed to import file " + file.getName() + ": " + e.getMessage());
-                    failed++;
-                }
-            }
+                        @Override
+                        public void addNoteToFolder(Folder folder, Note note) {
+                            folderService.addNoteToFolder(folder, note);
+                        }
+                    });
 
             // Refresh lists
             refreshNotesList();
             sidebarController.loadRecentNotes();
 
             // Show result
-            String message = java.text.MessageFormat.format(getString("status.imported_notes"), imported);
-            if (failed > 0) {
-                message += "\n" + java.text.MessageFormat.format(getString("status.import_failed_count"), failed);
+            String message = java.text.MessageFormat.format(getString("status.imported_notes"), importResult.importedCount());
+            if (importResult.failedCount() > 0) {
+                message += "\n"
+                        + java.text.MessageFormat.format(getString("status.import_failed_count"), importResult.failedCount());
             }
             updateStatus(message);
             showAlert(Alert.AlertType.INFORMATION, getString("status.import_complete"),
@@ -2924,7 +2834,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 db.closeConnection(connection);
             }
         } catch (Exception e) {
-            logger.warning("Error during shutdown: " + e.getMessage());
+            logger.log(Level.WARNING, "Error during shutdown", e);
         }
     }
 
@@ -2938,7 +2848,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle(getString("dialog.export.save_title"));
-        fileChooser.setInitialFileName(sanitizeFileName(getCurrentNote().getTitle()));
+        fileChooser.setInitialFileName(documentIOWorkflow.sanitizeFileName(getCurrentNote().getTitle()));
         fileChooser.getExtensionFilters().addAll(
                 new FileChooser.ExtensionFilter(getString("file_filter.markdown"), "*.md"),
                 new FileChooser.ExtensionFilter(getString("file_filter.text"), "*.txt"),
@@ -2946,32 +2856,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         File file = fileChooser.showSaveDialog(mainSplitPane.getScene().getWindow());
         if (file != null) {
-            try (FileWriter writer = new FileWriter(file)) {
-                // Add title as header for Markdown
-                if (file.getName().endsWith(".md")) {
-                    writer.write("# " + getCurrentNote().getTitle() + "\n\n");
-                }
-                writer.write(getCurrentNote().getContent() != null ? getCurrentNote().getContent() : "");
+            DocumentIOWorkflow.ExportResult exportResult = documentIOWorkflow.exportNote(getCurrentNote(), file);
+            if (exportResult.success()) {
                 updateStatus(java.text.MessageFormat.format(getString("status.exported"), file.getName()));
                 showAlert(Alert.AlertType.INFORMATION, getString("status.export_success"),
                         getString("dialog.export.success_header"),
                         java.text.MessageFormat.format(getString("dialog.export.saved_to"), file.getAbsolutePath()));
-            } catch (IOException e) {
-                logger.severe("Failed to export note: " + e.getMessage());
+            } else {
+                String errorMessage = exportResult.errorMessage() == null ? "" : exportResult.errorMessage();
+                logger.severe("Failed to export note: " + errorMessage);
                 showAlert(Alert.AlertType.ERROR, getString("status.export_failed"),
-                        getString("dialog.export.failed_header"), e.getMessage());
+                        getString("dialog.export.failed_header"), errorMessage);
             }
         }
-    }
-
-    /**
-     * Sanitize filename for safe file system use.
-     */
-    private String sanitizeFileName(String name) {
-        if (name == null || name.isEmpty()) {
-            return "untitled";
-        }
-        return name.replaceAll("[^a-zA-Z0-9\\-_ ]", "_").substring(0, Math.min(name.length(), 50));
     }
 
     /**
@@ -3373,7 +3270,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 isSystemDark = "Dark".equals(line);
                 process.waitFor();
             } catch (Exception e) {
-                logger.warning("Could not detect macOS theme: " + e.getMessage());
+                logger.log(Level.WARNING, "Could not detect macOS theme", e);
             }
         } else {
             // Linux: Check GTK theme or other methods
@@ -3477,7 +3374,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 isSystemDark = "Dark".equals(line);
                 process.waitFor();
             } catch (Exception e) {
-                logger.warning("Could not detect macOS theme: " + e.getMessage());
+                logger.log(Level.WARNING, "Could not detect macOS theme", e);
             }
         }
 
@@ -3554,7 +3451,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                                     updateStatus(java.text.MessageFormat.format(getString("status.tag_deleted"),
                                             tag.getTitle()));
                                 } catch (Exception ex) {
-                                    logger.severe("Failed to delete tag: " + ex.getMessage());
+                                    logger.log(Level.SEVERE, "Failed to delete tag from tags manager", ex);
+                                    updateStatus(getString("status.error_deleting_tag"));
                                 }
                             }
                         });
@@ -3573,7 +3471,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
             dialog.showAndWait();
         } catch (Exception e) {
-            logger.severe("Failed to open tags manager: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to open tags manager", e);
             updateStatus(getString("status.tags_manager_error"));
         }
     }
@@ -3694,12 +3592,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     if (currentFolder != null) {
                         handleFolderSelection(currentFolder);
                     } else {
+                        refreshNotesList();
                     }
                     break;
                 case "tag":
                     if (currentTag != null) {
                         loadNotesForTag(currentTag.getTitle());
                     } else {
+                        refreshNotesList();
                     }
                     break;
                 case "favorites":
@@ -3726,13 +3626,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     if (searchText != null && !searchText.trim().isEmpty()) {
                         performSearch(searchText);
                     } else {
+                        refreshNotesList();
                     }
                     break;
                 default:
+                    refreshNotesList();
                     break;
             }
         } catch (Exception e) {
-            logger.severe("Failed to refresh: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to refresh", e);
             updateStatus(getString("status.refresh_error"));
         }
     }
@@ -3770,9 +3672,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             refreshNotesList();
             sidebarController.loadFavorites();
 
-            updateStatus(newFavoriteStatus ? "Note marked as favorite" : "Note unmarked as favorite");
+            updateStatus(newFavoriteStatus
+                    ? getString("status.note_marked_favorite")
+                    : getString("status.note_unmarked_favorite"));
         } catch (Exception e) {
-            logger.severe("Failed to toggle favorite: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to toggle favorite", e);
             updateStatus(getString("status.fav_error"));
         }
     }
@@ -3801,9 +3705,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
 
             refreshNotesList();
-            updateStatus(newPinStatus ? "Note pinned" : "Note unpinned");
+            updateStatus(newPinStatus
+                    ? getString("status.note_pinned")
+                    : getString("status.note_unpinned"));
         } catch (Exception e) {
-            logger.severe("Failed to toggle pin: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to toggle pin", e);
             updateStatus(getString("status.pin_error"));
         }
     }
@@ -3812,12 +3718,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (pinButton == null)
             return;
 
-        if (getCurrentNote() != null && getCurrentNote().isPinned()) {
-            pinButton.setSelected(true);
-            pinButton.setTooltip(new Tooltip("Unpin note (current state: Pinned)"));
+            if (getCurrentNote() != null && getCurrentNote().isPinned()) {
+                pinButton.setSelected(true);
+            pinButton.setTooltip(new Tooltip(getString("action.unpin_note")));
         } else {
             pinButton.setSelected(false);
-            pinButton.setTooltip(new Tooltip("Pin note"));
+            pinButton.setTooltip(new Tooltip(getString("tooltip.pin_note")));
         }
     }
 
@@ -3860,7 +3766,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     updateStatus(java.text.MessageFormat.format(getString("status.tag_created"), tagName));
                 }
             } catch (Exception e) {
-                logger.severe("Failed to create tag: " + e.getMessage());
+                logger.log(Level.SEVERE, "Failed to create tag", e);
                 updateStatus(getString("status.error") + ": " + e.getMessage());
             }
         }
@@ -3989,7 +3895,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     loadNoteTags(getCurrentNote());
                 updateStatus(java.text.MessageFormat.format(getString("status.deleted_tag"), tag.getTitle()));
             } catch (Exception e) {
-                logger.severe("Failed to delete tag: " + e.getMessage());
+                logger.log(Level.SEVERE, "Failed to delete tag", e);
                 updateStatus(getString("status.error_deleting_tag"));
             }
         }
@@ -4007,6 +3913,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     .findFirst()
                     .orElse(null);
         } catch (Exception e) {
+            logger.log(Level.WARNING, "Failed to find tag by title: " + title, e);
             return null;
         }
     }

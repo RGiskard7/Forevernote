@@ -3,6 +3,7 @@ package com.example.forevernote.ui.controller;
 import com.example.forevernote.data.models.Folder;
 import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.Tag;
+import com.example.forevernote.config.LoggerConfig;
 import com.example.forevernote.event.EventBus;
 import com.example.forevernote.event.events.NoteEvents;
 import com.example.forevernote.event.events.SystemActionEvent;
@@ -23,13 +24,15 @@ import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.ListCell;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 public class NotesListController {
-    private static final Logger logger = Logger.getLogger(NotesListController.class.getName());
+    private static final Logger logger = LoggerConfig.getLogger(NotesListController.class);
 
     private EventBus eventBus;
     private NoteService noteService;
@@ -160,7 +163,7 @@ public class NotesListController {
                 eventBus.publish(new NoteEvents.NoteModifiedEvent(note));
             }
         } catch (Exception e) {
-            logger.severe("Failed to toggle favorite: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to toggle favorite", e);
         }
     }
 
@@ -241,6 +244,10 @@ public class NotesListController {
     // Phase 3: Migrated Loading Logic
 
     public void loadAllNotes() {
+        if (noteService == null) {
+            logger.warning("Cannot load notes: noteService is null");
+            return;
+        }
         try {
             List<Note> notes = noteService.getAllNotes();
             notesListView.getSelectionModel().clearSelection();
@@ -258,13 +265,17 @@ public class NotesListController {
                 notesPanelTitleLabel.setText(msg);
             publishNotesLoadedEvent(notes, getString("status.loaded_all"));
         } catch (Exception e) {
-            logger.severe("Failed to load all notes: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to load all notes", e);
         }
     }
 
     public void loadNotesForFolder(Folder folder) {
         if (folder == null)
             return;
+        if (noteService == null) {
+            logger.warning("Cannot load folder notes: noteService is null");
+            return;
+        }
         try {
             List<Note> notes = noteService.getNotesByFolder(folder);
             notesListView.getSelectionModel().clearSelection();
@@ -275,21 +286,24 @@ public class NotesListController {
             currentTag = null;
             currentFilterType = "folder";
 
-            String msg = notes.size() + " notes";
             if (notesPanelTitleLabel != null)
                 notesPanelTitleLabel.setText(
-                        (bundle != null ? bundle.getString("panel.notes.title") : "Notes") + " - " + folder.getTitle());
+                        getString("panel.notes.title") + " - " + folder.getTitle());
             publishNotesLoadedEvent(notes,
                     bundle != null
                             ? java.text.MessageFormat.format(bundle.getString("status.loaded_folder"),
                                     folder.getTitle())
                             : "Loaded folder");
         } catch (Exception e) {
-            logger.severe("Failed to load notes for folder: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to load notes for folder", e);
         }
     }
 
     public void loadNotesForTag(String tagName) {
+        if (tagService == null) {
+            logger.warning("Cannot filter by tag: tagService is null");
+            return;
+        }
         try {
             if (tagName != null && !tagName.isEmpty()) {
                 Optional<Tag> tagOpt = tagService.getTagByTitle(tagName);
@@ -303,7 +317,7 @@ public class NotesListController {
                     notesListView.getItems().setAll(notesWithTag);
                     sortNotes(sortComboBox.getValue());
 
-                    String msg = notesWithTag.size() + " notes with tag: " + tagName;
+                    String msg = java.text.MessageFormat.format(getString("info.notes_count"), notesWithTag.size());
                     if (notesPanelTitleLabel != null)
                         notesPanelTitleLabel.setText(msg);
                     publishNotesLoadedEvent(notesWithTag,
@@ -313,11 +327,15 @@ public class NotesListController {
                 }
             }
         } catch (Exception e) {
-            logger.severe("Failed to filter notes by tag " + tagName + ": " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to filter notes by tag " + tagName, e);
         }
     }
 
     public void performSearch(String searchText) {
+        if (noteService == null) {
+            logger.warning("Cannot perform search: noteService is null");
+            return;
+        }
         if (searchText == null || searchText.trim().isEmpty()) {
             if (currentFolder != null) {
                 loadNotesForFolder(currentFolder);
@@ -331,11 +349,11 @@ public class NotesListController {
 
         try {
             List<Note> allNotes = noteService.getAllNotes();
-            String searchLower = searchText.toLowerCase();
+            String searchLower = searchText.toLowerCase(Locale.ROOT);
             List<Note> filteredNotes = allNotes.stream()
                     .filter(note -> {
-                        String title = note.getTitle() != null ? note.getTitle().toLowerCase() : "";
-                        String content = note.getContent() != null ? note.getContent().toLowerCase() : "";
+                        String title = note.getTitle() != null ? note.getTitle().toLowerCase(Locale.ROOT) : "";
+                        String content = note.getContent() != null ? note.getContent().toLowerCase(Locale.ROOT) : "";
                         return title.contains(searchLower) || content.contains(searchLower);
                     })
                     .toList();
@@ -355,12 +373,12 @@ public class NotesListController {
                             ? java.text.MessageFormat.format(bundle.getString("status.search_active"), searchText)
                             : "Search active");
         } catch (Exception e) {
-            logger.severe("Failed to perform search: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to perform search", e);
         }
     }
 
     public void sortNotes(String sortOption) {
-        if (sortOption == null)
+        if (sortOption == null || notesListView == null)
             return;
         List<Note> notes = new ArrayList<>(notesListView.getItems());
 
@@ -424,8 +442,13 @@ public class NotesListController {
 
     @FXML
     private void handleNewNote(ActionEvent event) {
+        if (noteService == null) {
+            logger.warning("Cannot create note: noteService is null");
+            publishStatusUpdate(getString("status.error_creating_note"));
+            return;
+        }
         try {
-            Note newNote = new Note(getString("action.new_note"), "");
+            Note newNote = new Note(getString("app.untitled"), "");
 
             // Set parent folder
             if (currentFolder != null && currentFolder.getId() != null &&
@@ -461,7 +484,11 @@ public class NotesListController {
             if (currentFolder != null && currentFolder.getId() != null &&
                     !"ROOT".equals(currentFolder.getId()) &&
                     !isAllNotesVirtualFolder(currentFolder)) {
-                folderService.addNoteToFolder(currentFolder, newNote);
+                if (folderService != null) {
+                    folderService.addNoteToFolder(currentFolder, newNote);
+                } else {
+                    logger.warning("Skipped addNoteToFolder: folderService is null");
+                }
             }
 
             notesListView.getItems().add(0, newNote);
@@ -474,7 +501,7 @@ public class NotesListController {
 
             publishStatusUpdate(getString("status.note_created"));
         } catch (Exception e) {
-            logger.severe("Failed to create new note: " + e.getMessage());
+            logger.log(Level.SEVERE, "Failed to create new note", e);
             publishStatusUpdate(getString("status.error_creating_note"));
         }
     }
@@ -503,6 +530,11 @@ public class NotesListController {
     private void deleteNote(Note note) {
         if (note == null)
             return;
+        if (noteService == null) {
+            logger.warning("Cannot delete note: noteService is null");
+            publishStatusUpdate(getString("status.note_delete_error"));
+            return;
+        }
 
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle(getString("dialog.delete_note.title"));
@@ -524,7 +556,7 @@ public class NotesListController {
 
                 publishStatusUpdate(getString("status.note_moved_trash"));
             } catch (Exception e) {
-                logger.severe("Failed to delete note: " + e.getMessage());
+                logger.log(Level.SEVERE, "Failed to delete note", e);
                 publishStatusUpdate(getString("status.note_delete_error"));
             }
         }

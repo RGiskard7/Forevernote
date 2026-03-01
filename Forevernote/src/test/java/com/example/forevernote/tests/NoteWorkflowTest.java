@@ -1,13 +1,18 @@
 package com.example.forevernote.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.junit.jupiter.api.Test;
 
 import com.example.forevernote.data.models.Folder;
+import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.Tag;
 import com.example.forevernote.ui.workflow.NoteWorkflow;
 
@@ -75,6 +80,69 @@ class NoteWorkflowTest {
 
         assertEquals(List.of(), notesPort.calls);
         assertEquals(1, sidebarPort.favoritesReloadCount);
+    }
+
+    @Test
+    void createNewNoteInRootShouldNotAssignParentPath() {
+        NoteWorkflow workflow = new NoteWorkflow(null);
+        AtomicReference<Note> created = new AtomicReference<>();
+        AtomicInteger addToFolderCalls = new AtomicInteger(0);
+
+        NoteWorkflow.NoteCreationResult result = workflow.createNewNote(
+                "My Note",
+                null,
+                false,
+                new NoteWorkflow.NoteCreationPort() {
+                    @Override
+                    public Note createNote(Note note) {
+                        created.set(note);
+                        note.setId("n-1");
+                        return note;
+                    }
+
+                    @Override
+                    public void addNoteToFolder(Folder folder, Note note) {
+                        addToFolderCalls.incrementAndGet();
+                    }
+                });
+
+        assertTrue(result.success());
+        assertNotNull(result.note());
+        assertEquals("n-1", result.note().getId());
+        assertEquals(0, addToFolderCalls.get());
+        assertEquals("My Note", created.get().getTitle());
+    }
+
+    @Test
+    void createNewNoteInFolderForFileSystemShouldSeedPathAndAttach() {
+        NoteWorkflow workflow = new NoteWorkflow(null);
+        AtomicReference<Note> created = new AtomicReference<>();
+        AtomicReference<Folder> attachedFolder = new AtomicReference<>();
+
+        Folder folder = new Folder("projects", "Projects");
+        NoteWorkflow.NoteCreationResult result = workflow.createNewNote(
+                "Roadmap",
+                folder,
+                true,
+                new NoteWorkflow.NoteCreationPort() {
+                    @Override
+                    public Note createNote(Note note) {
+                        created.set(note);
+                        note.setId("projects/Roadmap.md");
+                        return note;
+                    }
+
+                    @Override
+                    public void addNoteToFolder(Folder targetFolder, Note note) {
+                        attachedFolder.set(targetFolder);
+                    }
+                });
+
+        assertTrue(result.success());
+        assertNotNull(result.note());
+        assertEquals("projects/Roadmap.md", result.note().getId());
+        assertEquals(folder, attachedFolder.get());
+        assertTrue(created.get().getId().startsWith("projects"));
     }
 
     private static final class RecordingNotesPort implements NoteWorkflow.NotesListPort {

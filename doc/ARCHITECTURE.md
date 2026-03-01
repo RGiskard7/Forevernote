@@ -4,7 +4,7 @@ This document describes the software architecture of Forevernote, a desktop note
 
 ## Overview
 
-Forevernote follows a **layered architecture** with clear separation of concerns:
+Forevernote follows a **layered architecture** with clear separation of concerns and workflow-based orchestration in UI:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -28,9 +28,9 @@ Forevernote follows a **layered architecture** with clear separation of concerns
 │  │  NoteDAO    │ │  FolderDAO  │ │ TagDAO                  ││
 │  └─────────────┘ └─────────────┘ └─────────────────────────┘│
 ├─────────────────────────────────────────────────────────────┤
-│                     Persistence (SQLite)                    │
+│             Persistence (SQLite + FileSystem)               │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │                    SQLiteDB                              ││
+│  │      SQLiteDB + DAO implementations (dual backend)      ││
 │  └─────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -48,18 +48,23 @@ com.example.forevernote/
 │   └── LoggerConfig.java        # Logging configuration
 │
 ├── data/                        # Data layer
-│   ├── SQLiteDB.java            # Database connection manager
+│   ├── database/
+│   │   └── SQLiteDB.java        # Database connection manager
 │   ├── dao/                     # Data Access Objects
 │   │   ├── interfaces/          # DAO interfaces
 │   │   │   ├── NoteDAO.java
 │   │   │   ├── FolderDAO.java
 │   │   │   └── TagDAO.java
-│   │   ├── abstractLayers/      # Abstract factory
-│   │   │   └── FactoryDAO.java
-│   │   ├── NoteDAOSQLite.java   # SQLite implementations
-│   │   ├── FolderDAOSQLite.java
-│   │   ├── TagDAOSQLite.java
-│   │   └── FactoryDAOSQLite.java
+│   │   ├── sqlite/              # SQLite implementations
+│   │   │   ├── NoteDAOSQLite.java
+│   │   │   ├── FolderDAOSQLite.java
+│   │   │   ├── TagDAOSQLite.java
+│   │   │   └── FactoryDAOSQLite.java
+│   │   └── filesystem/          # FileSystem implementations
+│   │       ├── NoteDAOFileSystem.java
+│   │       ├── FolderDAOFileSystem.java
+│   │       ├── TagDAOFileSystem.java
+│   │       └── FactoryDAOFileSystem.java
 │   └── models/                  # Domain models
 │       ├── interfaces/
 │       │   └── Component.java   # Composite pattern interface
@@ -93,10 +98,20 @@ com.example.forevernote/
 │
 ├── ui/                          # User interface
 │   ├── controller/              # JavaFX controllers
-│   │   └── MainController.java
+│   │   └── MainController.java  # Composition root UI
 │   ├── components/              # Reusable UI components
 │   │   ├── CommandPalette.java
 │   │   └── QuickSwitcher.java
+│   ├── workflow/                # Extracted UI workflows
+│   │   ├── NoteWorkflow.java
+│   │   ├── FolderWorkflow.java
+│   │   ├── TagWorkflow.java
+│   │   ├── ThemeWorkflow.java
+│   │   ├── PreviewWorkflow.java
+│   │   ├── CommandRoutingWorkflow.java
+│   │   ├── CommandUIWorkflow.java
+│   │   ├── PluginLifecycleWorkflow.java
+│   │   └── DocumentIOWorkflow.java
 │   ├── view/                    # FXML layouts (in resources)
 │   └── css/                     # Stylesheets (in resources)
 │
@@ -126,7 +141,7 @@ FolderDAO folderDAO = factory.getFolderDAO();
 TagDAO tagDAO = factory.getLabelDAO();
 ```
 
-This allows switching database implementations without changing business logic.
+This allows switching persistence backend (SQLite or FileSystem) without changing business logic.
 
 ### 2. Composite Pattern (Folder Hierarchy)
 

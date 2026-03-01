@@ -1,5 +1,6 @@
 package com.example.forevernote.ui.workflow;
 
+import java.io.File;
 import java.text.MessageFormat;
 import java.util.List;
 import java.util.function.Consumer;
@@ -24,6 +25,17 @@ import javafx.scene.layout.HBox;
  */
 public class NoteWorkflow {
     private static final Logger logger = LoggerConfig.getLogger(NoteWorkflow.class);
+    private static final String ROOT_ID = "ROOT";
+    private static final String ALL_NOTES_VIRTUAL_ID = "ALL_NOTES_VIRTUAL";
+
+    public record NoteCreationResult(boolean success, Note note, String errorMessage) {
+    }
+
+    public interface NoteCreationPort {
+        Note createNote(Note note);
+
+        void addNoteToFolder(Folder folder, Note note);
+    }
 
     public interface NotesListPort {
         void loadAllNotes();
@@ -43,6 +55,47 @@ public class NoteWorkflow {
 
     public NoteWorkflow(NoteDAO noteDAO) {
         this.noteDAO = noteDAO;
+    }
+
+    public NoteCreationResult createNewNote(
+            String title,
+            Folder currentFolder,
+            boolean isFileSystem,
+            NoteCreationPort creationPort) {
+        if (creationPort == null) {
+            return new NoteCreationResult(false, null, "NoteCreationPort is null");
+        }
+
+        try {
+            String safeTitle = (title == null || title.isBlank()) ? "New Note" : title.trim();
+            Note newNote = new Note(safeTitle, "");
+
+            if (isConcreteFolder(currentFolder)) {
+                newNote.setParent(currentFolder);
+            }
+
+            // FileSystem DAO relies on pre-seeded ID to infer parent folder path.
+            if (isFileSystem && isConcreteFolder(currentFolder)) {
+                String folderPath = currentFolder.getId();
+                String sanitizedTitle = safeTitle.replaceAll("[^a-zA-Z0-9\\.\\-_ ]", "_");
+                newNote.setId(folderPath + File.separator + sanitizedTitle);
+            }
+
+            Note createdNote = creationPort.createNote(newNote);
+            if (createdNote == null || createdNote.getId() == null || createdNote.getId().isBlank()) {
+                return new NoteCreationResult(false, null, "Created note has null/blank ID");
+            }
+
+            newNote.setId(createdNote.getId());
+            if (isConcreteFolder(currentFolder)) {
+                creationPort.addNoteToFolder(currentFolder, newNote);
+            }
+
+            return new NoteCreationResult(true, newNote, null);
+        } catch (Exception e) {
+            logger.warning("Failed to create note via workflow: " + e.getMessage());
+            return new NoteCreationResult(false, null, e.getMessage());
+        }
     }
 
     public void loadNoteTags(
@@ -230,5 +283,13 @@ public class NoteWorkflow {
             return 0;
         }
         return text.trim().split("\\s+").length;
+    }
+
+    private boolean isConcreteFolder(Folder folder) {
+        return folder != null
+                && folder.getId() != null
+                && !folder.getId().isBlank()
+                && !ROOT_ID.equals(folder.getId())
+                && !ALL_NOTES_VIRTUAL_ID.equals(folder.getId());
     }
 }

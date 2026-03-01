@@ -213,8 +213,6 @@
                 <configuration>
                     <encoding>UTF-8</encoding>
                     <propertiesEncoding>UTF-8</propertiesEncoding>
-                    <!-- Disable filtering to avoid POSIX permission copying issues on macOS -->
-                    <filtering>false</filtering>
                 </configuration>
             </plugin>
 
