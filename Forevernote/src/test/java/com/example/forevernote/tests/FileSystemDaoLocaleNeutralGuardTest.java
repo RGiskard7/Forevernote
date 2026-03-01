@@ -1,6 +1,7 @@
 package com.example.forevernote.tests;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -25,5 +26,14 @@ class FileSystemDaoLocaleNeutralGuardTest {
                 "FolderDAOFileSystem should not hardcode UI locale labels.");
         assertFalse(noteDaoSource.contains("\"All Notes\""),
                 "NoteDAOFileSystem should not hardcode UI locale labels.");
+    }
+
+    @Test
+    void folderDaoCachePruningShouldUseOsNeutralPathNormalization() throws IOException {
+        String folderDaoSource = Files.readString(FOLDER_DAO, StandardCharsets.UTF_8);
+        assertTrue(folderDaoSource.contains("String normalizedId = id.replace(\"\\\\\", \"/\")"),
+                "FolderDAOFileSystem cache pruning should normalize IDs in an OS-neutral way.");
+        assertTrue(folderDaoSource.contains("String normalizedKey = k.replace(\"\\\\\", \"/\")"),
+                "FolderDAOFileSystem cache pruning should normalize cache keys in an OS-neutral way.");
     }
 }

@@ -109,9 +109,20 @@ com.example.forevernote/
 │   │   ├── ThemeWorkflow.java
 │   │   ├── PreviewWorkflow.java
 │   │   ├── CommandRoutingWorkflow.java
+│   │   ├── CommandRegistryWorkflow.java
 │   │   ├── CommandUIWorkflow.java
 │   │   ├── PluginLifecycleWorkflow.java
-│   │   └── DocumentIOWorkflow.java
+│   │   ├── DocumentIOWorkflow.java
+│   │   ├── FileCommandWorkflow.java
+│   │   ├── EditorCommandWorkflow.java
+│   │   ├── NavigationCommandWorkflow.java
+│   │   ├── UiDialogWorkflow.java
+│   │   ├── ThemeCommandWorkflow.java
+│   │   ├── UiEventSubscriptionWorkflow.java
+│   │   ├── UiEventHandlerWorkflow.java
+│   │   ├── UiInitializationWorkflow.java
+│   │   ├── UiLayoutWorkflow.java
+│   │   └── NotesGridWorkflow.java
 │   ├── view/                    # FXML layouts (in resources)
 │   └── css/                     # Stylesheets (in resources)
 │
@@ -263,6 +274,14 @@ public class MyPlugin implements Plugin {
 - Category organization
 - Stable internal command IDs (`cmd.*`) with backward-compatible aliases
 - Command dispatch in `MainController` via routing table (`Map<String, Runnable>`) to reduce cyclomatic complexity and decouple from visible labels
+
+## MainController Refactor Closure (2026-03-01)
+
+- `MainController` is intentionally kept as **UI composition root** (FXML wiring + delegations).
+- Domain-specific command logic was moved to workflows in `ui/workflow/*`.
+- `SystemActionEvent` dispatch now uses a handler map (`EnumMap<ActionType, Runnable>`) instead of a giant switch.
+- Command routing initialization is centralized in `CommandRegistryWorkflow`, preserving legacy aliases and `cmd.*` IDs.
+- Current size objective reached for this phase: `MainController` reduced from 3465 to 2890 lines.
 
 ### Quick Switcher
 

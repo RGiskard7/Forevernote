@@ -9,17 +9,18 @@ import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 
-class MainControllerFolderWorkflowDelegationGuardTest {
+class MainControllerNotesGridDelegationGuardTest {
 
     private static final Path MAIN_CONTROLLER = Path
             .of("src/main/java/com/example/forevernote/ui/controller/MainController.java");
 
     @Test
-    void mainControllerShouldDelegateFolderCreationToFolderWorkflow() throws IOException {
+    void mainControllerShouldDelegateGridViewLogicToNotesGridWorkflow() throws IOException {
         String source = Files.readString(MAIN_CONTROLLER, StandardCharsets.UTF_8);
-        assertTrue(source.contains("fileCommandWorkflow.handleNewFolder("),
-                "MainController should delegate folder creation command to FileCommandWorkflow.");
-        assertTrue(source.contains("fileCommandWorkflow.handleNewSubfolder("),
-                "MainController should delegate subfolder creation command to FileCommandWorkflow.");
+
+        assertTrue(source.contains("notesGridWorkflow.applyNotesViewMode("),
+                "MainController should delegate applyNotesViewMode logic to NotesGridWorkflow.");
+        assertTrue(source.contains("notesGridWorkflow.refreshGridView("),
+                "MainController should delegate grid refresh logic to NotesGridWorkflow.");
     }
 }

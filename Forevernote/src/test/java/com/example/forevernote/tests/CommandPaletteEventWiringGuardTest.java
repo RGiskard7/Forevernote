@@ -13,13 +13,19 @@ class CommandPaletteEventWiringGuardTest {
 
     private static final Path MAIN_CONTROLLER = Path
             .of("src/main/java/com/example/forevernote/ui/controller/MainController.java");
+    private static final Path UI_EVENT_WORKFLOW = Path
+            .of("src/main/java/com/example/forevernote/ui/workflow/UiEventSubscriptionWorkflow.java");
 
     @Test
-    void mainControllerShouldSubscribeToToolbarPaletteEvents() throws IOException {
-        String source = Files.readString(MAIN_CONTROLLER, StandardCharsets.UTF_8);
-        assertTrue(source.contains("eventBus.subscribe(UIEvents.ShowCommandPaletteEvent.class"),
-                "MainController must handle ShowCommandPaletteEvent.");
-        assertTrue(source.contains("eventBus.subscribe(UIEvents.ShowQuickSwitcherEvent.class"),
-                "MainController must handle ShowQuickSwitcherEvent.");
+    void uiEventWiringShouldHandleToolbarPaletteEventsViaWorkflow() throws IOException {
+        String mainSource = Files.readString(MAIN_CONTROLLER, StandardCharsets.UTF_8);
+        String workflowSource = Files.readString(UI_EVENT_WORKFLOW, StandardCharsets.UTF_8);
+
+        assertTrue(mainSource.contains("uiEventSubscriptionWorkflow.subscribeUiEvents("),
+                "MainController must delegate UI event wiring to UiEventSubscriptionWorkflow.");
+        assertTrue(workflowSource.contains("eventBus.subscribe(UIEvents.ShowCommandPaletteEvent.class"),
+                "UiEventSubscriptionWorkflow must handle ShowCommandPaletteEvent.");
+        assertTrue(workflowSource.contains("eventBus.subscribe(UIEvents.ShowQuickSwitcherEvent.class"),
+                "UiEventSubscriptionWorkflow must handle ShowQuickSwitcherEvent.");
     }
 }

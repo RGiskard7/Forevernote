@@ -17,9 +17,9 @@ class MainControllerDocumentIODelegationGuardTest {
     @Test
     void mainControllerShouldDelegateImportExportToDocumentIOWorkflow() throws IOException {
         String source = Files.readString(MAIN_CONTROLLER, StandardCharsets.UTF_8);
-        assertTrue(source.contains("documentIOWorkflow.importFiles("),
-                "MainController should delegate import to DocumentIOWorkflow.");
-        assertTrue(source.contains("documentIOWorkflow.exportNote("),
-                "MainController should delegate export to DocumentIOWorkflow.");
+        assertTrue(source.contains("fileCommandWorkflow.handleImport("),
+                "MainController should delegate import command to FileCommandWorkflow.");
+        assertTrue(source.contains("fileCommandWorkflow.handleExport("),
+                "MainController should delegate export command to FileCommandWorkflow.");
     }
 }

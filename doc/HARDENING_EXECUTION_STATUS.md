@@ -22,11 +22,22 @@ Se avanzó en bloques conclusivos con gate verde por bloque (test + package), pr
 2. Routing de comandos por IDs estables (`cmd.*`) con aliases backward-compatible.
 3. Extracción incremental de flujos desde `MainController`:
    - `CommandRoutingWorkflow`
+   - `CommandRegistryWorkflow`
    - `CommandUIWorkflow`
    - `PluginLifecycleWorkflow`
    - `FolderWorkflow` (create/createSubfolder)
    - `NoteWorkflow` (createNewNote)
    - `DocumentIOWorkflow` (import/export)
+   - `FileCommandWorkflow`
+   - `EditorCommandWorkflow`
+   - `NavigationCommandWorkflow`
+   - `UiDialogWorkflow`
+   - `ThemeCommandWorkflow`
+   - `UiEventSubscriptionWorkflow`
+   - `UiEventHandlerWorkflow`
+   - `UiInitializationWorkflow`
+   - `UiLayoutWorkflow`
+   - `NotesGridWorkflow`
 4. Hardening i18n de fallback:
    - `messages.properties` base añadido para evitar claves visibles (`app.all_notes`) en locales no soportados.
    - Guard test `I18nBundleFallbackGuardTest`.
@@ -48,6 +59,11 @@ Se avanzó en bloques conclusivos con gate verde por bloque (test + package), pr
 7. Automatización de verificación dual por storage:
    - `scripts/hardening-storage-matrix.sh`
    - `scripts/hardening-storage-matrix.ps1`
+
+8. Cierre cuantitativo del refactor de `MainController`:
+   - Reducción aproximada: 3465 -> 2890 líneas.
+   - Manteniendo compatibilidad funcional y contratos públicos.
+   - Guard tests de delegación añadidos para comandos editor/file/navigation y compatibilidad de command registry.
 
 ## Gate actual
 - `mvn -f Forevernote/pom.xml clean test`: verde

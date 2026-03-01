@@ -17,7 +17,9 @@ class MainControllerNoteWorkflowDelegationGuardTest {
     @Test
     void mainControllerShouldDelegateNoteCreationToNoteWorkflow() throws IOException {
         String source = Files.readString(MAIN_CONTROLLER, StandardCharsets.UTF_8);
-        assertTrue(source.contains("noteWorkflow.createNewNote("),
-                "MainController should delegate note creation to NoteWorkflow.");
+        assertTrue(source.contains("fileCommandWorkflow.handleNewNote("),
+                "MainController should delegate note creation command to FileCommandWorkflow.");
+        assertTrue(source.contains("new NoteWorkflow(noteDAO)"),
+                "MainController should still provision NoteWorkflow lazily.");
     }
 }

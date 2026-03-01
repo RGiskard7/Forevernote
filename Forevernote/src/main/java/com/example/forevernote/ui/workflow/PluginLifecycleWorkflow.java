@@ -3,6 +3,8 @@ package com.example.forevernote.ui.workflow;
 import java.util.List;
 import java.util.function.Consumer;
 
+import com.example.forevernote.event.EventBus;
+import com.example.forevernote.event.events.NoteEvents;
 import com.example.forevernote.plugin.Plugin;
 import com.example.forevernote.plugin.PluginLoader;
 import com.example.forevernote.plugin.PluginManager;
@@ -34,5 +36,23 @@ public class PluginLifecycleWorkflow {
         }
 
         return new LoadResult(registeredCount, pluginLoadReport.getFailures());
+    }
+
+    public void subscribePluginUiEvents(
+            EventBus eventBus,
+            Runnable refreshListsAction,
+            Consumer<String> infoLogger) {
+        if (eventBus == null) {
+            return;
+        }
+
+        eventBus.subscribe(NoteEvents.NotesRefreshRequestedEvent.class, event -> {
+            if (refreshListsAction != null) {
+                refreshListsAction.run();
+            }
+            if (infoLogger != null) {
+                infoLogger.accept("Refreshed notes from plugin request");
+            }
+        });
     }
 }

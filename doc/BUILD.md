@@ -121,6 +121,23 @@ For explicit storage parity validation (SQLite vs FileSystem contracts):
 .\scripts\hardening-storage-matrix.ps1
 ```
 
+### 5. UI Refactor Phase Gate (MainController closure)
+
+After any significant refactor in `ui/controller/MainController.java`, run:
+
+```bash
+mvn -f Forevernote/pom.xml test
+```
+
+Minimum manual smoke checklist before closing a phase:
+
+1. Notes: create, edit, save, soft-delete to trash, restore.
+2. Folders: create folder and subfolder from button and context menu.
+3. Tags: create, assign to note, remove.
+4. Preview: editor-only, split, preview-only modes.
+5. Commands: open Command Palette and Quick Switcher, execute key commands (`new note`, `save`, `refresh`).
+6. Storage parity: validate critical flows in SQLite and FileSystem mode.
+
 ## Build Methods
 
 ### Method 1: Using Build Scripts (Recommended)

@@ -163,9 +163,12 @@ public class FolderDAOFileSystem implements FolderDAO {
 
                 // Update cache
                 idToPathMap.remove(id);
-                // Also remove subfolders from cache
-                String idPrefix = id + File.separator;
-                idToPathMap.keySet().removeIf(k -> k.startsWith(idPrefix) || k.equals(id));
+                // Also remove subfolders from cache using locale/OS-neutral ID matching
+                String normalizedId = id.replace("\\", "/");
+                idToPathMap.keySet().removeIf(k -> {
+                    String normalizedKey = k.replace("\\", "/");
+                    return normalizedKey.equals(normalizedId) || normalizedKey.startsWith(normalizedId + "/");
+                });
 
             } catch (IOException e) {
                 logger.log(Level.SEVERE, "Failed to move folder to trash: " + path, e);
@@ -264,9 +267,12 @@ public class FolderDAOFileSystem implements FolderDAO {
                         .forEach(File::delete);
 
                 idToPathMap.remove(id);
-                // Also remove subfolders from cache
-                String idPrefix = id.replace("\\", "/") + "/";
-                idToPathMap.keySet().removeIf(k -> k.replace("\\", "/").startsWith(idPrefix) || k.equals(id));
+                // Also remove subfolders from cache using locale/OS-neutral ID matching
+                String normalizedId = id.replace("\\", "/");
+                idToPathMap.keySet().removeIf(k -> {
+                    String normalizedKey = k.replace("\\", "/");
+                    return normalizedKey.equals(normalizedId) || normalizedKey.startsWith(normalizedId + "/");
+                });
             } catch (IOException e) {
                 logger.log(Level.SEVERE, "Failed to permanently delete folder: " + id, e);
             }
