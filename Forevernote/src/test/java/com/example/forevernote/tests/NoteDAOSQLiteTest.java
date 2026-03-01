@@ -1,8 +1,10 @@
 package com.example.forevernote.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -41,6 +43,8 @@ class NoteDAOSQLiteTest {
                 + "title TEXT NOT NULL UNIQUE, "
                 + "created_date TEXT NOT NULL, "
                 + "modified_date TEXT DEFAULT NULL, "
+                + "is_deleted INTEGER NOT NULL DEFAULT 0 CHECK (is_deleted IN (0, 1)), "
+                + "deleted_date TEXT DEFAULT NULL, "
                 + "FOREIGN KEY (parent_id) REFERENCES folders(folder_id) "
                 + "ON UPDATE CASCADE "
                 + "ON DELETE SET NULL"
@@ -242,5 +246,31 @@ class NoteDAOSQLiteTest {
         noteDAO.removeTag(note, tag);
         tags = noteDAO.fetchTags(noteId);
         assertEquals(0, tags.size());
+    }
+
+    @Test
+    public void testRestoreFolderRecursivelyRestoresNotesInSubfolders() throws SQLException {
+        Folder parent = new Folder("Parent Folder");
+        folderDAO.createFolder(parent);
+
+        Folder child = new Folder("Child Folder");
+        folderDAO.createFolder(child);
+        folderDAO.addSubFolder(parent, child);
+
+        Note nestedNote = new Note("Nested Note", "Nested Content");
+        noteDAO.createNote(nestedNote);
+        folderDAO.addNote(child, nestedNote);
+
+        folderDAO.deleteFolder(parent.getId());
+        List<Note> trashNotes = noteDAO.fetchTrashNotes();
+        assertEquals(1, trashNotes.size());
+        assertTrue(trashNotes.get(0).isDeleted());
+
+        folderDAO.restoreFolder(parent.getId());
+
+        List<Note> restored = noteDAO.fetchNotesByFolderId(child.getId());
+        assertEquals(1, restored.size());
+        assertEquals(nestedNote.getId(), restored.get(0).getId());
+        assertFalse(restored.get(0).isDeleted());
     }
 }

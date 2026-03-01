@@ -18,10 +18,8 @@ class MainControllerStatusI18nGuardTest {
     @Test
     void mainControllerShouldUseI18nKeysForFavoriteAndPinStatus() throws IOException {
         String source = Files.readString(MAIN_CONTROLLER, StandardCharsets.UTF_8);
-        assertTrue(source.contains("status.note_marked_favorite"));
-        assertTrue(source.contains("status.note_unmarked_favorite"));
-        assertTrue(source.contains("status.note_pinned"));
-        assertTrue(source.contains("status.note_unpinned"));
+        assertTrue(source.contains("noteWorkflow.toggleFavorite("));
+        assertTrue(source.contains("noteWorkflow.togglePin("));
         assertFalse(source.contains("Note marked as favorite"));
         assertFalse(source.contains("Note unmarked as favorite"));
         assertFalse(source.contains("Note pinned"));

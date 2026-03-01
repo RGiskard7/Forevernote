@@ -45,6 +45,7 @@ import com.example.forevernote.ui.workflow.FolderWorkflow;
 import com.example.forevernote.ui.workflow.NoteWorkflow;
 import com.example.forevernote.ui.workflow.PreviewWorkflow;
 import com.example.forevernote.ui.workflow.TagWorkflow;
+import com.example.forevernote.ui.workflow.TagManagementWorkflow;
 import com.example.forevernote.ui.workflow.ThemeWorkflow;
 import com.example.forevernote.ui.workflow.CommandRoutingWorkflow;
 import com.example.forevernote.ui.workflow.PluginLifecycleWorkflow;
@@ -257,6 +258,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private NoteWorkflow noteWorkflow;
     private FolderWorkflow folderWorkflow;
     private TagWorkflow tagWorkflow;
+    private final TagManagementWorkflow tagManagementWorkflow = new TagManagementWorkflow();
     private ThemeWorkflow themeWorkflow;
     private PreviewWorkflow previewWorkflow;
     private final PluginLifecycleWorkflow pluginLifecycleWorkflow = new PluginLifecycleWorkflow();
@@ -306,6 +308,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 sidebarController.setNoteService(noteService);
                 sidebarController.setTagService(tagService);
                 sidebarController.setFolderService(folderService);
+                sidebarController.setFolderDAO(folderDAO);
+                sidebarController.setNoteDAO(noteDAO);
+                sidebarController.setTagDAO(tagDAO);
                 sidebarController.setBundle(resources);
 
                 sidebarPane = sidebarController.getSidebarPane();
@@ -798,6 +803,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     }
                 }
                 refreshNotesList();
+                if (sidebarController != null) {
+                    sidebarController.loadTrashTree();
+                    sidebarController.loadRecentNotes();
+                    sidebarController.loadFavorites();
+                }
             });
         });
 
@@ -811,6 +821,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 // Actually, sidebarController.folderTreeView.refresh() might be needed if not
                 // done there.
                 folderTreeView.refresh();
+                if (sidebarController != null) {
+                    sidebarController.loadFolders();
+                    sidebarController.loadTrashTree();
+                }
             });
         });
 
@@ -819,6 +833,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 // If it was the currently open note, we should have cleared it in
                 // NoteDeletedEvent (move to trash)
                 // If permanently deleted, we just need to ensure UI is consistent.
+                if (sidebarController != null) {
+                    sidebarController.loadTrashTree();
+                    sidebarController.loadFolders();
+                }
             });
         });
 
@@ -2411,127 +2429,31 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
      */
     @FXML
     private void handleAddTagToNote() {
-        if (getCurrentNote() == null) {
-            updateStatus(getString("status.no_note"));
-            return;
-        }
-
-        try {
-            // Get existing tags
-            List<Tag> existingTags = tagService.getAllTags();
-            List<Tag> noteTags = noteDAO.fetchTags(getCurrentNote().getId());
-
-            // Filter out tags already assigned to the note
-            List<String> availableTagNames = existingTags.stream()
-                    .filter(tag -> !noteTags.stream().anyMatch(nt -> nt.getId().equals(tag.getId())))
-                    .map(Tag::getTitle)
-                    .sorted()
-                    .toList();
-
-            // Create dialog for adding tag
-            Dialog<String> dialog = new Dialog<>();
-            dialog.setTitle(getString("dialog.add_tag.title"));
-            dialog.setHeaderText(availableTagNames.isEmpty()
-                    ? getString("dialog.add_tag.header_new")
-                    : getString("dialog.add_tag.header_select"));
-
-            // Set buttons
-            ButtonType addButtonType = new ButtonType(getString("action.add"), ButtonBar.ButtonData.OK_DONE);
-            dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
-
-            // Create layout
-            VBox content = new VBox(10);
-            ComboBox<String> tagComboBox = new ComboBox<>();
-            tagComboBox.setEditable(true);
-            tagComboBox.getItems().addAll(availableTagNames);
-            tagComboBox.setPromptText(getString("dialog.add_tag.prompt"));
-            tagComboBox.setPrefWidth(300);
-            content.getChildren().add(new Label(getString("label.tag")));
-            content.getChildren().add(tagComboBox);
-            dialog.getDialogPane().setContent(content);
-
-            // Convert result
-            dialog.setResultConverter(dialogButton -> {
-                if (dialogButton == addButtonType) {
-                    return tagComboBox.getEditor().getText();
-                }
-                return null;
-            });
-
-            Optional<String> result = dialog.showAndWait();
-            if (result.isPresent() && !result.get().trim().isEmpty()) {
-                String tagName = result.get().trim();
-
-                // Check if it's an existing tag
-                Optional<Tag> existingTag = existingTags.stream()
-                        .filter(t -> t.getTitle().equals(tagName))
-                        .findFirst();
-
-                Tag tag;
-                if (existingTag.isPresent()) {
-                    tag = existingTag.get();
-                } else {
-                    // Create new tag
-                    tag = new Tag(tagName);
-                    Tag createdTag = tagService.createTag(tag.getTitle());
-                    tag.setId(createdTag.getId());
-                }
-
-                // Check if tag is already assigned to note (double check)
-                List<Tag> currentNoteTags = noteDAO.fetchTags(getCurrentNote().getId());
-                boolean alreadyHasTag = currentNoteTags.stream()
-                        .anyMatch(t -> t.getId().equals(tag.getId()));
-
-                if (alreadyHasTag) {
-                    Alert alert = new Alert(Alert.AlertType.INFORMATION);
-                    alert.setTitle(getString("dialog.tag_already_assigned.title"));
-                    alert.setHeaderText(
-                            java.text.MessageFormat.format(getString("dialog.tag_already_assigned.header"), tagName));
-                    alert.showAndWait();
-                } else {
-                    noteDAO.addTag(getCurrentNote(), tag);
-                    loadNoteTags(getCurrentNote());
-                    // Update tags list in sidebar
-                    sidebarController.loadTags();
-                    updateStatus(java.text.MessageFormat.format(getString("status.tag_added"), tagName));
-                }
-            }
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Failed to add tag", e);
-            updateStatus(getString("status.tag_add_error"));
-        }
+        tagManagementWorkflow.handleAddTagToNote(
+                getCurrentNote(),
+                tagService,
+                noteDAO,
+                this::getString,
+                this::updateStatus,
+                () -> {
+                    if (sidebarController != null) {
+                        sidebarController.loadTags();
+                    }
+                },
+                this::loadNoteTags);
     }
 
     /**
      * Remove tag from note.
      */
     private void removeTagFromNote(Tag tag) {
-        if (getCurrentNote() == null) {
-            updateStatus(getString("status.no_note_selected"));
-            return;
-        }
-        if (tag == null || tag.getId() == null) {
-            updateStatus(getString("status.invalid_tag"));
-            return;
-        }
-
-        // Confirm removal
-        Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-        confirm.setTitle(getString("dialog.remove_tag.title"));
-        confirm.setHeaderText(java.text.MessageFormat.format(getString("dialog.remove_tag.header"), tag.getTitle()));
-        confirm.setContentText(getString("dialog.remove_tag.content"));
-
-        Optional<ButtonType> result = confirm.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
-            try {
-                noteDAO.removeTag(getCurrentNote(), tag);
-                loadNoteTags(getCurrentNote());
-                updateStatus(java.text.MessageFormat.format(getString("status.tag_removed"), tag.getTitle()));
-            } catch (Exception e) {
-                logger.log(Level.SEVERE, "Failed to remove tag", e);
-                updateStatus(java.text.MessageFormat.format(getString("status.tag_remove_error"), e.getMessage()));
-            }
-        }
+        tagManagementWorkflow.removeTagFromNote(
+                getCurrentNote(),
+                tag,
+                noteDAO,
+                this::getString,
+                this::updateStatus,
+                this::loadNoteTags);
     }
 
     /**
@@ -3406,74 +3328,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     @FXML
     private void handleTagsManager(ActionEvent event) {
-        try {
-            List<Tag> allTags = tagService.getAllTags();
-
-            Dialog<Void> dialog = new Dialog<>();
-            dialog.setTitle(getString("dialog.tags_manager.title"));
-            dialog.setHeaderText(getString("dialog.tags_manager.header"));
-
-            ButtonType closeButton = new ButtonType(getString("action.close"), ButtonBar.ButtonData.CANCEL_CLOSE);
-            dialog.getDialogPane().getButtonTypes().add(closeButton);
-
-            VBox content = new VBox(10);
-            content.setPadding(new javafx.geometry.Insets(20));
-
-            ListView<Tag> tagListView = new ListView<>();
-            tagListView.getItems().addAll(allTags);
-            tagListView.setCellFactory(lv -> new ListCell<Tag>() {
-                @Override
-                protected void updateItem(Tag tag, boolean empty) {
-                    super.updateItem(tag, empty);
-                    if (empty || tag == null) {
-                        setText(null);
-                        setGraphic(null);
-                    } else {
-                        HBox hbox = new HBox(10);
-                        Label nameLabel = new Label(tag.getTitle());
-                        nameLabel.setPrefWidth(200);
-                        Label dateLabel = new Label(
-                                tag.getCreatedDate() != null ? tag.getCreatedDate() : getString("label.not_available"));
-                        dateLabel.setStyle("-fx-text-fill: gray;");
-
-                        Button deleteButton = new Button(getString("action.delete"));
-                        deleteButton.setOnAction(e -> {
-                            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-                            confirm.setTitle(getString("dialog.delete_tag.title"));
-                            confirm.setHeaderText(getString("dialog.tags_manager.delete_header"));
-                            confirm.setContentText(getString("dialog.tags_manager.delete_content"));
-                            Optional<ButtonType> result = confirm.showAndWait();
-                            if (result.isPresent() && result.get() == ButtonType.OK) {
-                                try {
-                                    tagService.deleteTag(tag.getId());
-                                    tagListView.getItems().remove(tag);
-                                    sidebarController.loadTags(); // Refresh sidebar
-                                    updateStatus(java.text.MessageFormat.format(getString("status.tag_deleted"),
-                                            tag.getTitle()));
-                                } catch (Exception ex) {
-                                    logger.log(Level.SEVERE, "Failed to delete tag from tags manager", ex);
-                                    updateStatus(getString("status.error_deleting_tag"));
-                                }
-                            }
-                        });
-
-                        hbox.getChildren().addAll(nameLabel, dateLabel, deleteButton);
-                        setGraphic(hbox);
+        tagManagementWorkflow.showTagsManager(
+                tagService,
+                this::getString,
+                () -> {
+                    if (sidebarController != null) {
+                        sidebarController.loadTags();
                     }
-                }
-            });
-
-            content.getChildren().add(new Label(
-                    java.text.MessageFormat.format(getString("dialog.tags_manager.all_tags_count"), allTags.size())));
-            content.getChildren().add(tagListView);
-            dialog.getDialogPane().setContent(content);
-            dialog.getDialogPane().setPrefSize(500, 400);
-
-            dialog.showAndWait();
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Failed to open tags manager", e);
-            updateStatus(getString("status.tags_manager_error"));
-        }
+                },
+                this::updateStatus);
     }
 
     @FXML
@@ -3654,31 +3517,20 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private void toggleFavorite(Note note) {
         if (note == null)
             return;
-
-        try {
-            // Toggle favorite status
-            boolean newFavoriteStatus = !note.isFavorite();
-            note.setFavorite(newFavoriteStatus);
-
-            // Save to database
-            noteService.updateNote(note);
-
-            // Update UI if this is the current note
-            if (getCurrentNote() != null && getCurrentNote().getId().equals(note.getId())) {
-                updateFavoriteButtonIcon();
-            }
-
-            // Refresh lists
-            refreshNotesList();
-            sidebarController.loadFavorites();
-
-            updateStatus(newFavoriteStatus
-                    ? getString("status.note_marked_favorite")
-                    : getString("status.note_unmarked_favorite"));
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Failed to toggle favorite", e);
-            updateStatus(getString("status.fav_error"));
+        if (noteWorkflow == null) {
+            noteWorkflow = new NoteWorkflow(noteDAO);
         }
+        NoteWorkflow.NoteToggleResult result = noteWorkflow.toggleFavorite(note, noteService::updateNote);
+        if (!result.success()) {
+            updateStatus(getString("status.fav_error"));
+            return;
+        }
+        if (getCurrentNote() != null && getCurrentNote().getId().equals(note.getId())) {
+            updateFavoriteButtonIcon();
+        }
+        refreshNotesList();
+        sidebarController.loadFavorites();
+        updateStatus(getString(result.successStatusKey()));
     }
 
     @FXML
@@ -3693,25 +3545,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private void togglePin(Note note) {
         if (note == null)
             return;
-
-        try {
-            boolean newPinStatus = !note.isPinned();
-            note.setPinned(newPinStatus);
-
-            noteService.updateNote(note);
-
-            if (getCurrentNote() != null && getCurrentNote().getId().equals(note.getId())) {
-                updatePinnedButtonIcon();
-            }
-
-            refreshNotesList();
-            updateStatus(newPinStatus
-                    ? getString("status.note_pinned")
-                    : getString("status.note_unpinned"));
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Failed to toggle pin", e);
-            updateStatus(getString("status.pin_error"));
+        if (noteWorkflow == null) {
+            noteWorkflow = new NoteWorkflow(noteDAO);
         }
+        NoteWorkflow.NoteToggleResult result = noteWorkflow.togglePin(note, noteService::updateNote);
+        if (!result.success()) {
+            updateStatus(getString("status.pin_error"));
+            return;
+        }
+        if (getCurrentNote() != null && getCurrentNote().getId().equals(note.getId())) {
+            updatePinnedButtonIcon();
+        }
+        refreshNotesList();
+        updateStatus(getString(result.successStatusKey()));
     }
 
     private void updatePinnedButtonIcon() {
@@ -3872,50 +3718,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private void handleHighlight(ActionEvent event) {
         if (eventBus != null)
             eventBus.publish(new SystemActionEvent(SystemActionEvent.ActionType.HIGHLIGHT));
-    }
-
-    /**
-     * Delete a tag.
-     */
-    private void handleDeleteTag(Tag tag) {
-        if (tag == null)
-            return;
-
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle(getString("dialog.delete_tag.title"));
-        alert.setHeaderText(getString("dialog.delete_tag.header"));
-        alert.setContentText(java.text.MessageFormat.format(getString("dialog.delete_tag.content"), tag.getTitle()));
-
-        Optional<ButtonType> result = alert.showAndWait();
-        if (result.isPresent() && result.get() == ButtonType.OK) {
-            try {
-                tagService.deleteTag(tag.getId());
-                sidebarController.loadTags();
-                if (getCurrentNote() != null)
-                    loadNoteTags(getCurrentNote());
-                updateStatus(java.text.MessageFormat.format(getString("status.deleted_tag"), tag.getTitle()));
-            } catch (Exception e) {
-                logger.log(Level.SEVERE, "Failed to delete tag", e);
-                updateStatus(getString("status.error_deleting_tag"));
-            }
-        }
-    }
-
-    /**
-     * Finds a tag by title.
-     */
-    private Tag findTagByTitle(String title) {
-        if (title == null)
-            return null;
-        try {
-            return tagService.getAllTags().stream()
-                    .filter(t -> t.getTitle().equals(title))
-                    .findFirst()
-                    .orElse(null);
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Failed to find tag by title: " + title, e);
-            return null;
-        }
     }
 
     private void handleSystemAction(SystemActionEvent event) {

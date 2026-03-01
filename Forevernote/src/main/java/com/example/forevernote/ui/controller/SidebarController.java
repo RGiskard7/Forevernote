@@ -96,10 +96,12 @@ public class SidebarController {
     private TagDAO tagDAO;
     private EventBus eventBus;
     private ResourceBundle bundle;
+    private final List<EventBus.Subscription> eventSubscriptions = new ArrayList<>();
 
     // Setters for MainController
     public void setEventBus(EventBus eb) {
         this.eventBus = eb;
+        registerEventSubscriptions();
     }
 
     public void setNoteService(NoteService ns) {
@@ -117,6 +119,7 @@ public class SidebarController {
     public void setBundle(ResourceBundle b) {
         this.bundle = b;
         refreshLocalizedRootLabels();
+        refreshLocalizedMenus();
     }
 
     public void setFolderDAO(FolderDAO fd) {
@@ -322,6 +325,7 @@ public class SidebarController {
                         TreeItem<Component> ti = getTreeItem();
                         boolean isExp = ti != null && ti.isExpanded();
                         iconLabel.setText(isExp ? "[/]" : "[+]");
+                        iconLabel.getStyleClass().add(isExp ? "folder-expanded" : "folder-collapsed");
                         String title = item.getTitle();
                         if (title != null && title.equals(".trash"))
                             title = getString("tab.trash");
@@ -348,6 +352,9 @@ public class SidebarController {
     }
 
     private void setupTrashContextMenu() {
+        if (trashTreeView == null) {
+            return;
+        }
         ContextMenu trashMenu = new ContextMenu();
         MenuItem restoreItem = new MenuItem(getString("action.restore"));
         restoreItem.setOnAction(e -> handleRestoreTrashItem());
@@ -355,6 +362,38 @@ public class SidebarController {
         deleteItem.setOnAction(e -> handleDeleteTrashItem());
         trashMenu.getItems().addAll(restoreItem, deleteItem);
         trashTreeView.setContextMenu(trashMenu);
+    }
+
+    private void refreshLocalizedMenus() {
+        setupTrashContextMenu();
+    }
+
+    private void registerEventSubscriptions() {
+        if (eventBus == null || !eventSubscriptions.isEmpty()) {
+            return;
+        }
+        eventSubscriptions.add(eventBus.subscribe(NoteEvents.NoteDeletedEvent.class, event -> {
+            loadTrashTree();
+            loadRecentNotes();
+            loadFavorites();
+        }));
+        eventSubscriptions.add(eventBus.subscribe(FolderEvents.FolderDeletedEvent.class, event -> {
+            loadFolders();
+            loadTrashTree();
+        }));
+        eventSubscriptions.add(eventBus.subscribe(NoteEvents.TrashItemDeletedEvent.class, event -> {
+            loadTrashTree();
+            loadFolders();
+        }));
+        eventSubscriptions.add(eventBus.subscribe(FolderEvents.FoldersRefreshRequestedEvent.class, event -> {
+            loadFolders();
+            loadTrashTree();
+        }));
+        eventSubscriptions.add(eventBus.subscribe(NoteEvents.NotesRefreshRequestedEvent.class, event -> {
+            loadRecentNotes();
+            loadFavorites();
+            loadTrashTree();
+        }));
     }
 
     private void setupFilteredList(ListView<String> listView, javafx.collections.ObservableList<String> masterList,
@@ -705,6 +744,8 @@ public class SidebarController {
                     noteService.restoreNote(c.getId());
                 if (folderDAO != null)
                     folderDAO.refreshCache();
+                if (noteDAO != null)
+                    noteDAO.refreshCache();
                 loadFolders();
                 loadTrashTree();
                 publishStatusUpdate(getString("status.item_restored"));
@@ -808,6 +849,7 @@ public class SidebarController {
             try {
                 folderService.deleteFolder(f.getId());
                 loadFolders();
+                loadTrashTree();
             } catch (Exception e) {
                 logger.log(Level.WARNING, "Failed to delete folder " + (f != null ? f.getId() : "null"), e);
                 publishStatusUpdate(getString("status.error_deleting_folder"));

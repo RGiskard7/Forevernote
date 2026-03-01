@@ -145,6 +145,34 @@ class NoteWorkflowTest {
         assertTrue(created.get().getId().startsWith("projects"));
     }
 
+    @Test
+    void toggleFavoriteShouldPersistAndReturnFavoriteStatusKey() {
+        NoteWorkflow workflow = new NoteWorkflow(null);
+        AtomicInteger updateCalls = new AtomicInteger(0);
+        Note note = new Note("n1", "Roadmap", "");
+
+        NoteWorkflow.NoteToggleResult result = workflow.toggleFavorite(note, n -> updateCalls.incrementAndGet());
+
+        assertTrue(result.success());
+        assertTrue(note.isFavorite());
+        assertEquals("status.note_marked_favorite", result.successStatusKey());
+        assertEquals(1, updateCalls.get());
+    }
+
+    @Test
+    void togglePinShouldPersistAndReturnPinStatusKey() {
+        NoteWorkflow workflow = new NoteWorkflow(null);
+        AtomicInteger updateCalls = new AtomicInteger(0);
+        Note note = new Note("n2", "Sprint", "");
+
+        NoteWorkflow.NoteToggleResult result = workflow.togglePin(note, n -> updateCalls.incrementAndGet());
+
+        assertTrue(result.success());
+        assertTrue(note.isPinned());
+        assertEquals("status.note_pinned", result.successStatusKey());
+        assertEquals(1, updateCalls.get());
+    }
+
     private static final class RecordingNotesPort implements NoteWorkflow.NotesListPort {
         private final List<String> calls = new ArrayList<>();
 

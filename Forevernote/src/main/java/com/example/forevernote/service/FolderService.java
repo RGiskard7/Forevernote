@@ -134,6 +134,8 @@ public class FolderService {
      */
     public void deleteFolder(String folderId) {
         folderDAO.deleteFolder(folderId);
+        folderDAO.refreshCache();
+        noteDAO.refreshCache();
         logger.info("Deleted folder ID: " + folderId);
     }
 
@@ -144,6 +146,8 @@ public class FolderService {
      */
     public void permanentlyDeleteFolder(String folderId) {
         folderDAO.permanentlyDeleteFolder(folderId);
+        folderDAO.refreshCache();
+        noteDAO.refreshCache();
         logger.info("Permanently deleted folder ID: " + folderId);
     }
 
@@ -154,6 +158,8 @@ public class FolderService {
      */
     public void restoreFolder(String folderId) {
         folderDAO.restoreFolder(folderId);
+        folderDAO.refreshCache();
+        noteDAO.refreshCache();
         logger.info("Restored folder ID: " + folderId);
     }
 

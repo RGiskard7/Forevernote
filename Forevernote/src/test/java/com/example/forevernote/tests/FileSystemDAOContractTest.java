@@ -18,6 +18,8 @@ import com.example.forevernote.data.dao.filesystem.TagDAOFileSystem;
 import com.example.forevernote.data.models.Folder;
 import com.example.forevernote.data.models.Note;
 import com.example.forevernote.data.models.Tag;
+import com.example.forevernote.service.FolderService;
+import com.example.forevernote.service.NoteService;
 
 class FileSystemDAOContractTest {
 
@@ -93,5 +95,28 @@ class FileSystemDAOContractTest {
         Folder rootByNote = folderDAO.getFolderByNoteId(note.getId());
         assertNotNull(rootByNote);
         assertEquals("ROOT", rootByNote.getId());
+    }
+
+    @Test
+    void restoreFolderWithNestedNotesShouldRecoverNotesInSubfolders() {
+        FolderService folderService = new FolderService(folderDAO, noteDAO);
+        NoteService noteService = new NoteService(noteDAO, folderDAO, tagDAO);
+
+        Folder parent = folderService.createFolder("Project");
+        Folder child = folderService.createSubfolder("Docs", parent);
+
+        Note note = noteService.createNote("Plan", "content");
+        folderService.addNoteToFolder(child, note);
+        assertEquals(1, noteService.getNotesByFolder(child).size());
+
+        folderService.deleteFolder(parent.getId());
+        assertEquals(0, noteService.getAllNotes().size(),
+                "After moving a folder tree to trash, active notes cache must be coherent.");
+
+        folderService.restoreFolder(".trash/" + parent.getId());
+
+        assertTrue(folderService.getFolderById(parent.getId()).isPresent());
+        assertEquals(1, noteService.getNotesByFolder(child).size(),
+                "Restoring folder tree must also restore notes visibility in nested subfolders.");
     }
 }

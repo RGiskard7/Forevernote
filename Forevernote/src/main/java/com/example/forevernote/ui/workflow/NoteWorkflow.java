@@ -3,6 +3,7 @@ package com.example.forevernote.ui.workflow;
 import java.io.File;
 import java.text.MessageFormat;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Logger;
@@ -31,6 +32,9 @@ public class NoteWorkflow {
     public record NoteCreationResult(boolean success, Note note, String errorMessage) {
     }
 
+    public record NoteToggleResult(boolean success, boolean newState, String successStatusKey, String errorMessage) {
+    }
+
     public interface NoteCreationPort {
         Note createNote(Note note);
 
@@ -49,6 +53,10 @@ public class NoteWorkflow {
 
     public interface SidebarPort {
         void loadFavorites();
+    }
+
+    public interface NoteMutationPort {
+        void updateNote(Note note);
     }
 
     private final NoteDAO noteDAO;
@@ -275,6 +283,40 @@ public class NoteWorkflow {
 
         if (gridMode && refreshGridView != null) {
             refreshGridView.run();
+        }
+    }
+
+    public NoteToggleResult toggleFavorite(Note note, NoteMutationPort mutationPort) {
+        return toggleBooleanFlag(note, mutationPort, Note::isFavorite, Note::setFavorite,
+                "status.note_marked_favorite", "status.note_unmarked_favorite");
+    }
+
+    public NoteToggleResult togglePin(Note note, NoteMutationPort mutationPort) {
+        return toggleBooleanFlag(note, mutationPort, Note::isPinned, Note::setPinned,
+                "status.note_pinned", "status.note_unpinned");
+    }
+
+    private NoteToggleResult toggleBooleanFlag(
+            Note note,
+            NoteMutationPort mutationPort,
+            Function<Note, Boolean> getter,
+            java.util.function.BiConsumer<Note, Boolean> setter,
+            String enabledStatusKey,
+            String disabledStatusKey) {
+        if (note == null) {
+            return new NoteToggleResult(false, false, null, "Note is null");
+        }
+        if (mutationPort == null) {
+            return new NoteToggleResult(false, false, null, "Mutation port is null");
+        }
+        try {
+            boolean newState = !Objects.equals(Boolean.TRUE, getter.apply(note));
+            setter.accept(note, newState);
+            mutationPort.updateNote(note);
+            return new NoteToggleResult(true, newState, newState ? enabledStatusKey : disabledStatusKey, null);
+        } catch (Exception e) {
+            logger.warning("Failed to toggle note flag for note " + note.getId() + ": " + e.getMessage());
+            return new NoteToggleResult(false, false, null, e.getMessage());
         }
     }
 
