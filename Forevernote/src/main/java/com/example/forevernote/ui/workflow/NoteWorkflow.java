@@ -85,7 +85,7 @@ public class NoteWorkflow {
             // FileSystem DAO relies on pre-seeded ID to infer parent folder path.
             if (isFileSystem && isConcreteFolder(currentFolder)) {
                 String folderPath = currentFolder.getId();
-                String sanitizedTitle = safeTitle.replaceAll("[^a-zA-Z0-9\\.\\-_ ]", "_");
+                String sanitizedTitle = safeTitle.replaceAll("[^\\p{L}\\p{N}\\.\\-_ ]", "_");
                 newNote.setId(folderPath + File.separator + sanitizedTitle);
             }
 

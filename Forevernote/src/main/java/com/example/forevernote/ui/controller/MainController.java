@@ -61,14 +61,9 @@ import com.example.forevernote.ui.workflow.EditorCommandWorkflow;
 import com.example.forevernote.ui.workflow.NavigationCommandWorkflow;
 import com.example.forevernote.ui.workflow.UiDialogWorkflow;
 import com.example.forevernote.ui.workflow.ThemeCommandWorkflow;
+import com.example.forevernote.ui.workflow.PluginUiWorkflow;
+import com.example.forevernote.ui.workflow.AppSettingsWorkflow;
 
-/**
- * Main controller for the Forevernote application.
- * Handles all UI interactions and manages the application state.
- * Implements PluginMenuRegistry and SidePanelRegistry to allow plugins to
- * register
- * menu items and UI panels dynamically (Modern-style).
- */
 public class MainController implements PluginMenuRegistry, SidePanelRegistry, PreviewEnhancerRegistry {
 
     private static final Logger logger = LoggerConfig.getLogger(MainController.class);
@@ -257,6 +252,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private final NavigationCommandWorkflow navigationCommandWorkflow = new NavigationCommandWorkflow();
     private final UiDialogWorkflow uiDialogWorkflow = new UiDialogWorkflow();
     private final ThemeCommandWorkflow themeCommandWorkflow = new ThemeCommandWorkflow();
+    private final PluginUiWorkflow pluginUiWorkflow = new PluginUiWorkflow();
+    private final AppSettingsWorkflow appSettingsWorkflow = new AppSettingsWorkflow();
 
     @FXML
     private java.util.ResourceBundle resources;
@@ -275,17 +272,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         return folder != null && "ALL_NOTES_VIRTUAL".equals(folder.getId());
     }
 
-    /**
-     * Initialize the controller after FXML loading.
-     */
     @FXML
     public void initialize() {
         try {
-            // Ensure navSplitPane for layout switching
             navSplitPane = new SplitPane();
             navSplitPane.setOrientation(javafx.geometry.Orientation.VERTICAL);
 
-            // Initialize database connections
             initializeDatabase();
 
             if (toolbarController != null) {
@@ -349,7 +341,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 previewWebView = editorController.getPreviewWebView();
             }
 
-            // Initialize UI components
             initializeSortOptions();
             initializeViewModeButtons();
             initializeIcons();
@@ -358,17 +349,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             initializeThemeMenu();
             initializeLanguageMenu();
 
-            // Load initial data
             sidebarController.loadFolders();
             sidebarController.loadTags();
             sidebarController.loadRecentNotes();
             sidebarController.loadFavorites();
             sidebarController.loadTrashTree();
 
-            // Initialize keyboard shortcuts after scene is ready
             Platform.runLater(this::initializeKeyboardShortcuts);
 
-            // Initialize plugin system after scene is ready
             Platform.runLater(this::initializePluginSystem);
 
             updateStatus(getString("status.ready"));
@@ -379,17 +367,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             updateStatus(java.text.MessageFormat.format(getString("status.error_details"), e.getMessage()));
         }
     }
-    /**
-     * Initialize database connections and DAOs.
-     */
     private void initializeDatabase() {
         try {
-            // Determine storage type from AppConfig (defaulting to SQLite for now, but
-            // could be "filesystem")
-            // For now, let's auto-detect or use SQLite default.
-            // Ideally AppConfig should have getStorageType()
 
-            // To enable FileSystem mode, we can check a system property or config file
             Preferences prefs = Preferences.userNodeForPackage(MainController.class);
             String storageType = prefs.get("storage_type", System.getProperty("forevernote.storage", "sqlite"));
 
@@ -420,7 +400,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             tagWorkflow = new TagWorkflow();
             previewWorkflow = new PreviewWorkflow();
 
-            // Initialize services
             noteService = new NoteService(noteDAO, folderDAO, tagDAO);
             folderService = new FolderService(folderDAO, noteDAO);
             tagService = new TagService(tagDAO, noteDAO);
@@ -435,116 +414,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     @FXML
     public void handleSwitchStorage() {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle(getString("pref.storage"));
-        alert.setHeaderText(getString("pref.storage.header"));
-        alert.setContentText(getString("pref.storage.content"));
-
-        ButtonType sqliteBtn = new ButtonType(getString("pref.storage.sqlite"));
-        ButtonType filesystemBtn = new ButtonType(getString("pref.storage.filesystem"));
-        ButtonType cancelBtn = new ButtonType(getString("action.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
-
-        alert.getButtonTypes().setAll(sqliteBtn, filesystemBtn, cancelBtn);
-
-        Optional<ButtonType> result = alert.showAndWait();
-        if (result.isPresent() && result.get() != cancelBtn) {
-            String newType = "sqlite";
-            String customPath = "";
-            boolean changed = false;
-
-            Preferences prefs = Preferences.userNodeForPackage(MainController.class);
-            String currentType = prefs.get("storage_type", "sqlite");
-            String currentPath = prefs.get("filesystem_path", "");
-
-            if (result.get() == sqliteBtn) {
-                newType = "sqlite";
-                changed = !newType.equals(currentType);
-            } else if (result.get() == filesystemBtn) {
-                javafx.stage.DirectoryChooser directoryChooser = new javafx.stage.DirectoryChooser();
-                directoryChooser.setTitle(getString("pref.storage.browse"));
-
-                File selectedDirectory = directoryChooser.showDialog(
-                        mainSplitPane != null && mainSplitPane.getScene() != null ? mainSplitPane.getScene().getWindow()
-                                : null);
-                if (selectedDirectory != null) {
-                    newType = "filesystem";
-                    customPath = selectedDirectory.getAbsolutePath();
-                    changed = !newType.equals(currentType) || !customPath.equals(currentPath);
-                } else {
-                    // User cancelled directory selection
-                    return;
-                }
-            }
-
-            if (changed) {
-                prefs.put("storage_type", newType);
-                prefs.put("filesystem_path", customPath);
-
-                Alert restartAlert = new Alert(Alert.AlertType.INFORMATION);
-                restartAlert.setTitle(getString("app.restart_required"));
-                restartAlert.setHeaderText(null);
-                restartAlert.setContentText(getString("app.restart_storage_message"));
-                restartAlert.showAndWait();
-            }
-        }
+        appSettingsWorkflow.handleSwitchStorage(
+                mainSplitPane != null && mainSplitPane.getScene() != null ? mainSplitPane.getScene().getWindow() : null,
+                this::getString,
+                prefs);
     }
 
-    /**
-     * Initialize theme menu with toggle group.
-     */
     private void initializeThemeMenu() {
-        themeToggleGroup = new ToggleGroup();
-        // Sync Themes Menu
-        if (toolbarController != null) {
-            if (toolbarController.getLightThemeMenuItem() != null) {
-                toolbarController.getLightThemeMenuItem().setToggleGroup(themeToggleGroup);
-            }
-            if (toolbarController.getDarkThemeMenuItem() != null) {
-                toolbarController.getDarkThemeMenuItem().setToggleGroup(themeToggleGroup);
-            }
-            if (toolbarController.getSystemThemeMenuItem() != null) {
-                toolbarController.getSystemThemeMenuItem().setToggleGroup(themeToggleGroup);
-            }
-        }
-        // Set initial selection based on current theme
-        updateThemeMenuSelection();
-
-        // Apply saved theme after scene is ready
-        Platform.runLater(() -> {
-            if ("system".equals(currentTheme)) {
-                // For system theme, detect and apply
-                String detectedTheme = detectSystemTheme();
-                String savedTheme = currentTheme;
-                currentTheme = detectedTheme;
-                applyTheme();
-                currentTheme = savedTheme;
-            } else {
-                applyTheme();
-            }
-        });
+        themeToggleGroup = appSettingsWorkflow.initializeThemeMenu(
+                toolbarController,
+                currentTheme,
+                this::detectSystemTheme,
+                theme -> currentTheme = theme,
+                this::updateThemeMenuSelection,
+                this::applyTheme);
     }
 
     private void initializeLanguageMenu() {
-        languageToggleGroup = new ToggleGroup();
-        // Sync Language Menu
-        if (toolbarController != null) {
-            if (toolbarController.getEnglishLangMenuItem() != null) {
-                toolbarController.getEnglishLangMenuItem().setToggleGroup(languageToggleGroup);
-            }
-            if (toolbarController.getSpanishLangMenuItem() != null) {
-                toolbarController.getSpanishLangMenuItem().setToggleGroup(languageToggleGroup);
-            }
-
-            // Set current selection
-            String currentLang = prefs.get("language", java.util.Locale.getDefault().getLanguage());
-            if ("es".equals(currentLang)) {
-                if (toolbarController.getSpanishLangMenuItem() != null)
-                    toolbarController.getSpanishLangMenuItem().setSelected(true);
-            } else {
-                if (toolbarController.getEnglishLangMenuItem() != null)
-                    toolbarController.getEnglishLangMenuItem().setSelected(true);
-            }
-        }
+        languageToggleGroup = appSettingsWorkflow.initializeLanguageMenu(toolbarController, prefs);
     }
 
     @FXML
@@ -558,9 +445,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     private void changeLanguage(String lang) {
-        String currentLang = prefs.get("language", java.util.Locale.getDefault().getLanguage());
-        if (!currentLang.equals(lang)) {
-            prefs.put("language", lang);
+        if (appSettingsWorkflow.changeLanguage(lang, prefs)) {
             showAlert(Alert.AlertType.INFORMATION,
                     getString("app.restart_required"),
                     getString("app.restart_required"),
@@ -568,41 +453,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
     }
 
-    /**
-     * Update theme menu selection based on current theme.
-     */
     private void updateThemeMenuSelection() {
-        if (themeToggleGroup == null)
-            return;
-
-        if ("dark".equals(currentTheme)) {
-            if (toolbarController != null) {
-                if (toolbarController.getDarkThemeMenuItem() != null) {
-                    toolbarController.getDarkThemeMenuItem().setSelected(true);
-                }
-            }
-        } else if ("system".equalsIgnoreCase(currentTheme)) {
-            if (toolbarController != null) {
-                if (toolbarController.getSystemThemeMenuItem() != null) {
-                    toolbarController.getSystemThemeMenuItem().setSelected(true);
-                }
-            }
-        } else {
-            if (toolbarController != null) {
-                if (toolbarController.getLightThemeMenuItem() != null) {
-                    toolbarController.getLightThemeMenuItem().setSelected(true);
-                }
-            }
-        }
+        appSettingsWorkflow.updateThemeMenuSelection(toolbarController, themeToggleGroup, currentTheme);
     }
 
-    /**
-     * Initialize global keyboard shortcuts.
-     * Sets up Command Palette (Ctrl+P) and Quick Switcher (Ctrl+O).
-     */
     private void initializeKeyboardShortcuts() {
         try {
-            // Get the stage from any available component
             javafx.scene.Scene scene = null;
             if (mainSplitPane != null && mainSplitPane.getScene() != null) {
                 scene = mainSplitPane.getScene();
@@ -631,9 +487,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
     }
 
-    /**
-     * Shows the Command Palette (Ctrl+P).
-     */
     public void showCommandPalette() {
         ensureCommandUisInitialized(getPrimaryStage());
         if (commandPalette != null) {
@@ -646,25 +499,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
     }
 
-    /**
-     * Shows the Quick Switcher (Ctrl+O).
-     */
     public void showQuickSwitcher() {
         ensureCommandUisInitialized(getPrimaryStage());
         if (quickSwitcher != null) {
             quickSwitcher.setDarkTheme(isDarkThemeActive());
-            // Update notes list before showing
             quickSwitcher.setNotes(noteService.getAllNotes());
             quickSwitcher.show();
         }
     }
 
-    /**
-     * Initialize the plugin system.
-     * Creates PluginManager, loads external plugins, and initializes them.
-     * The core is completely decoupled - plugins register their own menu items
-     * dynamically.
-     */
     private void initializePluginSystem() {
         try {
             if (commandPalette == null) {
@@ -672,19 +515,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 return;
             }
 
-            // Create the plugin manager with all required services
-            // Pass 'this' as both PluginMenuRegistry and SidePanelRegistry so plugins can
-            // register UI components
             pluginManager = new PluginManager(noteService, folderService, tagService, eventBus, commandPalette, this,
                     this, this);
 
-            // Load plugins from plugins/ directory (completely decoupled - no hardcoded
-            // optional plugins)
             PluginLifecycleWorkflow.LoadResult pluginLoadResult = pluginLifecycleWorkflow
                     .registerCoreAndExternalPlugins(pluginManager, logger::warning);
 
-            // Initialize all registered plugins (they will register their menu items during
-            // init)
             pluginManager.initializeAll();
 
             Stage stage = mainSplitPane != null && mainSplitPane.getScene() != null
@@ -692,7 +528,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     : null;
             pluginManagerDialog = new PluginManagerDialog(stage, pluginManager);
 
-            // Register plugin manager command in Command Palette
             commandPalette.addCommand(new CommandPalette.Command(
                     "cmd.plugins.manage",
                     "Plugins: Manage Plugins",
@@ -702,7 +537,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     "Tools",
                     this::showPluginManager));
 
-            // Subscribe to plugin events
             pluginLifecycleWorkflow.subscribePluginUiEvents(
                     eventBus,
                     () -> Platform.runLater(() -> {
@@ -723,9 +557,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
     }
 
-    /**
-     * Subscribe to events from plugins.
-     */
     private void subscribeToUIEvents() {
         if (eventBus == null) {
             return;
@@ -803,6 +634,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             public void handleTrashItemSelected(Component component) {
                 MainController.this.handleUiTrashItemSelected(component);
             }
+
+            @Override
+            public void handleNoteModified(Note note) {
+                MainController.this.handleUiNoteModified(note);
+            }
         });
     }
 
@@ -844,6 +680,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         uiEventHandlerWorkflow.onTrashItemSelected(component, this::loadNoteInEditor, this::handleFolderSelection);
     }
 
+    private void handleUiNoteModified(Note note) {
+        if (note == null || getCurrentNote() == null || !Objects.equals(note.getId(), getCurrentNote().getId())) {
+            return;
+        }
+        updateWordCount();
+        updatePreview();
+        updateNoteInfoPanel();
+    }
+
     public void showPluginManager() {
         if (pluginManagerDialog != null) {
             pluginManagerDialog.setDarkTheme(isDarkThemeActive());
@@ -878,348 +723,129 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     @Override
     public void registerMenuItem(String pluginId, String category, String itemName, String shortcut, Runnable action) {
-        Platform.runLater(() -> {
-            if (toolbarController == null || toolbarController.getPluginsMenu() == null) {
-                logger.warning("Plugins menu not available for registration: " + itemName);
-                return;
-            }
-
-            // Get or create the category submenu
-            Menu categoryMenu = pluginCategoryMenus.get(category);
-            if (categoryMenu == null) {
-                categoryMenu = new Menu(category);
-                pluginCategoryMenus.put(category, categoryMenu);
-
-                // Add category menu after the separator (index 1 is after "Manage Plugins" and
-                // separator)
-                int insertIndex = Math.min(toolbarController.getPluginsMenu().getItems().size(), 2);
-                toolbarController.getPluginsMenu().getItems().add(insertIndex, categoryMenu);
-            }
-
-            // Create the menu item
-            MenuItem menuItem = new MenuItem(itemName);
-            menuItem.setOnAction(e -> {
-                if (pluginManager != null && pluginManager.isPluginEnabled(pluginId)) {
-                    action.run();
-                } else {
-                    updateStatus(java.text.MessageFormat.format(getString("status.plugin_not_enabled"), pluginId));
-                }
-            });
-
-            // Set shortcut if provided
-            if (shortcut != null && !shortcut.isEmpty()) {
-                try {
-                    menuItem.setAccelerator(KeyCombination.keyCombination(shortcut));
-                } catch (Exception e) {
-                    logger.log(Level.WARNING, "Invalid shortcut for menu item: " + shortcut, e);
-                }
-            }
-
-            // Add to category menu
-            categoryMenu.getItems().add(menuItem);
-
-            // Track menu items by plugin for removal later
-            pluginMenuItems.computeIfAbsent(pluginId, k -> new ArrayList<>()).add(menuItem);
-
-            logger.fine("Registered menu item: " + category + " > " + itemName + " for plugin " + pluginId);
-        });
+        pluginUiWorkflow.registerMenuItem(
+                pluginId,
+                category,
+                itemName,
+                shortcut,
+                action,
+                toolbarController,
+                pluginCategoryMenus,
+                pluginMenuItems,
+                () -> pluginManager,
+                this::getString,
+                this::updateStatus,
+                logger::fine,
+                logger::warning,
+                e -> logger.log(Level.WARNING, "Invalid shortcut for plugin menu item", e));
     }
 
-    /**
-     * Adds a separator in the plugin's menu category.
-     */
     @Override
     public void addMenuSeparator(String pluginId, String category) {
-        Platform.runLater(() -> {
-            Menu categoryMenu = pluginCategoryMenus.get(category);
-            if (categoryMenu != null) {
-                SeparatorMenuItem separator = new SeparatorMenuItem();
-                categoryMenu.getItems().add(separator);
-                pluginMenuItems.computeIfAbsent(pluginId, k -> new ArrayList<>()).add(separator);
-            }
-        });
+        pluginUiWorkflow.addMenuSeparator(pluginId, category, pluginCategoryMenus, pluginMenuItems);
     }
 
-    /**
-     * Removes all menu items for a plugin.
-     * Called when a plugin is disabled or unloaded.
-     */
     @Override
     public void removePluginMenuItems(String pluginId) {
-        Platform.runLater(() -> {
-            List<MenuItem> items = pluginMenuItems.remove(pluginId);
-            if (items != null) {
-                for (MenuItem item : items) {
-                    // Remove from all category menus
-                    for (Menu categoryMenu : pluginCategoryMenus.values()) {
-                        categoryMenu.getItems().remove(item);
-                    }
-                }
-
-                // Clean up empty category menus
-                pluginCategoryMenus.entrySet().removeIf(entry -> {
-                    Menu menu = entry.getValue();
-                    if (menu.getItems().isEmpty()) {
-                        if (toolbarController != null && toolbarController.getPluginsMenu() != null) {
-                            toolbarController.getPluginsMenu().getItems().remove(menu);
-                        }
-                        return true;
-                    }
-                    return false;
-                });
-
-                logger.info("Removed menu items for plugin: " + pluginId);
-            }
-        });
+        pluginUiWorkflow.removePluginMenuItems(
+                pluginId,
+                toolbarController,
+                pluginCategoryMenus,
+                pluginMenuItems,
+                logger::info);
     }
 
-    /**
-     * Checks if a plugin is enabled.
-     */
     @Override
     public boolean isPluginEnabled(String pluginId) {
         return pluginManager != null && pluginManager.isPluginEnabled(pluginId);
     }
 
 
-    /**
-     * Registers a side panel for a plugin.
-     * Creates a collapsible section in the right sidebar with the plugin's content.
-     */
     @Override
     public void registerSidePanel(String pluginId, String panelId, String title, javafx.scene.Node content,
             String icon) {
-        Platform.runLater(() -> {
-            if (pluginPanelsContainer == null) {
-                logger.warning("Plugin panels container not available for registration: " + panelId);
-                return;
-            }
-
-            String fullPanelId = pluginId + ":" + panelId;
-
-            // Create panel wrapper
-            VBox panelWrapper = new VBox();
-            panelWrapper.getStyleClass().add("plugin-panel");
-            panelWrapper.setSpacing(8);
-
-            // Create header with icon, title, and collapse button
-            HBox header = new HBox();
-            header.getStyleClass().add("plugin-panel-header");
-            header.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-            header.setSpacing(8);
-
-            String headerText = (icon != null ? icon + " " : "") + title;
-            Label titleLabel = new Label(headerText);
-            titleLabel.getStyleClass().add("plugin-panel-title");
-
-            Region spacer = new Region();
-            HBox.setHgrow(spacer, Priority.ALWAYS);
-
-            Button collapseBtn = new Button("▼");
-            collapseBtn.getStyleClass().add("plugin-panel-collapse-btn");
-            collapseBtn.setStyle("-fx-font-size: 10px; -fx-padding: 2 6; -fx-background-color: transparent;");
-
-            header.getChildren().addAll(titleLabel, spacer, collapseBtn);
-
-            // Content wrapper
-            VBox contentWrapper = new VBox();
-            contentWrapper.getStyleClass().add("plugin-panel-content");
-            contentWrapper.getChildren().add(content);
-
-            // Toggle collapse
-            collapseBtn.setOnAction(e -> {
-                boolean isCollapsed = !contentWrapper.isVisible();
-                contentWrapper.setVisible(isCollapsed);
-                contentWrapper.setManaged(isCollapsed);
-                collapseBtn.setText(isCollapsed ? "▼" : "▶");
-            });
-
-            panelWrapper.getChildren().addAll(header, contentWrapper);
-
-            // Add to container
-            pluginPanelsContainer.getChildren().add(panelWrapper);
-            pluginPanels.put(fullPanelId, panelWrapper);
-            pluginPanelIds.computeIfAbsent(pluginId, k -> new ArrayList<>()).add(fullPanelId);
-
-            // Show the container if it has content
-            pluginPanelsContainer.setVisible(true);
-            pluginPanelsContainer.setManaged(true);
-
-            logger.fine("Registered side panel: " + title + " for plugin " + pluginId);
-        });
+        pluginUiWorkflow.registerSidePanel(
+                pluginId,
+                panelId,
+                title,
+                content,
+                icon,
+                pluginPanelsContainer,
+                pluginPanels,
+                pluginPanelIds,
+                logger::fine,
+                logger::warning);
     }
 
-    /**
-     * Removes a side panel.
-     */
     @Override
     public void removeSidePanel(String pluginId, String panelId) {
-        Platform.runLater(() -> {
-            String fullPanelId = pluginId + ":" + panelId;
-            VBox panel = pluginPanels.remove(fullPanelId);
-            if (panel != null && pluginPanelsContainer != null) {
-                pluginPanelsContainer.getChildren().remove(panel);
-
-                // Update tracking
-                List<String> ids = pluginPanelIds.get(pluginId);
-                if (ids != null) {
-                    ids.remove(fullPanelId);
-                }
-
-                // Hide container if empty
-                if (pluginPanelsContainer.getChildren().isEmpty()) {
-                    pluginPanelsContainer.setVisible(false);
-                    pluginPanelsContainer.setManaged(false);
-                }
-
-                logger.info("Removed side panel: " + panelId);
-            }
-        });
+        pluginUiWorkflow.removeSidePanel(
+                pluginId,
+                panelId,
+                pluginPanelsContainer,
+                pluginPanels,
+                pluginPanelIds,
+                logger::info);
     }
 
-    /**
-     * Removes all side panels for a plugin.
-     */
     @Override
     public void removeAllSidePanels(String pluginId) {
-        Platform.runLater(() -> {
-            List<String> ids = pluginPanelIds.remove(pluginId);
-            if (ids != null && pluginPanelsContainer != null) {
-                for (String fullPanelId : ids) {
-                    VBox panel = pluginPanels.remove(fullPanelId);
-                    if (panel != null) {
-                        pluginPanelsContainer.getChildren().remove(panel);
-                    }
-                }
-
-                // Hide container if empty
-                if (pluginPanelsContainer.getChildren().isEmpty()) {
-                    pluginPanelsContainer.setVisible(false);
-                    pluginPanelsContainer.setManaged(false);
-                }
-
-                logger.info("Removed all side panels for plugin: " + pluginId);
-            }
-        });
+        pluginUiWorkflow.removeAllSidePanels(
+                pluginId,
+                pluginPanelsContainer,
+                pluginPanels,
+                pluginPanelIds,
+                logger::info);
     }
 
-    /**
-     * Shows or hides the plugin panels section.
-     */
     @Override
     public void setPluginPanelsVisible(boolean visible) {
-        Platform.runLater(() -> {
-            if (pluginPanelsContainer != null) {
-                pluginPanelsContainer.setVisible(visible);
-                pluginPanelsContainer.setManaged(visible);
-            }
-        });
+        pluginUiWorkflow.setPluginPanelsVisible(visible, pluginPanelsContainer);
     }
 
-    /**
-     * Checks if the plugin panels section is visible.
-     */
     @Override
     public boolean isPluginPanelsVisible() {
-        return pluginPanelsContainer != null && pluginPanelsContainer.isVisible();
+        return pluginUiWorkflow.isPluginPanelsVisible(pluginPanelsContainer);
     }
 
 
-    /**
-     * Registers a status bar item for a plugin.
-     */
     public void registerStatusBarItem(String pluginId, String itemId, javafx.scene.Node content) {
-        Platform.runLater(() -> {
-            if (pluginStatusBarContainer == null) {
-                logger.warning("Status bar container not available for: " + itemId);
-                return;
-            }
-
-            String fullItemId = pluginId + ":" + itemId;
-
-            // Wrap content with separator
-            HBox wrapper = new HBox(8);
-            wrapper.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-
-            Separator sep = new Separator();
-            sep.setOrientation(javafx.geometry.Orientation.VERTICAL);
-            sep.getStyleClass().add("status-separator");
-
-            wrapper.getChildren().addAll(sep, content);
-
-            // Add to container
-            pluginStatusBarContainer.getChildren().add(wrapper);
-            pluginStatusBarItems.put(fullItemId, wrapper);
-            pluginStatusBarItemIds.computeIfAbsent(pluginId, k -> new ArrayList<>()).add(fullItemId);
-
-            logger.fine("Registered status bar item: " + itemId + " for plugin " + pluginId);
-        });
+        pluginUiWorkflow.registerStatusBarItem(
+                pluginId,
+                itemId,
+                content,
+                pluginStatusBarContainer,
+                pluginStatusBarItems,
+                pluginStatusBarItemIds,
+                logger::fine,
+                logger::warning);
     }
 
-    /**
-     * Removes a status bar item.
-     */
     public void removeStatusBarItem(String pluginId, String itemId) {
-        Platform.runLater(() -> {
-            String fullItemId = pluginId + ":" + itemId;
-            javafx.scene.Node item = pluginStatusBarItems.remove(fullItemId);
-            if (item != null && pluginStatusBarContainer != null) {
-                pluginStatusBarContainer.getChildren().remove(item);
-
-                List<String> ids = pluginStatusBarItemIds.get(pluginId);
-                if (ids != null) {
-                    ids.remove(fullItemId);
-                }
-            }
-        });
+        pluginUiWorkflow.removeStatusBarItem(
+                pluginId,
+                itemId,
+                pluginStatusBarContainer,
+                pluginStatusBarItems,
+                pluginStatusBarItemIds);
     }
 
-    /**
-     * Updates a status bar item's content.
-     */
     public void updateStatusBarItem(String pluginId, String itemId, javafx.scene.Node content) {
-        Platform.runLater(() -> {
-            String fullItemId = pluginId + ":" + itemId;
-            javafx.scene.Node wrapper = pluginStatusBarItems.get(fullItemId);
-            if (wrapper instanceof HBox) {
-                HBox box = (HBox) wrapper;
-                if (box.getChildren().size() > 1) {
-                    box.getChildren().set(1, content);
-                }
-            }
-        });
+        pluginUiWorkflow.updateStatusBarItem(pluginId, itemId, content, pluginStatusBarItems);
     }
 
-    /**
-     * Removes all status bar items for a plugin.
-     * Called when a plugin is disabled or unloaded.
-     */
     public void removeAllStatusBarItems(String pluginId) {
-        Platform.runLater(() -> {
-            List<String> ids = pluginStatusBarItemIds.remove(pluginId);
-            if (ids != null && pluginStatusBarContainer != null) {
-                for (String fullItemId : ids) {
-                    javafx.scene.Node item = pluginStatusBarItems.remove(fullItemId);
-                    if (item != null) {
-                        pluginStatusBarContainer.getChildren().remove(item);
-                    }
-                }
-            }
-        });
+        pluginUiWorkflow.removeAllStatusBarItems(
+                pluginId,
+                pluginStatusBarContainer,
+                pluginStatusBarItems,
+                pluginStatusBarItemIds);
     }
 
-    /**
-     * Gets the plugin manager for external access.
-     *
-     * @return The plugin manager, or null if not initialized
-     */
     public PluginManager getPluginManager() {
         return pluginManager;
     }
 
-    /**
-     * Execute a command from the Command Palette.
-     */
     private void executeCommand(String commandName) {
         CommandRoutingWorkflow.DispatchResult result = commandRoutingWorkflow
                 .dispatch(commandName, this::executePluginCommandToken);
@@ -1441,16 +1067,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         quickSwitcher = components.quickSwitcher();
     }
 
-    /**
-     * Initialize sort options.
-     */
     private void initializeSortOptions() {
         uiInitializationWorkflow.initializeSortOptions(sortComboBox, this::getString, this::sortNotes);
     }
 
-    /**
-     * Initialize view mode toggle buttons (Modern-style).
-     */
     private void initializeViewModeButtons() {
         uiInitializationWorkflow.initializeViewModeButtons(
                 editorOnlyButton,
@@ -1461,9 +1081,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 this::applyViewMode);
     }
 
-    /**
-     * Initialize the grid view container.
-     */
     private void initializeGridView() {
         notesGridPane = new javafx.scene.layout.TilePane();
         notesGridPane.setPrefColumns(3);
@@ -1477,15 +1094,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         gridScrollPane.setStyle("-fx-background-color: transparent; -fx-border-color: transparent;");
         gridScrollPane.getStyleClass().add("notes-grid-scroll");
 
-        // Store reference to the notes panel container
         if (notesListView != null && notesListView.getParent() instanceof VBox) {
             notesPanelContainer = (VBox) notesListView.getParent();
         }
     }
 
-    /**
-     * Handle switching to list view.
-     */
     @FXML
     private void handleListView(ActionEvent event) {
         if (currentNotesViewMode != NotesViewMode.LIST) {
@@ -1495,9 +1108,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
     }
 
-    /**
-     * Handle switching to grid view.
-     */
     @FXML
     private void handleGridView(ActionEvent event) {
         if (currentNotesViewMode != NotesViewMode.GRID) {
@@ -1507,9 +1117,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
     }
 
-    /**
-     * Apply the current notes view mode (list/grid).
-     */
     private void applyNotesViewMode() {
         notesPanelContainer = notesGridWorkflow.applyNotesViewMode(
                 currentNotesViewMode == NotesViewMode.GRID,
@@ -1520,9 +1127,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 logger::warning);
     }
 
-    /**
-     * Refresh the grid view with current notes.
-     */
     private void refreshGridView() {
         notesGridWorkflow.refreshGridView(
                 notesGridPane,
@@ -1533,16 +1137,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 this::updateStatus);
     }
 
-    /**
-     * Setup responsive behavior for the toolbar.
-     */
     private void setupToolbarResponsiveness() {
         uiInitializationWorkflow.setupToolbarResponsiveness(toolbarController, this::updateToolbarOverflow);
     }
 
-    /**
-     * Update toolbar items based on available width.
-     */
     private void updateToolbarOverflow(double width) {
         uiInitializationWorkflow.updateToolbarOverflow(
                 toolbarController,
@@ -1596,9 +1194,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 });
     }
 
-    /**
-     * Apply the current view mode to the UI.
-     */
     private void applyViewMode() {
         uiLayoutWorkflow.applyViewMode(
                 currentViewMode,
@@ -1611,9 +1206,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 this::updatePreview);
     }
 
-    /**
-     * Handle editor-only mode button click.
-     */
     @FXML
     private void handleEditorOnlyMode(ActionEvent event) {
         currentViewMode = UiLayoutWorkflow.ViewMode.EDITOR_ONLY;
@@ -1621,9 +1213,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         updateStatus(getString("status.mode_editor"));
     }
 
-    /**
-     * Handle split view mode button click.
-     */
     @FXML
     private void handleSplitViewMode(ActionEvent event) {
         currentViewMode = UiLayoutWorkflow.ViewMode.SPLIT;
@@ -1631,9 +1220,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         updateStatus(getString("status.mode_split"));
     }
 
-    /**
-     * Handle preview-only mode button click.
-     */
     @FXML
     private void handlePreviewOnlyMode(ActionEvent event) {
         currentViewMode = UiLayoutWorkflow.ViewMode.PREVIEW_ONLY;
@@ -1641,42 +1227,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         updateStatus(getString("status.mode_preview"));
     }
 
-    /**
-     * Initialize all icons using Ikonli (Feather icons - similar to Obsidian).
-     * Uses simple text labels that work reliably across all platforms.
-     */
     private void initializeIcons() {
-        // Icons are now set via FXML using Ikonli FontIcon
-        // This method can remain empty or be removed in future refactoring
     }
 
-    /**
-     * Toggle the right panel visibility.
-     */
     @FXML
     private void handleToggleRightPanel(ActionEvent event) {
         uiLayoutWorkflow.toggleRightPanel(rightPanel, infoButton, getCurrentNote(), this::updateNoteInfoPanel);
     }
 
-    /**
-     * Handle close right panel button.
-     */
     @FXML
     private void handleCloseRightPanel(ActionEvent event) {
         uiLayoutWorkflow.closeRightPanel(rightPanel, infoButton);
     }
 
-    /**
-     * Legacy method - redirect to new handler.
-     */
     @FXML
     private void handleShowNoteInfo(ActionEvent event) {
         handleToggleRightPanel(event);
     }
 
-    /**
-     * Initialize the collapsible sections in the right panel.
-     */
     private void initializeRightPanelSections() {
         uiInitializationWorkflow.initializeRightPanelSections(
                 noteInfoHeader,
@@ -1685,9 +1253,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 pluginPanelsContainer);
     }
 
-    /**
-     * Update the note info panel with current note data.
-     */
     private void updateNoteInfoPanel() {
         if (getCurrentNote() == null)
             return;
@@ -1730,9 +1295,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
     }
 
-    /**
-     * Load all notes via NotesListController.
-     */
     private void loadAllNotes() {
         if (notesListController != null) {
             currentFolder = null;
@@ -1756,9 +1318,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         loadAllNotes();
     }
 
-    /**
-     * Load notes for selected folder via NotesListController, and update UI layout.
-     */
     private void handleFolderSelection(Folder folder) {
         if (folderWorkflow == null) {
             folderWorkflow = new FolderWorkflow();
@@ -1838,12 +1397,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         });
     }
 
-    /**
-     * Load note in editor.
-     */
     private void loadNoteInEditor(Note note) {
         if (isModified() && getCurrentNote() != null) {
-            // Ask to save changes
             Optional<ButtonType> result = showSaveDialog();
             if (result.isPresent()) {
                 if (result.get().getButtonData() == ButtonBar.ButtonData.CANCEL_CLOSE) {
@@ -1874,35 +1429,25 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             return;
         }
 
-        // Load tags
         loadNoteTags(activeNote);
 
-        // Update metadata
         updateNoteMetadata(activeNote);
 
-        // Ensure WebView has correct background color based on theme
         if (previewWebView != null && !previewWebView.getStyleClass().contains("webview-theme")) {
             previewWebView.getStyleClass().add("webview-theme");
         }
 
-        // Update preview
         updatePreview();
 
-        // Update favorite button icon
         updateFavoriteButtonIcon();
 
-        // Update pinned button icon
         updatePinnedButtonIcon();
 
-        // Refresh favorites list to show current favorite status
         sidebarController.loadFavorites();
 
         updateStatus(java.text.MessageFormat.format(getString("status.note_loaded"), activeNote.getTitle()));
     }
 
-    /**
-     * Load tags for a note.
-     */
     private void loadNoteTags(Note note) {
         if (noteWorkflow == null) {
             noteWorkflow = new NoteWorkflow(noteDAO);
@@ -1910,9 +1455,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         noteWorkflow.loadNoteTags(note, tagsFlowPane, this::handleAddTagToNote, this::removeTagFromNote);
     }
 
-    /**
-     * Update note metadata display.
-     */
     private void updateNoteMetadata(Note note) {
         if (noteWorkflow == null) {
             noteWorkflow = new NoteWorkflow(noteDAO);
@@ -1931,9 +1473,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 this::getString);
     }
 
-    /**
-     * Load notes for a specific tag via NotesListController.
-     */
     private void loadNotesForTag(String tagName) {
         if (tagWorkflow == null) {
             tagWorkflow = new TagWorkflow();
@@ -1963,9 +1502,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         });
     }
 
-    /**
-     * Perform search via NotesListController.
-     */
     private void performSearch(String searchText) {
         if (notesListController != null) {
             currentFilterType = "search";
@@ -1973,18 +1509,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
     }
 
-    /**
-     * Sort notes via NotesListController.
-     */
     private void sortNotes(String sortOption) {
         if (notesListController != null) {
             notesListController.sortNotes(sortOption);
         }
     }
 
-    /**
-     * Update word count.
-     */
     private void updateWordCount() {
         String content = noteContentArea != null ? noteContentArea.getText() : "";
         if (content == null)
@@ -2003,9 +1533,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
     }
 
-    /**
-     * Count words in text.
-     */
     private int countWords(String text) {
         if (text == null || text.trim().isEmpty()) {
             return 0;
@@ -2013,9 +1540,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         return text.trim().split("\\s+").length;
     }
 
-    /**
-     * Update preview with syntax highlighting (highlight.js).
-     */
     @Override
     public void registerPreviewEnhancer(String pluginId, PreviewEnhancer enhancer) {
         if (pluginId != null && enhancer != null) {
@@ -2047,16 +1571,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         previewWebView.getEngine().loadContent(html, "text/html");
     }
 
-    /**
-     * Update status bar.
-     */
     private void updateStatus(String message) {
         statusLabel.setText(message);
     }
 
-    /**
-     * Show save dialog.
-     */
     private Optional<ButtonType> showSaveDialog() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle(getString("dialog.save_changes.title"));
@@ -2072,9 +1590,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         return alert.showAndWait();
     }
 
-    /**
-     * Add tag to current note.
-     */
     @FXML
     private void handleAddTagToNote() {
         tagManagementWorkflow.handleAddTagToNote(
@@ -2091,9 +1606,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 this::loadNoteTags);
     }
 
-    /**
-     * Remove tag from note.
-     */
     private void removeTagFromNote(Tag tag) {
         tagManagementWorkflow.removeTagFromNote(
                 getCurrentNote(),
@@ -2104,9 +1616,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 this::loadNoteTags);
     }
 
-    /**
-     * Handle editor key press.
-     */
     private void handleEditorKeyPress(KeyEvent event) {
         if (event.getCode() == KeyCode.S && event.isControlDown()) {
             handleSave(new ActionEvent());
@@ -2135,8 +1644,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
                         @Override
                         public void onAfterCreate() {
+                            refreshNotesList();
                             if (sidebarController != null) {
                                 sidebarController.loadRecentNotes();
+                                sidebarController.loadFolders();
                             }
                             if (folderTreeView != null) {
                                 folderTreeView.refresh();
@@ -2183,9 +1694,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 });
     }
 
-    /**
-     * Handle creating a new subfolder in the currently selected folder.
-     */
     private void handleNewSubfolder(ActionEvent event) {
         if (folderWorkflow == null) {
             folderWorkflow = new FolderWorkflow();
@@ -2253,9 +1761,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         });
     }
 
-    /**
-     * Refresh the notes list to reflect current state.
-     */
     private void refreshNotesList() {
         if (noteWorkflow == null) {
             noteWorkflow = new NoteWorkflow(noteDAO);
@@ -2334,9 +1839,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         System.exit(0);
     }
 
-    /**
-     * Gracefully shuts down runtime resources.
-     */
     public void shutdownApplication() {
         try {
             if (pluginManager != null) {
@@ -2381,9 +1883,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 });
     }
 
-    /**
-     * Show a simple alert dialog.
-     */
     private void showAlert(Alert.AlertType type, String title, String header, String content) {
         Alert alert = new Alert(type);
         alert.setTitle(title);
@@ -2522,14 +2021,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     @FXML
     private void handleToggleTags(ActionEvent event) {
-        // Determine target visibility
         boolean show = true;
 
         if (toggleTagsBtn != null) {
-            // If button exists, follow its state
             show = toggleTagsBtn.isSelected();
         } else if (tagsContainer != null) {
-            // Toggle current state
             show = !tagsContainer.isVisible();
         }
 
@@ -2540,7 +2036,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
     }
 
-    // Preferences for persistence
     private static final Preferences prefs = Preferences.userNodeForPackage(MainController.class);
 
     private String currentTheme = prefs.get("theme", "light"); // Load from preferences
@@ -2573,10 +2068,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         updateStatus(java.text.MessageFormat.format(getString("status.theme_system"), result.detectedTheme()));
     }
 
-    /**
-     * Detect Windows theme (simplified approach).
-     * In production, use JNA or similar library for better detection.
-     */
     private boolean detectWindowsTheme() {
         return themeCommandWorkflow.detectWindowsTheme();
     }
@@ -2600,9 +2091,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 logger::warning);
     }
 
-    /**
-     * Detect system theme.
-     */
     private String detectSystemTheme() {
         return themeCommandWorkflow.detectSystemTheme(
                 this::detectWindowsTheme,
@@ -2694,9 +2182,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         toggleFavorite(getCurrentNote());
     }
 
-    /**
-     * Toggle favorite status of a specific note.
-     */
     private void toggleFavorite(Note note) {
         if (note == null)
             return;
@@ -2756,9 +2241,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
     }
 
-    /**
-     * Update the favorite button icon based on current note's favorite status.
-     */
     private void updateFavoriteButtonIcon() {
         if (favoriteButton != null && getCurrentNote() != null) {
             boolean isFav = getCurrentNote().isFavorite();

@@ -45,6 +45,8 @@ public class UiEventSubscriptionWorkflow {
         void handleNoteOpenRequest(Note note);
 
         void handleTrashItemSelected(Component component);
+
+        void handleNoteModified(Note note);
     }
 
     public void subscribeUiEvents(EventBus eventBus, Port port) {
@@ -97,5 +99,8 @@ public class UiEventSubscriptionWorkflow {
 
         eventBus.subscribe(NoteEvents.TrashItemSelectedEvent.class,
                 event -> Platform.runLater(() -> port.handleTrashItemSelected(event.getComponent())));
+
+        eventBus.subscribe(NoteEvents.NoteModifiedEvent.class,
+                event -> Platform.runLater(() -> port.handleNoteModified(event.getNote())));
     }
 }

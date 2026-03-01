@@ -38,6 +38,8 @@ Se avanzó en bloques conclusivos con gate verde por bloque (test + package), pr
    - `UiInitializationWorkflow`
    - `UiLayoutWorkflow`
    - `NotesGridWorkflow`
+   - `PluginUiWorkflow`
+   - `AppSettingsWorkflow`
 4. Hardening i18n de fallback:
    - `messages.properties` base añadido para evitar claves visibles (`app.all_notes`) en locales no soportados.
    - Guard test `I18nBundleFallbackGuardTest`.
@@ -61,7 +63,7 @@ Se avanzó en bloques conclusivos con gate verde por bloque (test + package), pr
    - `scripts/hardening-storage-matrix.ps1`
 
 8. Cierre cuantitativo del refactor de `MainController`:
-   - Reducción aproximada: 3465 -> 2890 líneas.
+   - Reducción aproximada: 3465 -> 2356 líneas.
    - Manteniendo compatibilidad funcional y contratos públicos.
    - Guard tests de delegación añadidos para comandos editor/file/navigation y compatibilidad de command registry.
 

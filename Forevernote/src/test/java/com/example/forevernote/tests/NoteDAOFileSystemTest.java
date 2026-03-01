@@ -84,6 +84,17 @@ class NoteDAOFileSystemTest {
     }
 
     @Test
+    public void testCreateNoteShouldPreserveUnicodeTitle() {
+        Note note = new Note("Sin título", "Contenido");
+        String id = noteDAO.createNote(note);
+
+        assertNotNull(id);
+        Note retrieved = noteDAO.getNoteById(id);
+        assertNotNull(retrieved);
+        assertEquals("Sin título", retrieved.getTitle());
+    }
+
+    @Test
     public void testTags() {
         Note note = new Note("Tagged Note", "Content");
         note.addTag(new Tag("Work"));

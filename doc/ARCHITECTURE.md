@@ -20,7 +20,7 @@ Forevernote follows a **layered architecture** with clear separation of concerns
 ├─────────────────────────────────────────────────────────────┤
 │                     Event System                            │
 │  ┌─────────────────────────────────────────────────────────┐│
-│  │                    EventBus                              ││
+│  │                    EventBus                             ││
 │  └─────────────────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────────────────┤
 │                     Data Access Layer (DAO)                 │
@@ -118,6 +118,8 @@ com.example.forevernote/
 │   │   ├── NavigationCommandWorkflow.java
 │   │   ├── UiDialogWorkflow.java
 │   │   ├── ThemeCommandWorkflow.java
+│   │   ├── AppSettingsWorkflow.java
+│   │   ├── PluginUiWorkflow.java
 │   │   ├── UiEventSubscriptionWorkflow.java
 │   │   ├── UiEventHandlerWorkflow.java
 │   │   ├── UiInitializationWorkflow.java
@@ -281,7 +283,9 @@ public class MyPlugin implements Plugin {
 - Domain-specific command logic was moved to workflows in `ui/workflow/*`.
 - `SystemActionEvent` dispatch now uses a handler map (`EnumMap<ActionType, Runnable>`) instead of a giant switch.
 - Command routing initialization is centralized in `CommandRegistryWorkflow`, preserving legacy aliases and `cmd.*` IDs.
-- Current size objective reached for this phase: `MainController` reduced from 3465 to 2890 lines.
+- Settings menus and storage switch flow were moved to `AppSettingsWorkflow`.
+- Dynamic plugin menu/panel/status UI was moved to `PluginUiWorkflow`.
+- Current size objective reached for this phase: `MainController` reduced from 3465 to ~2350 lines.
 
 ### Quick Switcher
 
@@ -348,3 +352,4 @@ UI Action → Service → DAO → SQLite → EventBus → Subscribers → UI Upd
 
 For development guidelines, see [AGENTS.md](../AGENTS.md).
 For build instructions, see [BUILD.md](BUILD.md).
+For workflow governance, see [WORKFLOW_GUIDELINES.md](WORKFLOW_GUIDELINES.md).

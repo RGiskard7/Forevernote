@@ -582,6 +582,6 @@ public class NoteDAOFileSystem implements NoteDAO {
     }
 
     private String sanitizeFilename(String title) {
-        return title.replaceAll("[^a-zA-Z0-9\\.\\-_ ]", "_");
+        return title.replaceAll("[^\\p{L}\\p{N}\\.\\-_ ]", "_");
     }
 }
