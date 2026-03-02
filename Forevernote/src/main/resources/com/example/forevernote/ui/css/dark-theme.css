@@ -1783,3 +1783,154 @@
     -fx-padding: 4px 8px;
     -fx-min-height: 28px;
 }
+
+/* ========================================
+   UI POLISH OVERRIDES (COHERENCE + A11Y)
+   ======================================== */
+
+.sidebar-toolbar,
+.notes-header,
+.panel-header,
+.status-bar {
+    -fx-padding: 8 10;
+}
+
+.toolbar-btn,
+.modern-toggle-btn,
+.icon-btn,
+.icon-btn-small {
+    -fx-min-height: 32px;
+    -fx-min-width: 32px;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+}
+
+.icon-btn,
+.icon-btn-small {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.icon-btn:hover,
+.icon-btn-small:hover {
+    -fx-background-color: -fx-hover-bg;
+    -fx-border-color: -fx-fn-border-color;
+}
+
+.search-field,
+.text-field,
+.combo-box {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-width: 1px;
+}
+
+.search-field:focused,
+.text-field:focused,
+.combo-box:focused {
+    -fx-border-color: -fx-accent;
+    -fx-border-width: 2px;
+}
+
+.button:focused,
+.toggle-button:focused,
+.menu-button:focused,
+.list-view:focused,
+.tree-view:focused,
+.tab-pane:focused {
+    -fx-focus-color: -fx-accent;
+    -fx-faint-focus-color: rgba(124, 58, 237, 0.24);
+}
+
+.notes-list .list-cell,
+.sidebar-list .list-cell,
+.sidebar-tree .tree-cell {
+    -fx-padding: 7 10;
+}
+
+.notes-list .list-cell:selected,
+.sidebar-list .list-cell:selected,
+.sidebar-tree .tree-cell:selected {
+    -fx-background-color: -fx-selected-bg;
+    -fx-text-fill: -fx-selected-text;
+}
+
+.status-text {
+    -fx-font-size: 12px;
+    -fx-text-fill: -fx-text-muted;
+}
+
+/* ========================================
+   FINAL UI PASS (CONTRAST + CONSISTENCY)
+   ======================================== */
+
+.root,
+.root-container {
+    /* Slightly stronger faint text for readability in dark mode */
+    -fx-text-faint: #8a8a8a;
+}
+
+.toolbar-btn,
+.modern-toggle-btn,
+.icon-btn,
+.icon-btn-small,
+.format-btn,
+.view-btn,
+.panel-close-btn {
+    -fx-min-height: 32px;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-width: 1px;
+}
+
+.icon-btn,
+.icon-btn-small {
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: -fx-fn-border-color;
+}
+
+.icon-btn:hover,
+.icon-btn-small:hover {
+    -fx-background-color: -fx-hover-bg;
+    -fx-border-color: -fx-text-muted;
+}
+
+.icon-btn .feather-icon,
+.icon-btn-small .feather-icon {
+    -fx-icon-color: -fx-text-muted;
+    -fx-fill: -fx-text-muted;
+}
+
+.icon-btn:hover .feather-icon,
+.icon-btn-small:hover .feather-icon {
+    -fx-icon-color: -fx-text-main;
+    -fx-fill: -fx-text-main;
+}
+
+.sidebar-tree .tree-cell,
+.sidebar-list .list-cell,
+.sidebar-list .tree-cell {
+    -fx-padding: 7 10;
+    -fx-background-color: transparent;
+    -fx-text-fill: -fx-text-main;
+}
+
+.sidebar-tree .tree-cell:hover,
+.sidebar-list .list-cell:hover,
+.sidebar-list .tree-cell:hover {
+    -fx-background-color: -fx-hover-bg;
+}
+
+.sidebar-tree .tree-cell:selected,
+.sidebar-list .list-cell:selected,
+.sidebar-list .tree-cell:selected {
+    -fx-background-color: -fx-selected-bg;
+    -fx-text-fill: -fx-selected-text;
+}
+
+.sidebar-tree .tree-cell:selected .feather-icon,
+.sidebar-list .list-cell:selected .feather-icon,
+.sidebar-list .tree-cell:selected .feather-icon {
+    -fx-icon-color: -fx-selected-text;
+    -fx-fill: -fx-selected-text;
+}

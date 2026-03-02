@@ -25,6 +25,7 @@ import javafx.scene.paint.Color;
  * Encapsulates notes list/grid view behavior and note-card rendering.
  */
 public class NotesGridWorkflow {
+    private String lastGridSignature = "";
 
     public VBox applyNotesViewMode(
             boolean isGridMode,
@@ -58,7 +59,7 @@ public class NotesGridWorkflow {
         }
 
         VBox resolvedContainer = notesPanelContainer;
-        Platform.runLater(() -> {
+        Runnable applyViewSwitch = () -> {
             if (isGridMode) {
                 if (resolvedContainer.getChildren().contains(notesListView)) {
                     resolvedContainer.getChildren().remove(notesListView);
@@ -79,7 +80,13 @@ public class NotesGridWorkflow {
                     VBox.setVgrow(notesListView, Priority.ALWAYS);
                 }
             }
-        });
+        };
+
+        if (Platform.isFxApplicationThread()) {
+            applyViewSwitch.run();
+        } else {
+            Platform.runLater(applyViewSwitch);
+        }
 
         return notesPanelContainer;
     }
@@ -96,12 +103,26 @@ public class NotesGridWorkflow {
             return;
         }
 
-        notesGridPane.getChildren().clear();
         List<Note> notes = new ArrayList<>(notesListView.getItems());
+        StringBuilder signatureBuilder = new StringBuilder(notes.size() * 24);
+        signatureBuilder.append(isDarkTheme ? "dark|" : "light|");
+        for (Note note : notes) {
+            signatureBuilder.append(note.getId()).append('|')
+                    .append(note.getModifiedDate() != null ? note.getModifiedDate() : "")
+                    .append('|').append(note.isPinned() ? '1' : '0')
+                    .append(note.isFavorite() ? '1' : '0').append(';');
+        }
+        String signature = signatureBuilder.toString();
+        if (signature.equals(lastGridSignature) && notesGridPane.getChildren().size() == notes.size()) {
+            return;
+        }
+
+        notesGridPane.getChildren().clear();
         for (Note note : notes) {
             VBox card = createNoteCard(note, notesListView, isDarkTheme, i18n, openNoteAction, statusUpdate);
             notesGridPane.getChildren().add(card);
         }
+        lastGridSignature = signature;
     }
 
     private VBox createNoteCard(

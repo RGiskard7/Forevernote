@@ -6,6 +6,7 @@ import java.util.function.Function;
 import com.example.forevernote.ui.controller.ToolbarController;
 
 import javafx.application.Platform;
+import javafx.animation.PauseTransition;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -14,6 +15,7 @@ import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.util.Duration;
 
 /**
  * Encapsulates lightweight UI initialization blocks for MainController.
@@ -122,10 +124,15 @@ public class UiInitializationWorkflow {
             return;
         }
 
-        toolbarController.getToolbarHBox().widthProperty().addListener((obs, oldVal, newVal) -> {
+        PauseTransition resizeDebounce = new PauseTransition(Duration.millis(90));
+        resizeDebounce.setOnFinished(e -> {
             if (widthConsumer != null) {
-                widthConsumer.accept(newVal.doubleValue());
+                widthConsumer.accept(toolbarController.getToolbarHBox().getWidth());
             }
+        });
+
+        toolbarController.getToolbarHBox().widthProperty().addListener((obs, oldVal, newVal) -> {
+            resizeDebounce.playFromStart();
         });
 
         Platform.runLater(() -> {
@@ -141,6 +148,23 @@ public class UiInitializationWorkflow {
                 || toolbarController.getToolbarOverflowBtn() == null || i18n == null || actions == null) {
             return;
         }
+
+        int responsiveBucket = 0;
+        if (width > 400) {
+            responsiveBucket |= 1;
+        }
+        if (width > 550) {
+            responsiveBucket |= 2;
+        }
+        if (width > 750) {
+            responsiveBucket |= 4;
+        }
+
+        Object previousBucket = toolbarController.getToolbarOverflowBtn().getProperties().get("fn.responsive.bucket");
+        if (previousBucket instanceof Integer previous && previous == responsiveBucket) {
+            return;
+        }
+        toolbarController.getToolbarOverflowBtn().getProperties().put("fn.responsive.bucket", responsiveBucket);
 
         boolean showSearch = width > 750;
         boolean showFileActions = width > 550;
