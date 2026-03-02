@@ -27,9 +27,15 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.kordamp.ikonli.javafx.FontIcon;
+import javafx.application.Platform;
 
 public class NotesListController {
     private static final Logger logger = LoggerConfig.getLogger(NotesListController.class);
@@ -43,6 +49,14 @@ public class NotesListController {
     private String currentFilterType = "all";
     private Folder currentFolder;
     private Tag currentTag;
+    private final ExecutorService notesLoadExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "forevernote-notes-loader");
+        t.setDaemon(true);
+        return t;
+    });
+    private final AtomicLong notesLoadVersion = new AtomicLong(0);
+    private volatile List<Note> allNotesSearchCache = List.of();
+    private volatile boolean allNotesSearchCacheDirty = true;
 
     @FXML
     private VBox notesPanel;
@@ -71,10 +85,60 @@ public class NotesListController {
 
         // Use custom cell factory
         notesListView.setCellFactory(lv -> createNoteListCell());
+        notesListView.setFixedCellSize(72);
     }
 
     private ListCell<Note> createNoteListCell() {
         return new ListCell<>() {
+            private final VBox container = new VBox(2);
+            private final HBox titleRow = new HBox(5);
+            private final FontIcon pinIcon = new FontIcon("fth-map-pin");
+            private final FontIcon favIcon = new FontIcon("fth-star");
+            private final Label titleLabel = new Label();
+            private final Label previewLabel = new Label();
+            private final Label dateLabel = new Label();
+            private final ContextMenu contextMenu = new ContextMenu();
+            private final MenuItem openItem = new MenuItem(getString("action.open"));
+            private final MenuItem favoriteItem = new MenuItem();
+            private final MenuItem deleteItem = new MenuItem(getString("action.move_to_trash"));
+
+            {
+                container.getStyleClass().add("note-cell-container");
+                container.setPadding(new javafx.geometry.Insets(4, 8, 4, 8));
+
+                titleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+                pinIcon.getStyleClass().add("feather-pin-active");
+                pinIcon.setIconSize(12);
+                favIcon.setIconColor(javafx.scene.paint.Color.GOLD);
+                favIcon.setIconSize(12);
+
+                titleLabel.getStyleClass().add("note-cell-title");
+                previewLabel.getStyleClass().add("note-cell-preview");
+                dateLabel.getStyleClass().add("note-cell-date");
+
+                container.getChildren().addAll(titleRow, previewLabel, dateLabel);
+
+                openItem.setOnAction(e -> {
+                    Note note = getItem();
+                    if (note != null && eventBus != null) {
+                        eventBus.publish(new NoteEvents.NoteSelectedEvent(note));
+                    }
+                });
+                favoriteItem.setOnAction(e -> {
+                    Note note = getItem();
+                    if (note != null) {
+                        toggleFavorite(note);
+                    }
+                });
+                deleteItem.setOnAction(e -> {
+                    Note note = getItem();
+                    if (note != null) {
+                        deleteNote(note);
+                    }
+                });
+                contextMenu.getItems().addAll(openItem, favoriteItem, new SeparatorMenuItem(), deleteItem);
+            }
+
             @Override
             protected void updateItem(Note note, boolean empty) {
                 super.updateItem(note, empty);
@@ -83,75 +147,54 @@ public class NotesListController {
                     setGraphic(null);
                     setContextMenu(null);
                 } else {
-                    VBox container = new VBox(2);
-                    container.getStyleClass().add("note-cell-container");
-                    container.setPadding(new javafx.geometry.Insets(4, 8, 4, 8));
-
-                    HBox titleRow = new HBox(5);
-                    titleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
-
+                    titleRow.getChildren().clear();
                     if (note.isPinned()) {
-                        FontIcon pinIcon = new FontIcon("fth-map-pin");
-                        pinIcon.getStyleClass().add("feather-pin-active");
-                        pinIcon.setIconSize(12);
                         titleRow.getChildren().add(pinIcon);
                     }
-
                     if (note.isFavorite()) {
-                        FontIcon favIcon = new FontIcon("fth-star");
-                        favIcon.setIconColor(javafx.scene.paint.Color.GOLD);
-                        favIcon.setIconSize(12);
                         titleRow.getChildren().add(favIcon);
                     }
-
-                    Label titleLabel = new Label(note.getTitle());
-                    titleLabel.getStyleClass().add("note-cell-title");
+                    titleLabel.setText(note.getTitle() != null ? note.getTitle() : "");
                     titleRow.getChildren().add(titleLabel);
 
-                    String preview = note.getContent() != null && !note.getContent().isEmpty()
-                            ? note.getContent().replaceAll("^#+\\s*", "").replaceAll("\\n", " ").trim()
-                            : "";
-                    if (preview.length() > 60) {
-                        preview = preview.substring(0, 57) + "...";
-                    }
-                    Label previewLabel = new Label(preview);
-                    previewLabel.getStyleClass().add("note-cell-preview");
+                    previewLabel.setText(buildPreviewText(note.getContent()));
+                    dateLabel.setText(formatDateText(note));
+                    favoriteItem.setText(note.isFavorite() ? getString("action.remove_favorite")
+                            : getString("action.add_favorite"));
 
-                    String dateText = note.getModifiedDate() != null ? note.getModifiedDate() : note.getCreatedDate();
-                    if (dateText != null && dateText.length() > 10) {
-                        dateText = dateText.substring(0, 10);
-                    }
-                    Label dateLabel = new Label(dateText != null ? dateText : "");
-                    dateLabel.getStyleClass().add("note-cell-date");
-
-                    container.getChildren().addAll(titleRow, previewLabel, dateLabel);
                     setGraphic(container);
                     setText(null);
-
-                    // Context Menu
-                    setContextMenu(createNoteContextMenu(note));
+                    setContextMenu(contextMenu);
                 }
             }
         };
     }
 
-    private ContextMenu createNoteContextMenu(Note note) {
-        ContextMenu contextMenu = new ContextMenu();
-        MenuItem openItem = new MenuItem(getString("action.open"));
-        openItem.setOnAction(e -> {
-            if (eventBus != null) {
-                eventBus.publish(new NoteEvents.NoteSelectedEvent(note));
-            }
-        });
-        MenuItem favoriteItem = new MenuItem(
-                note.isFavorite() ? getString("action.remove_favorite") : getString("action.add_favorite"));
-        favoriteItem.setOnAction(e -> toggleFavorite(note));
+    private String buildPreviewText(String content) {
+        if (content == null || content.isBlank()) {
+            return "";
+        }
+        String text = content;
+        int idx = 0;
+        while (idx < text.length() && text.charAt(idx) == '#') {
+            idx++;
+        }
+        if (idx > 0 && idx < text.length() && Character.isWhitespace(text.charAt(idx))) {
+            text = text.substring(idx).trim();
+        }
+        text = text.replace('\n', ' ').trim();
+        return text.length() > 60 ? text.substring(0, 57) + "..." : text;
+    }
 
-        MenuItem deleteItem = new MenuItem(getString("action.move_to_trash"));
-        deleteItem.setOnAction(e -> deleteNote(note));
-
-        contextMenu.getItems().addAll(openItem, favoriteItem, new SeparatorMenuItem(), deleteItem);
-        return contextMenu;
+    private String formatDateText(Note note) {
+        if (note == null) {
+            return "";
+        }
+        String dateText = note.getModifiedDate() != null ? note.getModifiedDate() : note.getCreatedDate();
+        if (dateText != null && dateText.length() > 10) {
+            return dateText.substring(0, 10);
+        }
+        return dateText != null ? dateText : "";
     }
 
     private void toggleFavorite(Note note) {
@@ -193,6 +236,10 @@ public class NotesListController {
                 }
             });
         });
+        eventBus.subscribe(NoteEvents.NoteCreatedEvent.class, event -> markAllNotesSearchCacheDirty());
+        eventBus.subscribe(NoteEvents.NoteSavedEvent.class, event -> markAllNotesSearchCacheDirty());
+        eventBus.subscribe(NoteEvents.NoteDeletedEvent.class, event -> markAllNotesSearchCacheDirty());
+        eventBus.subscribe(NoteEvents.TrashItemDeletedEvent.class, event -> markAllNotesSearchCacheDirty());
     }
 
     public void setServices(NoteService noteService, TagService tagService, FolderService folderService) {
@@ -248,25 +295,25 @@ public class NotesListController {
             logger.warning("Cannot load notes: noteService is null");
             return;
         }
-        try {
-            List<Note> notes = noteService.getAllNotes();
-            notesListView.getSelectionModel().clearSelection();
-            notesListView.getItems().setAll(notes);
-            sortNotes(sortComboBox.getValue());
-
-            currentFolder = null;
-            currentTag = null;
-            currentFilterType = "all";
-
-            String msg = bundle != null
-                    ? java.text.MessageFormat.format(bundle.getString("info.notes_count"), notes.size())
-                    : notes.size() + " notes";
-            if (notesPanelTitleLabel != null)
-                notesPanelTitleLabel.setText(msg);
-            publishNotesLoadedEvent(notes, getString("status.loaded_all"));
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Failed to load all notes", e);
-        }
+        currentFolder = null;
+        currentTag = null;
+        currentFilterType = "all";
+        String sortOption = sortComboBox != null ? sortComboBox.getValue() : null;
+        executeNotesLoad(
+                this::loadAllNotesFromServiceAndRefreshCache,
+                notes -> {
+                    List<Note> sorted = sortNotesData(notes, sortOption);
+                    notesListView.getSelectionModel().clearSelection();
+                    notesListView.getItems().setAll(sorted);
+                    String msg = bundle != null
+                            ? java.text.MessageFormat.format(bundle.getString("info.notes_count"), sorted.size())
+                            : sorted.size() + " notes";
+                    if (notesPanelTitleLabel != null) {
+                        notesPanelTitleLabel.setText(msg);
+                    }
+                    publishNotesLoadedEvent(sorted, getString("status.loaded_all"));
+                },
+                "Failed to load all notes");
     }
 
     public void loadNotesForFolder(Folder folder) {
@@ -276,27 +323,26 @@ public class NotesListController {
             logger.warning("Cannot load folder notes: noteService is null");
             return;
         }
-        try {
-            List<Note> notes = noteService.getNotesByFolder(folder);
-            notesListView.getSelectionModel().clearSelection();
-            notesListView.getItems().setAll(notes);
-            sortNotes(sortComboBox.getValue());
-
-            currentFolder = folder;
-            currentTag = null;
-            currentFilterType = "folder";
-
-            if (notesPanelTitleLabel != null)
-                notesPanelTitleLabel.setText(
-                        getString("panel.notes.title") + " - " + folder.getTitle());
-            publishNotesLoadedEvent(notes,
-                    bundle != null
-                            ? java.text.MessageFormat.format(bundle.getString("status.loaded_folder"),
-                                    folder.getTitle())
-                            : "Loaded folder");
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Failed to load notes for folder", e);
-        }
+        currentFolder = folder;
+        currentTag = null;
+        currentFilterType = "folder";
+        String sortOption = sortComboBox != null ? sortComboBox.getValue() : null;
+        executeNotesLoad(
+                () -> noteService.getNotesByFolder(folder),
+                notes -> {
+                    List<Note> sorted = sortNotesData(notes, sortOption);
+                    notesListView.getSelectionModel().clearSelection();
+                    notesListView.getItems().setAll(sorted);
+                    if (notesPanelTitleLabel != null) {
+                        notesPanelTitleLabel.setText(getString("panel.notes.title") + " - " + folder.getTitle());
+                    }
+                    publishNotesLoadedEvent(sorted,
+                            bundle != null
+                                    ? java.text.MessageFormat.format(bundle.getString("status.loaded_folder"),
+                                            folder.getTitle())
+                                    : "Loaded folder");
+                },
+                "Failed to load notes for folder");
     }
 
     public void loadNotesForTag(String tagName) {
@@ -304,27 +350,34 @@ public class NotesListController {
             logger.warning("Cannot filter by tag: tagService is null");
             return;
         }
+        if (tagName == null || tagName.isEmpty()) {
+            return;
+        }
         try {
-            if (tagName != null && !tagName.isEmpty()) {
-                Optional<Tag> tagOpt = tagService.getTagByTitle(tagName);
-                if (tagOpt.isPresent()) {
-                    Tag tag = tagOpt.get();
-                    currentFolder = null;
-                    currentFilterType = "tag";
-                    currentTag = tag;
-                    List<Note> notesWithTag = tagService.getNotesWithTag(tag);
-                    notesListView.getSelectionModel().clearSelection();
-                    notesListView.getItems().setAll(notesWithTag);
-                    sortNotes(sortComboBox.getValue());
-
-                    String msg = java.text.MessageFormat.format(getString("info.notes_count"), notesWithTag.size());
-                    if (notesPanelTitleLabel != null)
-                        notesPanelTitleLabel.setText(msg);
-                    publishNotesLoadedEvent(notesWithTag,
-                            bundle != null
-                                    ? java.text.MessageFormat.format(bundle.getString("status.filtered_tag"), tagName)
-                                    : msg);
-                }
+            Optional<Tag> tagOpt = tagService.getTagByTitle(tagName);
+            if (tagOpt.isPresent()) {
+                Tag tag = tagOpt.get();
+                currentFolder = null;
+                currentFilterType = "tag";
+                currentTag = tag;
+                String sortOption = sortComboBox != null ? sortComboBox.getValue() : null;
+                executeNotesLoad(
+                        () -> tagService.getNotesWithTag(tag),
+                        notesWithTag -> {
+                            List<Note> sorted = sortNotesData(notesWithTag, sortOption);
+                            notesListView.getSelectionModel().clearSelection();
+                            notesListView.getItems().setAll(sorted);
+                            String msg = java.text.MessageFormat.format(getString("info.notes_count"), sorted.size());
+                            if (notesPanelTitleLabel != null) {
+                                notesPanelTitleLabel.setText(msg);
+                            }
+                            publishNotesLoadedEvent(sorted,
+                                    bundle != null
+                                            ? java.text.MessageFormat.format(bundle.getString("status.filtered_tag"),
+                                                    tagName)
+                                            : msg);
+                        },
+                        "Failed to filter notes by tag " + tagName);
             }
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Failed to filter notes by tag " + tagName, e);
@@ -346,42 +399,70 @@ public class NotesListController {
             }
             return;
         }
+        currentFilterType = "search";
+        String sortOption = sortComboBox != null ? sortComboBox.getValue() : null;
+        executeNotesLoad(
+                () -> {
+                    List<Note> allNotes = getSearchSourceNotes();
+                    String searchLower = searchText.toLowerCase(Locale.ROOT);
+                    List<Note> filteredNotes = allNotes.stream()
+                            .filter(note -> {
+                                String title = note.getTitle() != null ? note.getTitle().toLowerCase(Locale.ROOT) : "";
+                                String content = note.getContent() != null ? note.getContent().toLowerCase(Locale.ROOT)
+                                        : "";
+                                return title.contains(searchLower) || content.contains(searchLower);
+                            })
+                            .toList();
+                    return sortNotesData(filteredNotes, sortOption);
+                },
+                filteredNotes -> {
+                    notesListView.getSelectionModel().clearSelection();
+                    notesListView.getItems().setAll(filteredNotes);
+                    String msg = bundle != null
+                            ? java.text.MessageFormat.format(bundle.getString("info.notes_found"), filteredNotes.size())
+                            : filteredNotes.size() + " notes found";
+                    if (notesPanelTitleLabel != null) {
+                        notesPanelTitleLabel.setText(msg);
+                    }
+                    publishNotesLoadedEvent(filteredNotes,
+                            bundle != null
+                                    ? java.text.MessageFormat.format(bundle.getString("status.search_active"),
+                                            searchText)
+                                    : "Search active");
+                },
+                "Failed to perform search");
+    }
 
-        try {
-            List<Note> allNotes = noteService.getAllNotes();
-            String searchLower = searchText.toLowerCase(Locale.ROOT);
-            List<Note> filteredNotes = allNotes.stream()
-                    .filter(note -> {
-                        String title = note.getTitle() != null ? note.getTitle().toLowerCase(Locale.ROOT) : "";
-                        String content = note.getContent() != null ? note.getContent().toLowerCase(Locale.ROOT) : "";
-                        return title.contains(searchLower) || content.contains(searchLower);
-                    })
-                    .toList();
+    private void markAllNotesSearchCacheDirty() {
+        allNotesSearchCacheDirty = true;
+    }
 
-            notesListView.getSelectionModel().clearSelection();
-            notesListView.getItems().setAll(filteredNotes);
-            sortNotes(sortComboBox.getValue());
-            currentFilterType = "search";
+    private List<Note> loadAllNotesFromServiceAndRefreshCache() {
+        List<Note> allNotes = noteService.getAllNotes();
+        allNotesSearchCache = List.copyOf(allNotes);
+        allNotesSearchCacheDirty = false;
+        return allNotes;
+    }
 
-            String msg = bundle != null
-                    ? java.text.MessageFormat.format(bundle.getString("info.notes_found"), filteredNotes.size())
-                    : filteredNotes.size() + " notes found";
-            if (notesPanelTitleLabel != null)
-                notesPanelTitleLabel.setText(msg);
-            publishNotesLoadedEvent(filteredNotes,
-                    bundle != null
-                            ? java.text.MessageFormat.format(bundle.getString("status.search_active"), searchText)
-                            : "Search active");
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Failed to perform search", e);
+    private List<Note> getSearchSourceNotes() {
+        if (allNotesSearchCacheDirty || allNotesSearchCache.isEmpty()) {
+            return loadAllNotesFromServiceAndRefreshCache();
         }
+        return allNotesSearchCache;
     }
 
     public void sortNotes(String sortOption) {
         if (sortOption == null || notesListView == null)
             return;
-        List<Note> notes = new ArrayList<>(notesListView.getItems());
+        List<Note> notes = sortNotesData(new ArrayList<>(notesListView.getItems()), sortOption);
+        notesListView.getSelectionModel().clearSelection();
+        notesListView.getItems().setAll(notes);
+    }
 
+    private List<Note> sortNotesData(List<Note> notes, String sortOption) {
+        if (notes == null || sortOption == null) {
+            return notes != null ? notes : new ArrayList<>();
+        }
         notes.sort((a, b) -> {
             if (a.isPinned() != b.isPinned()) {
                 return a.isPinned() ? -1 : 1;
@@ -419,9 +500,27 @@ public class NotesListController {
                 return 0;
             }
         });
+        return notes;
+    }
 
-        notesListView.getSelectionModel().clearSelection();
-        notesListView.getItems().setAll(notes);
+    private void executeNotesLoad(Supplier<List<Note>> loader, Consumer<List<Note>> uiConsumer, String errorLog) {
+        long requestVersion = notesLoadVersion.incrementAndGet();
+        notesLoadExecutor.submit(() -> {
+            try {
+                List<Note> result = loader.get();
+                if (requestVersion != notesLoadVersion.get()) {
+                    return;
+                }
+                Platform.runLater(() -> {
+                    if (requestVersion != notesLoadVersion.get()) {
+                        return;
+                    }
+                    uiConsumer.accept(result != null ? result : List.of());
+                });
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, errorLog, e);
+            }
+        });
     }
 
     private void publishNotesLoadedEvent(List<Note> notes, String message) {

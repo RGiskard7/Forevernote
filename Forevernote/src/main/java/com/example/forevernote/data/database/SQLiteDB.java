@@ -78,6 +78,24 @@ public class SQLiteDB {
             + "MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE"
             + ")";
 
+    // Performance indexes for common filters / joins used in folder tree and notes lists.
+    private static final String createIndexNotesParentDeleted =
+            "CREATE INDEX IF NOT EXISTS idx_notes_parent_deleted ON notes(parent_id, is_deleted)";
+    private static final String createIndexNotesDeleted =
+            "CREATE INDEX IF NOT EXISTS idx_notes_deleted ON notes(is_deleted)";
+    private static final String createIndexNotesFavoriteDeleted =
+            "CREATE INDEX IF NOT EXISTS idx_notes_favorite_deleted ON notes(is_favorite, is_deleted)";
+    private static final String createIndexNotesModifiedDate =
+            "CREATE INDEX IF NOT EXISTS idx_notes_modified_date ON notes(modified_date)";
+    private static final String createIndexFoldersParentDeleted =
+            "CREATE INDEX IF NOT EXISTS idx_folders_parent_deleted ON folders(parent_id, is_deleted)";
+    private static final String createIndexFoldersDeleted =
+            "CREATE INDEX IF NOT EXISTS idx_folders_deleted ON folders(is_deleted)";
+    private static final String createIndexTagsNotesTag =
+            "CREATE INDEX IF NOT EXISTS idx_tagsnotes_tag ON tagsNotes(tag_id)";
+    private static final String createIndexTagsNotesNote =
+            "CREATE INDEX IF NOT EXISTS idx_tagsnotes_note ON tagsNotes(note_id)";
+
     /**
      * Private constructor to prevent instantiation from other classes.
      * 
@@ -233,6 +251,8 @@ public class SQLiteDB {
                 stmt.close();
             }
 
+            createPerformanceIndexes(connection);
+
             connection.commit();
         } catch (SQLException e) {
             logger.log(Level.SEVERE, "Error initializing database: " + e.getMessage(), e);
@@ -303,5 +323,18 @@ public class SQLiteDB {
             logger.info("Migration complete for table: " + tableName);
         }
         stmt.close();
+    }
+
+    private void createPerformanceIndexes(Connection connection) throws SQLException {
+        try (Statement stmt = connection.createStatement()) {
+            stmt.executeUpdate(createIndexNotesParentDeleted);
+            stmt.executeUpdate(createIndexNotesDeleted);
+            stmt.executeUpdate(createIndexNotesFavoriteDeleted);
+            stmt.executeUpdate(createIndexNotesModifiedDate);
+            stmt.executeUpdate(createIndexFoldersParentDeleted);
+            stmt.executeUpdate(createIndexFoldersDeleted);
+            stmt.executeUpdate(createIndexTagsNotesTag);
+            stmt.executeUpdate(createIndexTagsNotesNote);
+        }
     }
 }

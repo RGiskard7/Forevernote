@@ -10,6 +10,9 @@ import javafx.event.ActionEvent;
 import javafx.util.Duration;
 import java.util.*;
 import java.io.File;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.prefs.Preferences;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -63,6 +66,7 @@ public class SidebarController {
     private TextField filterTagsField;
     private final javafx.collections.ObservableList<String> masterTagsList = javafx.collections.FXCollections
             .observableArrayList();
+    private final Map<String, Tag> tagsByTitleCache = new HashMap<>();
     private boolean tagSortAscending = true;
 
     // Recent
@@ -104,6 +108,49 @@ public class SidebarController {
     private final List<EventBus.Subscription> eventSubscriptions = new ArrayList<>();
     private final PauseTransition foldersFilterDebounce = new PauseTransition(Duration.millis(180));
     private final PauseTransition trashFilterDebounce = new PauseTransition(Duration.millis(180));
+    private final PauseTransition foldersReloadDebounce = new PauseTransition(Duration.millis(120));
+    private final PauseTransition trashReloadDebounce = new PauseTransition(Duration.millis(120));
+    private final PauseTransition tagsReloadDebounce = new PauseTransition(Duration.millis(120));
+    private final PauseTransition recentFavoritesReloadDebounce = new PauseTransition(Duration.millis(120));
+    private final PauseTransition noteCountRebuildDebounce = new PauseTransition(Duration.millis(160));
+    private final ExecutorService sidebarLoadExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "forevernote-sidebar-loader");
+        t.setDaemon(true);
+        return t;
+    });
+    private final AtomicLong noteCountBuildVersion = new AtomicLong(0);
+    private final AtomicLong recentFavoritesLoadVersion = new AtomicLong(0);
+    private final AtomicLong folderLoadVersion = new AtomicLong(0);
+    private final AtomicLong trashLoadVersion = new AtomicLong(0);
+
+    private static final class FolderTreeBuildResult {
+        private final List<Folder> roots;
+        private final Map<String, List<Folder>> childrenByParent;
+        private final Set<String> expandedIds;
+        private final boolean filterActive;
+
+        private FolderTreeBuildResult(List<Folder> roots, Map<String, List<Folder>> childrenByParent,
+                Set<String> expandedIds, boolean filterActive) {
+            this.roots = roots;
+            this.childrenByParent = childrenByParent;
+            this.expandedIds = expandedIds;
+            this.filterActive = filterActive;
+        }
+    }
+
+    private static final class TrashTreeBuildResult {
+        private final Folder trashRoot;
+        private final Set<String> visibleIds;
+        private final boolean filtering;
+        private final boolean sortAscending;
+
+        private TrashTreeBuildResult(Folder trashRoot, Set<String> visibleIds, boolean filtering, boolean sortAscending) {
+            this.trashRoot = trashRoot;
+            this.visibleIds = visibleIds;
+            this.filtering = filtering;
+            this.sortAscending = sortAscending;
+        }
+    }
 
     // Setters for MainController
     public void setEventBus(EventBus eb) {
@@ -166,9 +213,10 @@ public class SidebarController {
 
         tagListView.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
-                tagService.getAllTags().stream().filter(t -> t.getTitle().equals(newVal)).findFirst().ifPresent(t -> {
-                    publishEvent(new TagEvents.TagSelectedEvent(t));
-                });
+                Tag selected = tagsByTitleCache.get(newVal);
+                if (selected != null) {
+                    publishEvent(new TagEvents.TagSelectedEvent(selected));
+                }
             }
         });
 
@@ -196,11 +244,17 @@ public class SidebarController {
 
         foldersFilterDebounce.setOnFinished(e -> loadFolders());
         trashFilterDebounce.setOnFinished(e -> loadTrashTree());
+        foldersReloadDebounce.setOnFinished(e -> loadFolders());
+        trashReloadDebounce.setOnFinished(e -> loadTrashTree());
+        tagsReloadDebounce.setOnFinished(e -> loadTags());
+        recentFavoritesReloadDebounce.setOnFinished(e -> loadRecentAndFavoritesAsync());
+        noteCountRebuildDebounce.setOnFinished(e -> rebuildFolderNoteCountCacheAsync());
         filterFoldersField.textProperty().addListener((o, ov, nv) -> foldersFilterDebounce.playFromStart());
         filterTrashField.textProperty().addListener((o, ov, nv) -> trashFilterDebounce.playFromStart());
 
         setupCellFactories();
         setupTrashContextMenu();
+        invalidateFolderNoteCountCache();
     }
 
     private void initializeFolderTree() {
@@ -360,6 +414,20 @@ public class SidebarController {
                 }
             }
         });
+
+        tagListView.setCellFactory(lv -> new ListCell<String>() {
+            @Override
+            protected void updateItem(String item, boolean e) {
+                super.updateItem(item, e);
+                if (e || item == null) {
+                    setText(null);
+                    setContextMenu(null);
+                } else {
+                    setText("# " + item);
+                    setContextMenu(createTagContextMenu(item));
+                }
+            }
+        });
     }
 
     private void setupTrashContextMenu() {
@@ -385,42 +453,38 @@ public class SidebarController {
         }
         eventSubscriptions.add(eventBus.subscribe(NoteEvents.NoteDeletedEvent.class, event -> {
             invalidateFolderNoteCountCache();
-            loadTrashTree();
-            loadRecentNotes();
-            loadFavorites();
+            requestTrashReload();
+            requestRecentFavoritesReload();
         }));
         eventSubscriptions.add(eventBus.subscribe(NoteEvents.NoteCreatedEvent.class, event -> {
             invalidateFolderNoteCountCache();
-            loadFolders();
-            loadRecentNotes();
-            loadFavorites();
+            requestFoldersReload();
+            requestRecentFavoritesReload();
         }));
         eventSubscriptions.add(eventBus.subscribe(NoteEvents.NoteSavedEvent.class, event -> {
             invalidateFolderNoteCountCache();
-            loadFolders();
-            loadRecentNotes();
-            loadFavorites();
+            requestFoldersReload();
+            requestRecentFavoritesReload();
         }));
         eventSubscriptions.add(eventBus.subscribe(FolderEvents.FolderDeletedEvent.class, event -> {
             invalidateFolderNoteCountCache();
-            loadFolders();
-            loadTrashTree();
+            requestFoldersReload();
+            requestTrashReload();
         }));
         eventSubscriptions.add(eventBus.subscribe(NoteEvents.TrashItemDeletedEvent.class, event -> {
             invalidateFolderNoteCountCache();
-            loadTrashTree();
-            loadFolders();
+            requestTrashReload();
+            requestFoldersReload();
         }));
         eventSubscriptions.add(eventBus.subscribe(FolderEvents.FoldersRefreshRequestedEvent.class, event -> {
-            loadFolders();
-            loadTrashTree();
+            requestFoldersReload();
+            requestTrashReload();
         }));
         eventSubscriptions.add(eventBus.subscribe(NoteEvents.NotesRefreshRequestedEvent.class, event -> {
             invalidateFolderNoteCountCache();
-            loadRecentNotes();
-            loadFavorites();
-            loadTrashTree();
-            loadFolders();
+            requestRecentFavoritesReload();
+            requestTrashReload();
+            requestFoldersReload();
         }));
     }
 
@@ -441,97 +505,138 @@ public class SidebarController {
     }
 
     public void loadFolders() {
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(this::loadFolders);
+            return;
+        }
         if (folderService == null) {
             logger.warning("Cannot load folders: folderService is null");
             return;
         }
         try {
-            if (vaultRootItem == null)
+            if (vaultRootItem == null) {
                 return;
-            Set<String> expandedIds = collectExpandedFolderIds(vaultRootItem);
-            vaultRootItem.getChildren().clear();
-            List<Folder> folders = folderService.getAllFolders();
-            ensureFolderNoteCountCache();
-
-            String filter = filterFoldersField.getText() == null ? ""
+            }
+            final Set<String> expandedIds = collectExpandedFolderIds(vaultRootItem);
+            final String filter = filterFoldersField.getText() == null ? ""
                     : filterFoldersField.getText().toLowerCase().trim();
-            boolean filterActive = !filter.isEmpty();
+            final boolean filterActive = !filter.isEmpty();
+            final boolean currentSortAscending = folderSortAscending;
+            final long requestId = folderLoadVersion.incrementAndGet();
 
-            Map<String, Folder> foldersById = new HashMap<>();
-            for (Folder folder : folders) {
-                if (folder != null && folder.getId() != null) {
-                    foldersById.put(normalizeId(folder.getId()), folder);
-                }
+            if (folderNoteCountCacheDirty) {
+                noteCountRebuildDebounce.playFromStart();
             }
-
-            Map<String, String> parentById = new HashMap<>();
-            for (Folder folder : folders) {
-                if (folder == null || folder.getId() == null) {
-                    continue;
+            sidebarLoadExecutor.submit(() -> {
+                try {
+                    List<Folder> folders = folderService.getAllFolders();
+                    FolderTreeBuildResult buildResult = buildFolderTreeResult(
+                            folders, filter, filterActive, expandedIds, currentSortAscending);
+                    Platform.runLater(() -> applyFolderTreeBuildResult(requestId, buildResult));
+                } catch (Exception e) {
+                    logger.log(Level.SEVERE, "Failed to build folder tree", e);
                 }
-                String folderId = normalizeId(folder.getId());
-                String parentId = resolveParentId(folder, foldersById);
-                if (parentId != null && !parentId.isBlank()) {
-                    parentById.put(folderId, normalizeId(parentId));
-                }
-            }
-
-            Set<String> visibleIds = new HashSet<>();
-            if (filterActive) {
-                for (Folder f : folders) {
-                    if (f == null || f.getId() == null || f.getTitle() == null) {
-                        continue;
-                    }
-                    String id = normalizeId(f.getId());
-                    if (f.getTitle().toLowerCase().contains(filter)) {
-                        visibleIds.add(id);
-                        String parentId = parentById.get(id);
-                        int safety = 0;
-                        while (parentId != null && !parentId.isBlank() && !"ROOT".equals(parentId) && safety++ < 200) {
-                            visibleIds.add(parentId);
-                            parentId = parentById.get(parentId);
-                        }
-                    }
-                }
-            }
-
-            Map<String, List<Folder>> childrenByParent = new HashMap<>();
-            List<Folder> roots = new ArrayList<>();
-            for (Folder f : folders) {
-                if (f == null || f.getId() == null) {
-                    continue;
-                }
-                String id = normalizeId(f.getId());
-                if (filterActive && !visibleIds.contains(id)) {
-                    continue;
-                }
-                String parentId = parentById.get(id);
-                if (parentId == null || parentId.isBlank() || "ROOT".equals(parentId)
-                        || (filterActive && !visibleIds.contains(parentId))) {
-                    roots.add(f);
-                } else {
-                    childrenByParent.computeIfAbsent(parentId, k -> new ArrayList<>()).add(f);
-                }
-            }
-            Comparator<Folder> comp = (f1, f2) -> f1.getTitle().compareToIgnoreCase(f2.getTitle());
-            if (!folderSortAscending)
-                comp = comp.reversed();
-            Collections.sort(roots, comp);
-            for (Folder f : roots) {
-                TreeItem<Folder> item = new TreeItem<>(f);
-                vaultRootItem.getChildren().add(item);
-                String id = normalizeId(f.getId());
-                if (filterActive || expandedIds.contains(id)) {
-                    item.setExpanded(true);
-                }
-                buildFolderTree(item, id, childrenByParent, comp, expandedIds, filterActive);
-            }
-            if (filterActive)
-                expandCollapseRecursive(vaultRootItem, true);
-            vaultRootItem.setExpanded(true);
+            });
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Failed to load folders", e);
         }
+    }
+
+    private FolderTreeBuildResult buildFolderTreeResult(List<Folder> folders, String filter, boolean filterActive,
+            Set<String> expandedIds, boolean sortAscending) {
+        Map<String, Folder> foldersById = new HashMap<>();
+        for (Folder folder : folders) {
+            if (folder != null && folder.getId() != null) {
+                foldersById.put(normalizeId(folder.getId()), folder);
+            }
+        }
+
+        Map<String, String> parentById = new HashMap<>();
+        for (Folder folder : folders) {
+            if (folder == null || folder.getId() == null) {
+                continue;
+            }
+            String folderId = normalizeId(folder.getId());
+            String parentId = resolveParentId(folder, foldersById);
+            if (parentId != null && !parentId.isBlank()) {
+                parentById.put(folderId, normalizeId(parentId));
+            }
+        }
+
+        Set<String> visibleIds = new HashSet<>();
+        if (filterActive) {
+            for (Folder f : folders) {
+                if (f == null || f.getId() == null || f.getTitle() == null) {
+                    continue;
+                }
+                String id = normalizeId(f.getId());
+                if (f.getTitle().toLowerCase().contains(filter)) {
+                    visibleIds.add(id);
+                    String parentId = parentById.get(id);
+                    int safety = 0;
+                    while (parentId != null && !parentId.isBlank() && !"ROOT".equals(parentId) && safety++ < 200) {
+                        visibleIds.add(parentId);
+                        parentId = parentById.get(parentId);
+                    }
+                }
+            }
+        }
+
+        Map<String, List<Folder>> childrenByParent = new HashMap<>();
+        List<Folder> roots = new ArrayList<>();
+        for (Folder f : folders) {
+            if (f == null || f.getId() == null) {
+                continue;
+            }
+            String id = normalizeId(f.getId());
+            if (filterActive && !visibleIds.contains(id)) {
+                continue;
+            }
+            String parentId = parentById.get(id);
+            if (parentId == null || parentId.isBlank() || "ROOT".equals(parentId)
+                    || (filterActive && !visibleIds.contains(parentId))) {
+                roots.add(f);
+            } else {
+                childrenByParent.computeIfAbsent(parentId, k -> new ArrayList<>()).add(f);
+            }
+        }
+        Comparator<Folder> comp = (f1, f2) -> f1.getTitle().compareToIgnoreCase(f2.getTitle());
+        if (!sortAscending) {
+            comp = comp.reversed();
+        }
+        Collections.sort(roots, comp);
+        for (List<Folder> children : childrenByParent.values()) {
+            children.sort(comp);
+        }
+        return new FolderTreeBuildResult(roots, childrenByParent, expandedIds, filterActive);
+    }
+
+    private void applyFolderTreeBuildResult(long requestId, FolderTreeBuildResult buildResult) {
+        if (requestId != folderLoadVersion.get()) {
+            return;
+        }
+        if (vaultRootItem == null || buildResult == null) {
+            return;
+        }
+        Comparator<Folder> comp = (f1, f2) -> f1.getTitle().compareToIgnoreCase(f2.getTitle());
+        if (!folderSortAscending) {
+            comp = comp.reversed();
+        }
+        vaultRootItem.getChildren().clear();
+        for (Folder f : buildResult.roots) {
+            TreeItem<Folder> item = new TreeItem<>(f);
+            vaultRootItem.getChildren().add(item);
+            String id = normalizeId(f.getId());
+            if (buildResult.filterActive || buildResult.expandedIds.contains(id)) {
+                item.setExpanded(true);
+            }
+            buildFolderTree(item, id, buildResult.childrenByParent, comp, buildResult.expandedIds,
+                    buildResult.filterActive);
+        }
+        if (buildResult.filterActive) {
+            expandCollapseRecursive(vaultRootItem, true);
+        }
+        vaultRootItem.setExpanded(true);
     }
 
     private void buildFolderTree(TreeItem<Folder> parentItem, String parentId,
@@ -605,61 +710,75 @@ public class SidebarController {
     }
 
     public void loadTrashTree() {
+        if (!Platform.isFxApplicationThread()) {
+            Platform.runLater(this::loadTrashTree);
+            return;
+        }
         if (folderService == null || noteService == null) {
             logger.warning("Cannot load trash tree: services are not initialized");
             return;
         }
         try {
-            Folder trashRoot = folderService.getTrashFolders();
-            List<Note> allNotes = noteService.getTrashNotes();
-            Map<String, Folder> folderMap = new HashMap<>();
-            mapTrashFolders(trashRoot, folderMap);
-            List<Note> rootNotes = new ArrayList<>();
-            for (Note n : allNotes) {
-                String id = n.getId().replace("\\", "/");
-                String pId = null;
-                if (n.getParent() != null && n.getParent().getId() != null)
-                    pId = n.getParent().getId();
-                else {
-                    int i = id.lastIndexOf('/');
-                    if (i != -1)
-                        pId = id.substring(0, i);
-                }
-                boolean added = false;
-                if (pId != null) {
-                    String norm = pId.replace("\\", "/");
-                    Folder p = folderMap.get(norm);
-                    if (p == null) {
-                        if (norm.equals(".trash") || norm.equals("trash"))
-                            p = trashRoot;
-                        else if (norm.startsWith("trash/"))
-                            p = folderMap.get("." + norm);
-                        else if (!norm.startsWith(".trash/") && !norm.startsWith("."))
-                            p = folderMap.get(".trash/" + norm);
+            final String filter = filterTrashField.getText() == null ? ""
+                    : filterTrashField.getText().toLowerCase().trim();
+            final boolean filtering = !filter.isEmpty();
+            final boolean sortAscending = trashSortAscending;
+            final long requestId = trashLoadVersion.incrementAndGet();
+            sidebarLoadExecutor.submit(() -> {
+                try {
+                    Folder trashRoot = folderService.getTrashFolders();
+                    List<Note> allNotes = noteService.getTrashNotes();
+                    Map<String, Folder> folderMap = new HashMap<>();
+                    mapTrashFolders(trashRoot, folderMap);
+                    List<Note> rootNotes = new ArrayList<>();
+                    for (Note n : allNotes) {
+                        String id = n.getId().replace("\\", "/");
+                        String pId = null;
+                        if (n.getParent() != null && n.getParent().getId() != null) {
+                            pId = n.getParent().getId();
+                        } else {
+                            int i = id.lastIndexOf('/');
+                            if (i != -1) {
+                                pId = id.substring(0, i);
+                            }
+                        }
+                        boolean added = false;
+                        if (pId != null) {
+                            String norm = pId.replace("\\", "/");
+                            Folder p = folderMap.get(norm);
+                            if (p == null) {
+                                if (norm.equals(".trash") || norm.equals("trash")) {
+                                    p = trashRoot;
+                                } else if (norm.startsWith("trash/")) {
+                                    p = folderMap.get("." + norm);
+                                } else if (!norm.startsWith(".trash/") && !norm.startsWith(".")) {
+                                    p = folderMap.get(".trash/" + norm);
+                                }
+                            }
+                            if (p != null) {
+                                p.add(n);
+                                n.setParent(p);
+                                added = true;
+                            }
+                        }
+                        if (!added) {
+                            rootNotes.add(n);
+                        }
                     }
-                    if (p != null) {
-                        p.add(n);
-                        n.setParent(p);
-                        added = true;
+                    for (Note rn : rootNotes) {
+                        trashRoot.add(rn);
+                        rn.setParent(trashRoot);
                     }
+                    Set<String> visibleIds = new HashSet<>();
+                    if (filtering) {
+                        buildTrashVisibleIdsRec(trashRoot, filter, visibleIds);
+                    }
+                    TrashTreeBuildResult result = new TrashTreeBuildResult(trashRoot, visibleIds, filtering, sortAscending);
+                    Platform.runLater(() -> applyTrashTreeBuildResult(requestId, result));
+                } catch (Exception e) {
+                    logger.log(Level.SEVERE, "Failed to build trash tree", e);
                 }
-                if (!added)
-                    rootNotes.add(n);
-            }
-            for (Note rn : rootNotes) {
-                trashRoot.add(rn);
-                rn.setParent(trashRoot);
-            }
-            String filter = filterTrashField.getText() == null ? "" : filterTrashField.getText().toLowerCase().trim();
-            Set<String> vIds = new HashSet<>();
-            if (!filter.isEmpty())
-                buildTrashVisibleIdsRec(trashRoot, filter, vIds);
-            TreeItem<Component> rootItem = new TreeItem<>(trashRoot);
-            buildTrashTreeRecursive(rootItem, vIds, !filter.isEmpty());
-            if (!filter.isEmpty() && !rootItem.getChildren().isEmpty())
-                expandCollapseRecursive(rootItem, true);
-            trashTreeView.setRoot(rootItem);
-            trashTreeView.setShowRoot(false);
+            });
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Failed to load trash", e);
         }
@@ -685,11 +804,12 @@ public class SidebarController {
         return vis;
     }
 
-    private void buildTrashTreeRecursive(TreeItem<Component> parentItem, Set<String> vIds, boolean filtering) {
+    private void buildTrashTreeRecursive(TreeItem<Component> parentItem, Set<String> vIds, boolean filtering,
+            boolean sortAscending) {
         if (parentItem.getValue() instanceof Folder) {
             Folder f = (Folder) parentItem.getValue();
             List<Component> sorted = new ArrayList<>(f.getChildren());
-            sorted.sort((c1, c2) -> {
+            Comparator<Component> comparator = (c1, c2) -> {
                 boolean f1 = c1 instanceof Folder;
                 boolean f2 = c2 instanceof Folder;
                 if (f1 && !f2)
@@ -699,16 +819,33 @@ public class SidebarController {
                 String t1 = c1.getTitle() == null ? "" : c1.getTitle().toLowerCase();
                 String t2 = c2.getTitle() == null ? "" : c2.getTitle().toLowerCase();
                 return t1.compareTo(t2);
-            });
+            };
+            if (!sortAscending) {
+                comparator = comparator.reversed();
+            }
+            sorted.sort(comparator);
             for (Component c : sorted) {
                 if (filtering && c.getId() != null && !vIds.contains(c.getId()))
                     continue;
                 TreeItem<Component> item = new TreeItem<>(c);
                 parentItem.getChildren().add(item);
                 if (c instanceof Folder)
-                    buildTrashTreeRecursive(item, vIds, filtering);
+                    buildTrashTreeRecursive(item, vIds, filtering, sortAscending);
             }
         }
+    }
+
+    private void applyTrashTreeBuildResult(long requestId, TrashTreeBuildResult result) {
+        if (requestId != trashLoadVersion.get() || trashTreeView == null || result == null) {
+            return;
+        }
+        TreeItem<Component> rootItem = new TreeItem<>(result.trashRoot);
+        buildTrashTreeRecursive(rootItem, result.visibleIds, result.filtering, result.sortAscending);
+        if (result.filtering && !rootItem.getChildren().isEmpty()) {
+            expandCollapseRecursive(rootItem, true);
+        }
+        trashTreeView.setRoot(rootItem);
+        trashTreeView.setShowRoot(false);
     }
 
     public void loadTags() {
@@ -719,61 +856,83 @@ public class SidebarController {
         try {
             List<Tag> tags = tagService.getAllTags();
             masterTagsList.clear();
-            for (Tag t : tags)
+            tagsByTitleCache.clear();
+            for (Tag t : tags) {
                 masterTagsList.add(t.getTitle());
-            tagListView.setCellFactory(lv -> new ListCell<String>() {
-                @Override
-                protected void updateItem(String item, boolean e) {
-                    super.updateItem(item, e);
-                    if (e || item == null) {
-                        setText(null);
-                        setContextMenu(null);
-                    } else {
-                        setText("# " + item);
-                        setContextMenu(createTagContextMenu(item));
-                    }
-                }
-            });
+                tagsByTitleCache.put(t.getTitle(), t);
+            }
         } catch (Exception e) {
             logger.log(Level.WARNING, "Failed to load tags", e);
         }
     }
 
     public void loadRecentNotes() {
-        if (noteService == null) {
-            logger.warning("Cannot load recent notes: noteService is null");
-            return;
-        }
-        try {
-            cachedRecentNotes = noteService.getAllNotes();
-            cachedRecentNotes.sort((a, b) -> {
-                String d1 = a.getModifiedDate() != null ? a.getModifiedDate()
-                        : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
-                String d2 = b.getModifiedDate() != null ? b.getModifiedDate()
-                        : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
-                return recentSortAscending ? d2.compareTo(d1) : d1.compareTo(d2);
-            });
-            masterRecentList.clear();
-            for (int i = 0; i < Math.min(10, cachedRecentNotes.size()); i++)
-                masterRecentList.add(cachedRecentNotes.get(i).getTitle());
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Failed to load recent notes", e);
-        }
+        loadRecentAndFavoritesAsync();
     }
 
     public void loadFavorites() {
+        loadRecentAndFavoritesAsync();
+    }
+
+    private void loadRecentAndFavoritesAsync() {
         if (noteService == null) {
-            logger.warning("Cannot load favorites: noteService is null");
+            logger.warning("Cannot load recent/favorites: noteService is null");
             return;
         }
-        try {
-            cachedFavoriteNotes = noteService.getAllNotes().stream().filter(Note::isFavorite).toList();
-            masterFavoritesList.clear();
-            for (Note n : cachedFavoriteNotes)
-                masterFavoritesList.add(n.getTitle());
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Failed to load favorite notes", e);
+        final long requestId = recentFavoritesLoadVersion.incrementAndGet();
+        sidebarLoadExecutor.submit(() -> {
+            try {
+                List<Note> allNotes = noteService.getAllNotes();
+                Platform.runLater(() -> {
+                    if (requestId != recentFavoritesLoadVersion.get()) {
+                        return;
+                    }
+                    applyRecentNotes(allNotes);
+                    applyFavoriteNotes(allNotes);
+                });
+            } catch (Exception e) {
+                logger.log(Level.WARNING, "Failed to load recent/favorites", e);
+            }
+        });
+    }
+
+    private void applyRecentNotes(List<Note> allNotes) {
+        cachedRecentNotes = new ArrayList<>(allNotes != null ? allNotes : List.of());
+        cachedRecentNotes.sort((a, b) -> {
+            String d1 = a.getModifiedDate() != null ? a.getModifiedDate()
+                    : (a.getCreatedDate() != null ? a.getCreatedDate() : "");
+            String d2 = b.getModifiedDate() != null ? b.getModifiedDate()
+                    : (b.getCreatedDate() != null ? b.getCreatedDate() : "");
+            return recentSortAscending ? d2.compareTo(d1) : d1.compareTo(d2);
+        });
+        masterRecentList.clear();
+        for (int i = 0; i < Math.min(10, cachedRecentNotes.size()); i++) {
+            masterRecentList.add(cachedRecentNotes.get(i).getTitle());
         }
+    }
+
+    private void applyFavoriteNotes(List<Note> allNotes) {
+        cachedFavoriteNotes = (allNotes != null ? allNotes : List.<Note>of()).stream().filter(Note::isFavorite).toList();
+        masterFavoritesList.clear();
+        for (Note n : cachedFavoriteNotes) {
+            masterFavoritesList.add(n.getTitle());
+        }
+    }
+
+    private void requestFoldersReload() {
+        foldersReloadDebounce.playFromStart();
+    }
+
+    private void requestTrashReload() {
+        trashReloadDebounce.playFromStart();
+    }
+
+    private void requestTagsReload() {
+        tagsReloadDebounce.playFromStart();
+    }
+
+    private void requestRecentFavoritesReload() {
+        recentFavoritesReloadDebounce.playFromStart();
     }
 
     @FXML
@@ -1014,7 +1173,7 @@ public class SidebarController {
         a.setContentText(java.text.MessageFormat.format(getString("dialog.delete_tag.content"), tagName));
         a.getButtonTypes().setAll(ButtonType.OK, ButtonType.CANCEL);
         a.showAndWait().filter(r -> r == ButtonType.OK).ifPresent(r -> {
-            tagService.getAllTags().stream().filter(t -> t.getTitle().equals(tagName)).findFirst().ifPresent(t -> {
+            Optional.ofNullable(tagsByTitleCache.get(tagName)).ifPresent(t -> {
                 try {
                     tagService.deleteTag(t.getId());
                     loadTags();
@@ -1048,32 +1207,44 @@ public class SidebarController {
         }
     }
 
-    private void rebuildFolderNoteCountCache() {
-        folderNoteCountCache.clear();
-        allNotesCountCache = 0;
-        folderNoteCountCacheDirty = false;
+    private void rebuildFolderNoteCountCacheAsync() {
         if (noteService == null) {
             return;
         }
-        List<Note> allNotes = noteService.getAllNotes();
-        allNotesCountCache = allNotes.size();
-        for (Note note : allNotes) {
-            String folderId = resolveFolderIdForCount(note);
-            if (folderId == null || folderId.isBlank()) {
-                folderId = "ROOT";
+        final long requestId = noteCountBuildVersion.incrementAndGet();
+        sidebarLoadExecutor.submit(() -> {
+            try {
+                List<Note> allNotes = noteService.getAllNotes();
+                Map<String, Integer> freshCounts = new HashMap<>();
+                for (Note note : allNotes) {
+                    String folderId = resolveFolderIdForCount(note);
+                    if (folderId == null || folderId.isBlank()) {
+                        folderId = "ROOT";
+                    }
+                    freshCounts.merge(folderId, 1, Integer::sum);
+                }
+                final int allNotesCount = allNotes.size();
+                Platform.runLater(() -> {
+                    if (requestId != noteCountBuildVersion.get()) {
+                        return;
+                    }
+                    folderNoteCountCache.clear();
+                    folderNoteCountCache.putAll(freshCounts);
+                    allNotesCountCache = allNotesCount;
+                    folderNoteCountCacheDirty = false;
+                    if (folderTreeView != null) {
+                        folderTreeView.refresh();
+                    }
+                });
+            } catch (Exception e) {
+                logger.log(Level.WARNING, "Failed to rebuild folder note count cache", e);
             }
-            folderNoteCountCache.merge(folderId, 1, Integer::sum);
-        }
-    }
-
-    private void ensureFolderNoteCountCache() {
-        if (folderNoteCountCacheDirty || folderNoteCountCache.isEmpty()) {
-            rebuildFolderNoteCountCache();
-        }
+        });
     }
 
     private void invalidateFolderNoteCountCache() {
         folderNoteCountCacheDirty = true;
+        noteCountRebuildDebounce.playFromStart();
     }
 
     private String resolveFolderIdForCount(Note note) {

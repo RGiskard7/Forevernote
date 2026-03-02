@@ -43,6 +43,11 @@ public class NoteDAOFileSystem implements NoteDAO {
     private final Map<String, Path> idToPathMap = new ConcurrentHashMap<>();
     // Cache to map Note ID -> Note object (Lightweight)
     private final Map<String, Note> cachedNotes = new ConcurrentHashMap<>();
+    // Index: folderId -> notes (direct children only)
+    private final Map<String, List<Note>> notesByFolderIndex = new ConcurrentHashMap<>();
+    private static final long PRUNE_INTERVAL_MS = 3000L;
+    private volatile long lastPruneTimestampMs = 0L;
+    private volatile boolean notesByFolderIndexDirty = true;
 
     public NoteDAOFileSystem(String rootDirectory) {
         this.rootPath = Paths.get(rootDirectory);
@@ -80,6 +85,7 @@ public class NoteDAOFileSystem implements NoteDAO {
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to walk directory for cache refresh", e);
         }
+        notesByFolderIndexDirty = true;
         } finally {
             FileSystemIoLock.LOCK.unlock();
         }
@@ -209,6 +215,7 @@ public class NoteDAOFileSystem implements NoteDAO {
                 Files.writeString(filePath, fileContent, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
                 idToPathMap.put(relativePath, filePath);
                 cachedNotes.put(relativePath, note);
+                notesByFolderIndexDirty = true;
                 return relativePath;
             } catch (IOException e) {
                 logger.log(Level.SEVERE, "Failed to write note file: " + filePath, e);
@@ -309,6 +316,7 @@ public class NoteDAOFileSystem implements NoteDAO {
                     note.setId(newId); // Update object ID
                     path = newPath;
                     cachedNotes.put(newId, note);
+                    notesByFolderIndexDirty = true;
                 } catch (IOException e) {
                     logger.warning("Failed to rename note file during update: " + e.getMessage());
                 }
@@ -327,6 +335,7 @@ public class NoteDAOFileSystem implements NoteDAO {
             }
             cachedNotes.put(currentId, note);
             idToPathMap.put(currentId, path);
+            notesByFolderIndexDirty = true;
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to update note file: " + path, e);
         }
@@ -399,6 +408,7 @@ public class NoteDAOFileSystem implements NoteDAO {
                     return key.equals(normalizedId) || (note != null && note.getId() != null
                             && note.getId().replace("\\", "/").equals(normalizedId));
                 });
+                notesByFolderIndexDirty = true;
 
             } catch (IOException e) {
                 logger.log(Level.SEVERE, "Failed to move note to trash: " + sourcePath, e);
@@ -535,6 +545,7 @@ public class NoteDAOFileSystem implements NoteDAO {
                 idToPathMap.remove(normalizedId);
                 cachedNotes.remove(id);
                 cachedNotes.remove(normalizedId);
+                notesByFolderIndexDirty = true;
             } else {
                 // Try fallback to filename in trash root
                 String filename = path.getFileName().toString();
@@ -546,6 +557,7 @@ public class NoteDAOFileSystem implements NoteDAO {
             // Also remove from cache
             cachedNotes.remove(id);
             cachedNotes.remove(normalizeId(id));
+            notesByFolderIndexDirty = true;
         } catch (IOException e) {
             logger.log(Level.SEVERE, "Failed to permanently delete note: " + id, e);
         }
@@ -556,35 +568,17 @@ public class NoteDAOFileSystem implements NoteDAO {
 
     @Override
     public List<Note> fetchNotesByFolderId(String folderId) {
-        pruneStaleCacheEntries();
+        pruneStaleCacheEntriesIfNeeded();
         if (cachedNotes.isEmpty()) {
             refreshCache();
         }
-
+        ensureFolderIndex();
         List<Note> notes = new ArrayList<>();
-        String prefix = (folderId == null || folderId.equals(ROOT_ID)) ? "" : folderId + File.separator;
-
-        for (Note note : cachedNotes.values()) {
-            if (note.isDeleted())
-                continue;
-
-            String id = note.getId().replace("\\", "/");
-            String normalizedPrefix = prefix.replace("\\", "/");
-
-            if (folderId == null || folderId.equals(ROOT_ID)) {
-                // Root folder: direct children have no separator
-                if (!id.contains("/")) {
-                    notes.add(note);
-                }
-            } else {
-                // Subfolder: must start with folder path + separator, and have no further
-                // separators
-                if (id.startsWith(normalizedPrefix)) {
-                    String remaining = id.substring(normalizedPrefix.length());
-                    if (!remaining.contains("/")) {
-                        notes.add(note);
-                    }
-                }
+        String normalizedFolderId = normalizeFolderKey(folderId);
+        List<Note> folderNotes = notesByFolderIndex.getOrDefault(normalizedFolderId, List.of());
+        for (Note note : folderNotes) {
+            if (note != null && !note.isDeleted()) {
+                notes.add(note);
             }
         }
         return notes;
@@ -600,7 +594,7 @@ public class NoteDAOFileSystem implements NoteDAO {
 
     @Override
     public List<Note> fetchAllNotes() {
-        pruneStaleCacheEntries();
+        pruneStaleCacheEntriesIfNeeded();
         if (cachedNotes.isEmpty()) {
             refreshCache();
         }
@@ -755,8 +749,61 @@ public class NoteDAOFileSystem implements NoteDAO {
 
             cachedNotes.clear();
             cachedNotes.putAll(reindexed);
+            notesByFolderIndexDirty = true;
         } finally {
             FileSystemIoLock.LOCK.unlock();
         }
+    }
+
+    private void pruneStaleCacheEntriesIfNeeded() {
+        long now = System.currentTimeMillis();
+        if (now - lastPruneTimestampMs < PRUNE_INTERVAL_MS) {
+            return;
+        }
+        lastPruneTimestampMs = now;
+        pruneStaleCacheEntries();
+    }
+
+    private void ensureFolderIndex() {
+        if (!notesByFolderIndexDirty) {
+            return;
+        }
+        FileSystemIoLock.LOCK.lock();
+        try {
+            if (!notesByFolderIndexDirty) {
+                return;
+            }
+            notesByFolderIndex.clear();
+            for (Note note : cachedNotes.values()) {
+                if (note == null || note.getId() == null || note.getId().isBlank() || note.isDeleted()) {
+                    continue;
+                }
+                String noteId = normalizeId(note.getId());
+                String folderKey = extractFolderKeyFromNoteId(noteId);
+                notesByFolderIndex.computeIfAbsent(folderKey, k -> new ArrayList<>()).add(note);
+            }
+            notesByFolderIndexDirty = false;
+        } finally {
+            FileSystemIoLock.LOCK.unlock();
+        }
+    }
+
+    private String normalizeFolderKey(String folderId) {
+        if (folderId == null || folderId.isBlank() || ROOT_ID.equals(folderId)) {
+            return ROOT_ID;
+        }
+        return normalizeId(folderId);
+    }
+
+    private String extractFolderKeyFromNoteId(String noteId) {
+        if (noteId == null || noteId.isBlank()) {
+            return ROOT_ID;
+        }
+        String normalized = normalizeId(noteId);
+        int idx = normalized.lastIndexOf('/');
+        if (idx <= 0) {
+            return ROOT_ID;
+        }
+        return normalized.substring(0, idx);
     }
 }

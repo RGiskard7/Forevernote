@@ -12,6 +12,9 @@ import javafx.stage.FileChooser;
 import javafx.util.Duration;
 import java.util.*;
 import java.io.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.prefs.Preferences;
 import java.sql.Connection;
 import java.util.logging.Level;
@@ -265,7 +268,17 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private double uiFontSize = 13.0;
     private double editorFontSize = 14.0;
     private final PauseTransition noteModifiedDebounce = new PauseTransition(Duration.millis(120));
+    private final PauseTransition toolbarSearchDebounce = new PauseTransition(Duration.millis(180));
     private String pendingModifiedNoteId;
+    private String pendingSearchText = "";
+    private boolean searchListenerBound = false;
+    private final ExecutorService quickSwitcherExecutor = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "forevernote-quick-switcher-loader");
+        t.setDaemon(true);
+        return t;
+    });
+    private final AtomicLong quickSwitcherLoadVersion = new AtomicLong(0);
+    private volatile List<Note> quickSwitcherNotesCache = List.of();
 
     private enum SaveDialogDecision {
         SAVE,
@@ -288,6 +301,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     public void initialize() {
         try {
             configureNoteModifiedDebounce();
+            configureToolbarSearchDebounce();
             navSplitPane = new SplitPane();
             navSplitPane.setOrientation(javafx.geometry.Orientation.VERTICAL);
 
@@ -354,6 +368,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 previewPane = editorController.getPreviewPane();
                 previewWebView = editorController.getPreviewWebView();
             }
+
+            bindToolbarSearchFieldDebounced();
 
             initializeSortOptions();
             initializeViewModeButtons();
@@ -517,9 +533,33 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         ensureCommandUisInitialized(getPrimaryStage());
         if (quickSwitcher != null) {
             quickSwitcher.setDarkTheme(isDarkThemeActive());
-            quickSwitcher.setNotes(noteService.getAllNotes());
+            if (!quickSwitcherNotesCache.isEmpty()) {
+                quickSwitcher.setNotes(quickSwitcherNotesCache);
+            }
+            loadQuickSwitcherNotesAsync();
             quickSwitcher.show();
         }
+    }
+
+    private void loadQuickSwitcherNotesAsync() {
+        if (noteService == null || quickSwitcher == null) {
+            return;
+        }
+        final long requestId = quickSwitcherLoadVersion.incrementAndGet();
+        quickSwitcherExecutor.submit(() -> {
+            try {
+                List<Note> allNotes = noteService.getAllNotes();
+                quickSwitcherNotesCache = List.copyOf(allNotes);
+                Platform.runLater(() -> {
+                    if (requestId != quickSwitcherLoadVersion.get() || quickSwitcher == null) {
+                        return;
+                    }
+                    quickSwitcher.setNotes(quickSwitcherNotesCache);
+                });
+            } catch (Exception e) {
+                logger.log(Level.WARNING, "Failed to load notes for quick switcher", e);
+            }
+        });
     }
 
     private void initializePluginSystem() {
@@ -687,8 +727,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     private void handleUiNoteOpenRequest(Note note) {
-        Note noteToOpen = uiEventHandlerWorkflow.resolveNoteToOpen(note, () -> noteService.getAllNotes());
+        Note noteToOpen = uiEventHandlerWorkflow.resolveNoteToOpen(note, this::getNoteResolutionSource);
         uiEventHandlerWorkflow.onNoteOpenRequest(noteToOpen, this::loadNoteInEditor, notesListView);
+    }
+
+    private List<Note> getNoteResolutionSource() {
+        if (!quickSwitcherNotesCache.isEmpty()) {
+            return quickSwitcherNotesCache;
+        }
+        return noteService != null ? noteService.getAllNotes() : List.of();
     }
 
     private void handleUiTrashItemSelected(Component component) {
@@ -713,6 +760,33 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             updatePreview();
             updateNoteInfoPanel();
         });
+    }
+
+    private void configureToolbarSearchDebounce() {
+        toolbarSearchDebounce.setOnFinished(e -> {
+            if (notesListController == null) {
+                return;
+            }
+            String query = pendingSearchText != null ? pendingSearchText : "";
+            if (query.trim().isEmpty()) {
+                if ("search".equals(currentFilterType)) {
+                    refreshNotesList();
+                }
+                return;
+            }
+            performSearch(query);
+        });
+    }
+
+    private void bindToolbarSearchFieldDebounced() {
+        if (searchListenerBound || toolbarController == null || toolbarController.getSearchField() == null) {
+            return;
+        }
+        toolbarController.getSearchField().textProperty().addListener((obs, oldVal, newVal) -> {
+            pendingSearchText = newVal != null ? newVal : "";
+            toolbarSearchDebounce.playFromStart();
+        });
+        searchListenerBound = true;
     }
 
     public void showPluginManager() {
@@ -1467,8 +1541,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         updatePinnedButtonIcon();
 
-        sidebarController.loadFavorites();
-
         updateStatus(java.text.MessageFormat.format(getString("status.note_loaded"), activeNote.getTitle()));
     }
 
@@ -1878,6 +1950,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 pluginManager.shutdownAll();
             }
             com.example.forevernote.plugin.PluginLoader.closeAllClassLoaders();
+            quickSwitcherExecutor.shutdownNow();
 
             if (connection != null && !connection.isClosed()) {
                 SQLiteDB db = SQLiteDB.getInstance();
