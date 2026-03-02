@@ -1,4 +1,4 @@
-# Hardening Execution Status (2026-03-01)
+# Hardening Execution Status (2026-03-02)
 
 ## Resumen
 Se avanzó en bloques conclusivos con gate verde por bloque (test + package), priorizando robustez funcional, desacople y calidad operativa.
@@ -67,7 +67,42 @@ Se avanzó en bloques conclusivos con gate verde por bloque (test + package), pr
    - Manteniendo compatibilidad funcional y contratos públicos.
    - Guard tests de delegación añadidos para comandos editor/file/navigation y compatibilidad de command registry.
 
+9. Cierre de calidad de suite de tests (sin sobreingeniería):
+   - Sustitución incremental de tests de tipo guard por tests conductuales de workflows.
+   - Nuevos tests de comportamiento:
+     - `FileCommandWorkflowTest`
+     - `NavigationCommandWorkflowTest`
+     - `NavigationCommandWorkflowUiBehaviorTest`
+     - `EditorCommandWorkflowTest`
+     - `CommandRegistryWorkflowTest`
+     - `UiEventSubscriptionWorkflowTest`
+     - `SQLiteFolderNoteFlowIntegrationTest`
+   - Guard tests retirados al quedar cubiertos por comportamiento real:
+     - `MainControllerNavigationCommandsDelegationGuardTest`
+     - `MainControllerFileCommandsDelegationGuardTest`
+     - `MainControllerEditorCommandsDelegationGuardTest`
+   - Limpieza de tests ad-hoc no JUnit (`test_*` con `main`).
+
+## Estado actual de la suite (cuantitativo)
+- Total tests: 51
+- Guard tests: 27
+- Contract tests: 4
+- Integration tests: 2
+- Workflow tests: 13
+
+Dirección de mejora:
+- Menor dependencia de assertions por búsqueda de texto.
+- Mayor cobertura de flujo real en capa workflow/event bus/storage.
+
 ## Gate actual
 - `mvn -f Forevernote/pom.xml clean test`: verde
 - `mvn -f Forevernote/pom.xml -DskipTests clean package`: verde
 - `./scripts/hardening-storage-matrix.sh`: verde
+
+## Cierre de fase (pendiente manual)
+- Smoke manual GUI (SQLite + FileSystem) ejecutable en 5-10 minutos con checklist:
+  - crear/editar/guardar nota
+  - contador de carpeta actualizado en caliente al crear nota
+  - papelera/restore (incluyendo carpeta con subcarpetas y notas)
+  - command palette + quick switcher
+  - tags + cambio idioma/tema

@@ -51,6 +51,8 @@ public class TagDAOFileSystem implements TagDAO {
 
     @Override
     public void updateTag(Tag tag) {
+        FileSystemIoLock.LOCK.lock();
+        try {
         if (tag == null || tag.getId() == null || tag.getId().isEmpty()) {
             return;
         }
@@ -83,10 +85,18 @@ public class TagDAOFileSystem implements TagDAO {
                 noteDAO.updateNote(note);
             }
         }
+        } finally {
+            FileSystemIoLock.LOCK.unlock();
+        }
     }
 
     @Override
     public void deleteTag(String id) {
+        FileSystemIoLock.LOCK.lock();
+        try {
+        if (id == null || id.isBlank()) {
+            return;
+        }
         // Remove tag from all notes
         List<Note> notes = noteDAO.fetchAllNotes();
         for (Note note : notes) {
@@ -99,7 +109,7 @@ public class TagDAOFileSystem implements TagDAO {
                     note.removeTag(tags.get(i));
                     changed = true;
                     i--;
-                } else if (tags.get(i).getTitle().equals(id)) { // Fallback if ID is title
+                } else if (tags.get(i).getTitle() != null && tags.get(i).getTitle().equals(id)) { // Fallback if ID is title
                     note.removeTag(tags.get(i));
                     changed = true;
                     i--;
@@ -109,17 +119,24 @@ public class TagDAOFileSystem implements TagDAO {
                 noteDAO.updateNote(note);
             }
         }
+        } finally {
+            FileSystemIoLock.LOCK.unlock();
+        }
     }
 
     @Override
     public List<Note> fetchAllNotesWithTag(String tagId) {
+        if (tagId == null || tagId.isBlank()) {
+            return new ArrayList<>();
+        }
         // Tag ID is title for now? Or UUID. Note objects store Tags.
         // We iterate all notes and check if they contain the tag.
         List<Note> result = new ArrayList<>();
         List<Note> allNotes = noteDAO.fetchAllNotes();
         for (Note note : allNotes) {
             for (Tag t : note.getTags()) {
-                if ((t.getId() != null && t.getId().equals(tagId)) || t.getTitle().equals(tagId)) {
+                if ((t.getId() != null && t.getId().equals(tagId))
+                        || (t.getTitle() != null && t.getTitle().equals(tagId))) {
                     result.add(note);
                     break;
                 }
@@ -130,9 +147,12 @@ public class TagDAOFileSystem implements TagDAO {
 
     @Override
     public boolean existsByTitle(String title) {
+        if (title == null || title.isBlank()) {
+            return false;
+        }
         List<Tag> allTags = fetchAllTags();
         for (Tag t : allTags) {
-            if (t.getTitle().equalsIgnoreCase(title)) {
+            if (t.getTitle() != null && t.getTitle().equalsIgnoreCase(title)) {
                 return true;
             }
         }

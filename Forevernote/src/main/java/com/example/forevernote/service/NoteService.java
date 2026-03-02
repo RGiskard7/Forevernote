@@ -169,7 +169,7 @@ public class NoteService {
      */
     public void moveToTrash(String noteId) {
         noteDAO.deleteNote(noteId);
-        logger.info("Moved note to trash, ID: " + noteId);
+        logger.fine("Moved note to trash, ID: " + noteId);
     }
 
     /**
@@ -179,7 +179,7 @@ public class NoteService {
      */
     public void permanentlyDeleteNote(String noteId) {
         noteDAO.permanentlyDeleteNote(noteId);
-        logger.info("Permanently deleted note ID: " + noteId);
+        logger.fine("Permanently deleted note ID: " + noteId);
     }
 
     /**
@@ -189,7 +189,7 @@ public class NoteService {
      */
     public void restoreNote(String noteId) {
         noteDAO.restoreNote(noteId);
-        logger.info("Restored note from trash, ID: " + noteId);
+        logger.fine("Restored note from trash, ID: " + noteId);
     }
 
     /**

@@ -26,6 +26,38 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [5.0.7] - 2026-03-02
+
+### Test Hardening Closure: Menos Guards, Más Comportamiento Real
+
+**Added:**
+- `FileCommandWorkflowTest` (flujo real de creación/guardado/borrado y callbacks UI port).
+- `NavigationCommandWorkflowTest` (enrutado conductual por contexto).
+- `NavigationCommandWorkflowUiBehaviorTest` (toggle de paneles + zoom).
+- `EditorCommandWorkflowTest` (estados localizados en rutas críticas).
+- `CommandRegistryWorkflowTest` (IDs estables + aliases legacy + alias custom).
+- `UiEventSubscriptionWorkflowTest` (wiring de eventos UI con `EventBus` real).
+- `SQLiteFolderNoteFlowIntegrationTest` (integración SQLite real para conteo inmediato 0->1->2 en carpeta).
+
+**Changed:**
+- Fix de refresco al crear nota para actualizar contador de carpeta en caliente:
+  - `refreshNotesList()`
+  - `sidebarController.loadFolders()`
+- Eliminado refresco redundante de árbol tras `loadFolders()`.
+
+**Removed:**
+- Guards sustituidos por cobertura conductual:
+  - `MainControllerNavigationCommandsDelegationGuardTest`
+  - `MainControllerFileCommandsDelegationGuardTest`
+  - `MainControllerEditorCommandsDelegationGuardTest`
+- Tests ad-hoc no JUnit (`test_*` con `main`) retirados.
+
+**Validation:**
+- ✅ `mvn -f Forevernote/pom.xml test`
+- ✅ `./scripts/hardening-storage-matrix.sh`
+
+---
+
 ## [5.0.5] - 2026-02-27
 
 ### Hardening Mega Batch: Command Palette Fix + Command Routing + Docs/Playbook

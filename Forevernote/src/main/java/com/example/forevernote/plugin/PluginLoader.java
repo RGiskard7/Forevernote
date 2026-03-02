@@ -187,7 +187,7 @@ public class PluginLoader {
                     uniquePaths.add(absolute);
                 }
             } catch (Exception e) {
-                // Ignore invalid paths
+                logger.fine("Skipping invalid plugin search path '" + p + "': " + e.getMessage());
             }
         }
 
@@ -242,9 +242,12 @@ public class PluginLoader {
             if (!Files.exists(appDataPlugins)) {
                 Files.createDirectories(appDataPlugins);
             }
-            long existingCount = Files.list(appDataPlugins)
-                    .filter(p -> p.toString().toLowerCase().endsWith(".jar"))
-                    .count();
+            long existingCount;
+            try (var stream = Files.list(appDataPlugins)) {
+                existingCount = stream
+                        .filter(p -> p.toString().toLowerCase().endsWith(".jar"))
+                        .count();
+            }
             if (existingCount > 0) {
                 return;
             }
@@ -259,11 +262,13 @@ public class PluginLoader {
                 bundleSource = appDir;
             }
             List<Path> jars = new ArrayList<>();
-            Files.list(bundleSource)
-                    .filter(p -> p.toString().toLowerCase().endsWith(".jar"))
-                    .filter(p -> !p.getFileName().toString().contains("forevernote")
-                            && !p.getFileName().toString().contains("uber"))
-                    .forEach(jars::add);
+            try (var stream = Files.list(bundleSource)) {
+                stream
+                        .filter(p -> p.toString().toLowerCase().endsWith(".jar"))
+                        .filter(p -> !p.getFileName().toString().contains("forevernote")
+                                && !p.getFileName().toString().contains("uber"))
+                        .forEach(jars::add);
+            }
             if (jars.isEmpty()) {
                 return;
             }
@@ -305,7 +310,8 @@ public class PluginLoader {
                 try {
                     classLoader.close();
                 } catch (IOException e) {
-                    // Ignore
+                    logger.fine("Could not close classloader after unresolved plugin class for "
+                            + jarPath.getFileName() + ": " + e.getMessage());
                 }
                 return null;
             }
@@ -318,7 +324,8 @@ public class PluginLoader {
                 try {
                     classLoader.close();
                 } catch (IOException e) {
-                    // Ignore
+                    logger.fine("Could not close classloader for invalid plugin class '" + pluginClassName
+                            + "': " + e.getMessage());
                 }
                 return null;
             }
@@ -344,9 +351,11 @@ public class PluginLoader {
      */
     private static String getPluginClassFromManifest(Path jarPath) {
         try (JarFile jarFile = new JarFile(jarPath.toFile())) {
-            return jarFile.getManifest()
-                    .getMainAttributes()
-                    .getValue("Plugin-Class");
+            var manifest = jarFile.getManifest();
+            if (manifest == null) {
+                return null;
+            }
+            return manifest.getMainAttributes().getValue("Plugin-Class");
         } catch (Exception e) {
             // Manifest might not exist or not have Plugin-Class entry
             return null;

@@ -5,9 +5,11 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.input.*;
 import javafx.application.Platform;
+import javafx.animation.PauseTransition;
 import javafx.event.ActionEvent;
 import javafx.stage.Stage;
 import javafx.stage.FileChooser;
+import javafx.util.Duration;
 import java.util.*;
 import java.io.*;
 import java.util.prefs.Preferences;
@@ -254,12 +256,22 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private final ThemeCommandWorkflow themeCommandWorkflow = new ThemeCommandWorkflow();
     private final PluginUiWorkflow pluginUiWorkflow = new PluginUiWorkflow();
     private final AppSettingsWorkflow appSettingsWorkflow = new AppSettingsWorkflow();
+    private final List<EventBus.Subscription> uiEventSubscriptions = new ArrayList<>();
+    private EventBus.Subscription systemActionSubscription = EventBus.Subscription.NO_OP;
 
     @FXML
     private java.util.ResourceBundle resources;
 
     private double uiFontSize = 13.0;
     private double editorFontSize = 14.0;
+    private final PauseTransition noteModifiedDebounce = new PauseTransition(Duration.millis(120));
+    private String pendingModifiedNoteId;
+
+    private enum SaveDialogDecision {
+        SAVE,
+        DONT_SAVE,
+        CANCEL
+    }
 
     private String getString(String key) {
         if (resources != null && resources.containsKey(key)) {
@@ -275,6 +287,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     public void initialize() {
         try {
+            configureNoteModifiedDebounce();
             navSplitPane = new SplitPane();
             navSplitPane.setOrientation(javafx.geometry.Orientation.VERTICAL);
 
@@ -286,7 +299,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             initializeCommandRouting();
             initializeSystemActionHandlers();
             if (eventBus != null) {
-                eventBus.subscribe(SystemActionEvent.class, this::handleSystemAction);
+                systemActionSubscription.cancel();
+                systemActionSubscription = eventBus.subscribe(SystemActionEvent.class, this::handleSystemAction);
                 subscribeToUIEvents();
             }
             if (sidebarController != null) {
@@ -561,8 +575,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (eventBus == null) {
             return;
         }
-
-        uiEventSubscriptionWorkflow.subscribeUiEvents(eventBus, new UiEventSubscriptionWorkflow.Port() {
+        uiEventSubscriptions.forEach(EventBus.Subscription::cancel);
+        uiEventSubscriptions.clear();
+        uiEventSubscriptions.addAll(uiEventSubscriptionWorkflow.subscribeUiEvents(eventBus, new UiEventSubscriptionWorkflow.Port() {
             @Override
             public void applyTheme(String theme) {
                 currentTheme = theme;
@@ -639,7 +654,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             public void handleNoteModified(Note note) {
                 MainController.this.handleUiNoteModified(note);
             }
-        });
+        }));
     }
 
     private void handleUiNotesLoaded(NoteEvents.NotesLoadedEvent event) {
@@ -684,9 +699,20 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (note == null || getCurrentNote() == null || !Objects.equals(note.getId(), getCurrentNote().getId())) {
             return;
         }
-        updateWordCount();
-        updatePreview();
-        updateNoteInfoPanel();
+        pendingModifiedNoteId = note.getId();
+        noteModifiedDebounce.playFromStart();
+    }
+
+    private void configureNoteModifiedDebounce() {
+        noteModifiedDebounce.setOnFinished(e -> {
+            Note active = getCurrentNote();
+            if (active == null || pendingModifiedNoteId == null || !Objects.equals(pendingModifiedNoteId, active.getId())) {
+                return;
+            }
+            updateWordCount();
+            updatePreview();
+            updateNoteInfoPanel();
+        });
     }
 
     public void showPluginManager() {
@@ -1399,14 +1425,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     private void loadNoteInEditor(Note note) {
         if (isModified() && getCurrentNote() != null) {
-            Optional<ButtonType> result = showSaveDialog();
-            if (result.isPresent()) {
-                if (result.get().getButtonData() == ButtonBar.ButtonData.CANCEL_CLOSE) {
-                    return;
-                }
-                if (result.get().getText().equals(getString("action.save"))) {
-                    handleSave(new ActionEvent());
-                }
+            SaveDialogDecision decision = showSaveDialog();
+            if (decision == SaveDialogDecision.CANCEL) {
+                return;
+            }
+            if (decision == SaveDialogDecision.SAVE) {
+                handleSave(new ActionEvent());
             }
         }
 
@@ -1575,7 +1599,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         statusLabel.setText(message);
     }
 
-    private Optional<ButtonType> showSaveDialog() {
+    private SaveDialogDecision showSaveDialog() {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
         alert.setTitle(getString("dialog.save_changes.title"));
         alert.setHeaderText(getString("dialog.save_changes.header"));
@@ -1586,8 +1610,17 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         ButtonType cancelButton = new ButtonType(getString("action.cancel"), ButtonBar.ButtonData.CANCEL_CLOSE);
 
         alert.getButtonTypes().setAll(saveButton, dontSaveButton, cancelButton);
-
-        return alert.showAndWait();
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isEmpty()) {
+            return SaveDialogDecision.CANCEL;
+        }
+        if (result.get() == saveButton) {
+            return SaveDialogDecision.SAVE;
+        }
+        if (result.get() == dontSaveButton) {
+            return SaveDialogDecision.DONT_SAVE;
+        }
+        return SaveDialogDecision.CANCEL;
     }
 
     @FXML
@@ -1648,9 +1681,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                             if (sidebarController != null) {
                                 sidebarController.loadRecentNotes();
                                 sidebarController.loadFolders();
-                            }
-                            if (folderTreeView != null) {
-                                folderTreeView.refresh();
                             }
                             updateStatus(getString("status.note_created"));
                         }
@@ -1823,14 +1853,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private void handleExit(ActionEvent event) {
         if (isModified() && getCurrentNote() != null) {
-            Optional<ButtonType> result = showSaveDialog();
-            if (result.isPresent()) {
-                if (result.get().getButtonData() == ButtonBar.ButtonData.CANCEL_CLOSE) {
-                    return;
-                }
-                if (result.get().getText().equals(getString("action.save"))) {
-                    handleSave(event);
-                }
+            SaveDialogDecision decision = showSaveDialog();
+            if (decision == SaveDialogDecision.CANCEL) {
+                return;
+            }
+            if (decision == SaveDialogDecision.SAVE) {
+                handleSave(event);
             }
         }
 
@@ -1841,6 +1869,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     public void shutdownApplication() {
         try {
+            uiEventSubscriptions.forEach(EventBus.Subscription::cancel);
+            uiEventSubscriptions.clear();
+            if (systemActionSubscription != null) {
+                systemActionSubscription.cancel();
+            }
             if (pluginManager != null) {
                 pluginManager.shutdownAll();
             }

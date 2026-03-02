@@ -300,18 +300,10 @@ public class NoteDAOSQLite implements NoteDAO {
 			throw new IllegalArgumentException("Folder object can't be null");
 		}
 
-		try (PreparedStatement pstmt = connection.prepareStatement(SELECT_NOTES_BY_FOLDER_ID_SQL)) {
-			pstmt.setString(1, folder.getId());
-
-			try (ResultSet rs = pstmt.executeQuery()) {
-				while (rs.next()) {
-					Note note = mapResultSetToNote(rs);
-					folder.add(note);
-					note.setParent(folder);
-				}
-			}
-		} catch (SQLException e) {
-			logger.log(Level.SEVERE, "Error fetchNotesByFolderId(): " + e.getMessage(), e);
+		List<Note> notes = fetchNotesByFolderId(folder.getId());
+		for (Note note : notes) {
+			folder.add(note);
+			note.setParent(folder);
 		}
 	}
 

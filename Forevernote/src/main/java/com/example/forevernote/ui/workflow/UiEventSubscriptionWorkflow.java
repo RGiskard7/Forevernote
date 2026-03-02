@@ -9,8 +9,8 @@ import com.example.forevernote.event.events.FolderEvents;
 import com.example.forevernote.event.events.NoteEvents;
 import com.example.forevernote.event.events.TagEvents;
 import com.example.forevernote.event.events.UIEvents;
-
-import javafx.application.Platform;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Encapsulates UI event-bus wiring for MainController.
@@ -49,58 +49,50 @@ public class UiEventSubscriptionWorkflow {
         void handleNoteModified(Note note);
     }
 
-    public void subscribeUiEvents(EventBus eventBus, Port port) {
+    public List<EventBus.Subscription> subscribeUiEvents(EventBus eventBus, Port port) {
         if (eventBus == null || port == null) {
-            return;
+            return List.of();
         }
+        List<EventBus.Subscription> subscriptions = new ArrayList<>();
 
-        eventBus.subscribe(UIEvents.ThemeChangedEvent.class, event -> Platform.runLater(() -> {
+        subscriptions.add(eventBus.subscribe(UIEvents.ThemeChangedEvent.class, event -> {
             port.applyTheme(event.getTheme());
             port.updateThemeMenuSelection();
         }));
 
-        eventBus.subscribe(NoteEvents.NoteSelectedEvent.class, event -> Platform.runLater(() -> {
+        subscriptions.add(eventBus.subscribe(NoteEvents.NoteSelectedEvent.class, event -> {
             if (event.getNote() != null) {
                 port.loadNoteInEditor(event.getNote());
             }
         }));
 
-        eventBus.subscribe(NoteEvents.NotesLoadedEvent.class, event -> Platform.runLater(() -> {
+        subscriptions.add(eventBus.subscribe(NoteEvents.NotesLoadedEvent.class, event -> {
             port.handleNotesLoaded(event);
             port.updateStatus(event.getStatusMessage());
         }));
 
-        eventBus.subscribe(UIEvents.StatusUpdateEvent.class,
-                event -> Platform.runLater(() -> port.updateStatus(event.getMessage())));
+        subscriptions.add(eventBus.subscribe(UIEvents.StatusUpdateEvent.class, event -> port.updateStatus(event.getMessage())));
 
-        eventBus.subscribe(UIEvents.ShowCommandPaletteEvent.class,
-                event -> Platform.runLater(port::showCommandPalette));
+        subscriptions.add(eventBus.subscribe(UIEvents.ShowCommandPaletteEvent.class, event -> port.showCommandPalette()));
 
-        eventBus.subscribe(UIEvents.ShowQuickSwitcherEvent.class,
-                event -> Platform.runLater(port::showQuickSwitcher));
+        subscriptions.add(eventBus.subscribe(UIEvents.ShowQuickSwitcherEvent.class, event -> port.showQuickSwitcher()));
 
-        eventBus.subscribe(NoteEvents.NoteDeletedEvent.class,
-                event -> Platform.runLater(() -> port.handleNoteDeleted(event.getNoteId())));
+        subscriptions.add(eventBus.subscribe(NoteEvents.NoteDeletedEvent.class, event -> port.handleNoteDeleted(event.getNoteId())));
 
-        eventBus.subscribe(FolderEvents.FolderDeletedEvent.class,
-                event -> Platform.runLater(() -> port.handleFolderDeleted(event.getFolderId())));
+        subscriptions.add(eventBus.subscribe(FolderEvents.FolderDeletedEvent.class, event -> port.handleFolderDeleted(event.getFolderId())));
 
-        eventBus.subscribe(NoteEvents.TrashItemDeletedEvent.class,
-                event -> Platform.runLater(port::handleTrashItemDeleted));
+        subscriptions.add(eventBus.subscribe(NoteEvents.TrashItemDeletedEvent.class, event -> port.handleTrashItemDeleted()));
 
-        eventBus.subscribe(FolderEvents.FolderSelectedEvent.class,
-                event -> Platform.runLater(() -> port.handleFolderSelected(event.getFolder())));
+        subscriptions.add(eventBus.subscribe(FolderEvents.FolderSelectedEvent.class, event -> port.handleFolderSelected(event.getFolder())));
 
-        eventBus.subscribe(TagEvents.TagSelectedEvent.class,
-                event -> Platform.runLater(() -> port.handleTagSelected(event.getTag())));
+        subscriptions.add(eventBus.subscribe(TagEvents.TagSelectedEvent.class, event -> port.handleTagSelected(event.getTag())));
 
-        eventBus.subscribe(NoteEvents.NoteOpenRequestEvent.class,
-                event -> Platform.runLater(() -> port.handleNoteOpenRequest(event.getNote())));
+        subscriptions.add(eventBus.subscribe(NoteEvents.NoteOpenRequestEvent.class, event -> port.handleNoteOpenRequest(event.getNote())));
 
-        eventBus.subscribe(NoteEvents.TrashItemSelectedEvent.class,
-                event -> Platform.runLater(() -> port.handleTrashItemSelected(event.getComponent())));
+        subscriptions.add(eventBus.subscribe(NoteEvents.TrashItemSelectedEvent.class,
+                event -> port.handleTrashItemSelected(event.getComponent())));
 
-        eventBus.subscribe(NoteEvents.NoteModifiedEvent.class,
-                event -> Platform.runLater(() -> port.handleNoteModified(event.getNote())));
+        subscriptions.add(eventBus.subscribe(NoteEvents.NoteModifiedEvent.class, event -> port.handleNoteModified(event.getNote())));
+        return subscriptions;
     }
 }

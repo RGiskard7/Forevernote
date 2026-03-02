@@ -5,7 +5,9 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.input.*;
 import javafx.application.Platform;
+import javafx.animation.PauseTransition;
 import javafx.event.ActionEvent;
+import javafx.util.Duration;
 import java.util.*;
 import java.io.File;
 import java.util.prefs.Preferences;
@@ -50,6 +52,9 @@ public class SidebarController {
     private TreeItem<Folder> vaultRootItem;
     private TreeItem<Folder> allNotesItem;
     private boolean folderSortAscending = true;
+    private final Map<String, Integer> folderNoteCountCache = new HashMap<>();
+    private int allNotesCountCache = 0;
+    private boolean folderNoteCountCacheDirty = true;
 
     // Tags
     @FXML
@@ -97,6 +102,8 @@ public class SidebarController {
     private EventBus eventBus;
     private ResourceBundle bundle;
     private final List<EventBus.Subscription> eventSubscriptions = new ArrayList<>();
+    private final PauseTransition foldersFilterDebounce = new PauseTransition(Duration.millis(180));
+    private final PauseTransition trashFilterDebounce = new PauseTransition(Duration.millis(180));
 
     // Setters for MainController
     public void setEventBus(EventBus eb) {
@@ -187,8 +194,10 @@ public class SidebarController {
             }
         });
 
-        filterFoldersField.textProperty().addListener((o, ov, nv) -> loadFolders());
-        filterTrashField.textProperty().addListener((o, ov, nv) -> loadTrashTree());
+        foldersFilterDebounce.setOnFinished(e -> loadFolders());
+        trashFilterDebounce.setOnFinished(e -> loadTrashTree());
+        filterFoldersField.textProperty().addListener((o, ov, nv) -> foldersFilterDebounce.playFromStart());
+        filterTrashField.textProperty().addListener((o, ov, nv) -> trashFilterDebounce.playFromStart());
 
         setupCellFactories();
         setupTrashContextMenu();
@@ -258,6 +267,8 @@ public class SidebarController {
 
     private void setupCellFactories() {
         folderTreeView.setCellFactory(tv -> new TreeCell<Folder>() {
+            private final ContextMenu folderContextMenu = createFolderContextMenuForCell(this);
+
             @Override
             protected void updateItem(Folder folder, boolean empty) {
                 super.updateItem(folder, empty);
@@ -281,7 +292,7 @@ public class SidebarController {
                     int count = 0;
                     try {
                         if (isAllNotes)
-                            count = noteService.getAllNotes().size();
+                            count = allNotesCountCache;
                         else
                             count = getNoteCountForFolder(folder);
                     } catch (Exception e) {
@@ -302,7 +313,7 @@ public class SidebarController {
                     setGraphic(container);
                     setText(null);
                     if (!isAllNotes)
-                        setContextMenu(createFolderContextMenu(folder));
+                        setContextMenu(folderContextMenu);
                     else
                         setContextMenu(null);
                 }
@@ -373,15 +384,30 @@ public class SidebarController {
             return;
         }
         eventSubscriptions.add(eventBus.subscribe(NoteEvents.NoteDeletedEvent.class, event -> {
+            invalidateFolderNoteCountCache();
             loadTrashTree();
             loadRecentNotes();
             loadFavorites();
         }));
+        eventSubscriptions.add(eventBus.subscribe(NoteEvents.NoteCreatedEvent.class, event -> {
+            invalidateFolderNoteCountCache();
+            loadFolders();
+            loadRecentNotes();
+            loadFavorites();
+        }));
+        eventSubscriptions.add(eventBus.subscribe(NoteEvents.NoteSavedEvent.class, event -> {
+            invalidateFolderNoteCountCache();
+            loadFolders();
+            loadRecentNotes();
+            loadFavorites();
+        }));
         eventSubscriptions.add(eventBus.subscribe(FolderEvents.FolderDeletedEvent.class, event -> {
+            invalidateFolderNoteCountCache();
             loadFolders();
             loadTrashTree();
         }));
         eventSubscriptions.add(eventBus.subscribe(NoteEvents.TrashItemDeletedEvent.class, event -> {
+            invalidateFolderNoteCountCache();
             loadTrashTree();
             loadFolders();
         }));
@@ -390,9 +416,11 @@ public class SidebarController {
             loadTrashTree();
         }));
         eventSubscriptions.add(eventBus.subscribe(NoteEvents.NotesRefreshRequestedEvent.class, event -> {
+            invalidateFolderNoteCountCache();
             loadRecentNotes();
             loadFavorites();
             loadTrashTree();
+            loadFolders();
         }));
     }
 
@@ -420,34 +448,70 @@ public class SidebarController {
         try {
             if (vaultRootItem == null)
                 return;
+            Set<String> expandedIds = collectExpandedFolderIds(vaultRootItem);
             vaultRootItem.getChildren().clear();
             List<Folder> folders = folderService.getAllFolders();
+            ensureFolderNoteCountCache();
+
             String filter = filterFoldersField.getText() == null ? ""
                     : filterFoldersField.getText().toLowerCase().trim();
+            boolean filterActive = !filter.isEmpty();
+
+            Map<String, Folder> foldersById = new HashMap<>();
+            for (Folder folder : folders) {
+                if (folder != null && folder.getId() != null) {
+                    foldersById.put(normalizeId(folder.getId()), folder);
+                }
+            }
+
+            Map<String, String> parentById = new HashMap<>();
+            for (Folder folder : folders) {
+                if (folder == null || folder.getId() == null) {
+                    continue;
+                }
+                String folderId = normalizeId(folder.getId());
+                String parentId = resolveParentId(folder, foldersById);
+                if (parentId != null && !parentId.isBlank()) {
+                    parentById.put(folderId, normalizeId(parentId));
+                }
+            }
+
             Set<String> visibleIds = new HashSet<>();
-            if (!filter.isEmpty()) {
+            if (filterActive) {
                 for (Folder f : folders) {
+                    if (f == null || f.getId() == null || f.getTitle() == null) {
+                        continue;
+                    }
+                    String id = normalizeId(f.getId());
                     if (f.getTitle().toLowerCase().contains(filter)) {
-                        visibleIds.add(f.getId());
-                        Folder parent = f;
-                        int s = 0;
-                        while (s++ < 100) {
-                            Optional<Folder> op = folderService.getParentFolder(parent);
-                            if (op.isEmpty() || "ROOT".equals(op.get().getId()))
-                                break;
-                            parent = op.get();
-                            visibleIds.add(parent.getId());
+                        visibleIds.add(id);
+                        String parentId = parentById.get(id);
+                        int safety = 0;
+                        while (parentId != null && !parentId.isBlank() && !"ROOT".equals(parentId) && safety++ < 200) {
+                            visibleIds.add(parentId);
+                            parentId = parentById.get(parentId);
                         }
                     }
                 }
             }
+
+            Map<String, List<Folder>> childrenByParent = new HashMap<>();
             List<Folder> roots = new ArrayList<>();
             for (Folder f : folders) {
-                if (!filter.isEmpty() && !visibleIds.contains(f.getId()))
+                if (f == null || f.getId() == null) {
                     continue;
-                Optional<Folder> op = folderService.getParentFolder(f);
-                if (op.isEmpty() || "ROOT".equals(op.get().getId()))
+                }
+                String id = normalizeId(f.getId());
+                if (filterActive && !visibleIds.contains(id)) {
+                    continue;
+                }
+                String parentId = parentById.get(id);
+                if (parentId == null || parentId.isBlank() || "ROOT".equals(parentId)
+                        || (filterActive && !visibleIds.contains(parentId))) {
                     roots.add(f);
+                } else {
+                    childrenByParent.computeIfAbsent(parentId, k -> new ArrayList<>()).add(f);
+                }
             }
             Comparator<Folder> comp = (f1, f2) -> f1.getTitle().compareToIgnoreCase(f2.getTitle());
             if (!folderSortAscending)
@@ -456,9 +520,13 @@ public class SidebarController {
             for (Folder f : roots) {
                 TreeItem<Folder> item = new TreeItem<>(f);
                 vaultRootItem.getChildren().add(item);
-                loadSubFolders(item, f, visibleIds, comp, !filter.isEmpty());
+                String id = normalizeId(f.getId());
+                if (filterActive || expandedIds.contains(id)) {
+                    item.setExpanded(true);
+                }
+                buildFolderTree(item, id, childrenByParent, comp, expandedIds, filterActive);
             }
-            if (!filter.isEmpty())
+            if (filterActive)
                 expandCollapseRecursive(vaultRootItem, true);
             vaultRootItem.setExpanded(true);
         } catch (Exception e) {
@@ -466,25 +534,74 @@ public class SidebarController {
         }
     }
 
-    private void loadSubFolders(TreeItem<Folder> parentItem, Folder parentFolder, Set<String> visibleIds,
-            Comparator<Folder> comp, boolean active) {
+    private void buildFolderTree(TreeItem<Folder> parentItem, String parentId,
+            Map<String, List<Folder>> childrenByParent, Comparator<Folder> comp,
+            Set<String> expandedIds, boolean filterActive) {
+        List<Folder> children = childrenByParent.get(parentId);
+        if (children == null || children.isEmpty()) {
+            return;
+        }
+        List<Folder> sorted = new ArrayList<>(children);
+        Collections.sort(sorted, comp);
+        for (Folder child : sorted) {
+            TreeItem<Folder> item = new TreeItem<>(child);
+            parentItem.getChildren().add(item);
+            String childId = child.getId() != null ? normalizeId(child.getId()) : "";
+            if (filterActive || expandedIds.contains(childId)) {
+                item.setExpanded(true);
+            }
+            buildFolderTree(item, childId, childrenByParent, comp, expandedIds, filterActive);
+        }
+    }
+
+    private Set<String> collectExpandedFolderIds(TreeItem<Folder> node) {
+        Set<String> expanded = new HashSet<>();
+        if (node == null) {
+            return expanded;
+        }
+        collectExpandedFolderIdsRec(node, expanded);
+        return expanded;
+    }
+
+    private void collectExpandedFolderIdsRec(TreeItem<Folder> node, Set<String> expanded) {
+        if (node == null) {
+            return;
+        }
+        Folder value = node.getValue();
+        if (value != null && value.getId() != null && node.isExpanded()) {
+            expanded.add(normalizeId(value.getId()));
+        }
+        for (TreeItem<Folder> child : node.getChildren()) {
+            collectExpandedFolderIdsRec(child, expanded);
+        }
+    }
+
+    private String resolveParentId(Folder folder, Map<String, Folder> foldersById) {
+        if (folder == null || folder.getId() == null) {
+            return null;
+        }
+
+        if (folder.getParent() != null && folder.getParent().getId() != null
+                && !folder.getParent().getId().isBlank()) {
+            return normalizeId(folder.getParent().getId());
+        }
+
+        String id = normalizeId(folder.getId());
+        int slash = id.lastIndexOf('/');
+        if (slash > 0) {
+            return id.substring(0, slash);
+        }
+
         try {
-            folderService.loadSubfolders(parentFolder, 1);
-            List<Folder> children = new ArrayList<>();
-            for (Component c : parentFolder.getChildren())
-                if (c instanceof Folder)
-                    if (!active || visibleIds.contains(c.getId()))
-                        children.add((Folder) c);
-            Collections.sort(children, comp);
-            for (Folder f : children) {
-                TreeItem<Folder> item = new TreeItem<>(f);
-                parentItem.getChildren().add(item);
-                loadSubFolders(item, f, visibleIds, comp, active);
+            Optional<Folder> parent = folderService.getParentFolder(folder);
+            if (parent.isPresent() && parent.get().getId() != null) {
+                return normalizeId(parent.get().getId());
             }
         } catch (Exception e) {
-            logger.warning("Failed to load subfolders for "
-                    + (parentFolder != null ? parentFolder.getId() : "null") + ": " + e.getMessage());
+            logger.fine("Parent resolution fallback failed for folder " + id + ": " + e.getMessage());
         }
+
+        return null;
     }
 
     public void loadTrashTree() {
@@ -784,18 +901,38 @@ public class SidebarController {
         }
     }
 
-    private ContextMenu createFolderContextMenu(Folder f) {
+    private ContextMenu createFolderContextMenuForCell(TreeCell<Folder> cell) {
         ContextMenu m = new ContextMenu();
         MenuItem newNote = new MenuItem(getString("action.new_note"));
-        newNote.setOnAction(e -> handleCreateNoteInFolder(f));
+        newNote.setOnAction(e -> {
+            Folder f = cell != null ? cell.getItem() : null;
+            if (f != null) {
+                handleCreateNoteInFolder(f);
+            }
+        });
 
         MenuItem newSubfolder = new MenuItem(getString("action.new_subfolder"));
-        newSubfolder.setOnAction(e -> handleCreateSubfolderInFolder(f));
+        newSubfolder.setOnAction(e -> {
+            Folder f = cell != null ? cell.getItem() : null;
+            if (f != null) {
+                handleCreateSubfolderInFolder(f);
+            }
+        });
 
         MenuItem r = new MenuItem(getString("action.rename"));
-        r.setOnAction(e -> handleRenameFolder(f));
+        r.setOnAction(e -> {
+            Folder f = cell != null ? cell.getItem() : null;
+            if (f != null) {
+                handleRenameFolder(f);
+            }
+        });
         MenuItem d = new MenuItem(getString("action.delete"));
-        d.setOnAction(e -> handleDeleteFolder(f));
+        d.setOnAction(e -> {
+            Folder f = cell != null ? cell.getItem() : null;
+            if (f != null) {
+                handleDeleteFolder(f);
+            }
+        });
         m.getItems().addAll(newNote, newSubfolder, new SeparatorMenuItem(), r, d);
         return m;
     }
@@ -903,13 +1040,65 @@ public class SidebarController {
                 return 0;
             String id = f.getId();
             if (id == null || "ALL_NOTES_VIRTUAL".equals(id))
-                return noteService.getAllNotes().size();
-            Optional<Folder> op = folderService.getFolderById(id);
-            return op.map(folder -> noteService.getNotesByFolder(folder).size()).orElse(0);
+                return allNotesCountCache;
+            return folderNoteCountCache.getOrDefault(normalizeId(id), 0);
         } catch (Exception e) {
             logger.log(Level.WARNING, "Failed to count notes for folder " + (f != null ? f.getId() : "null"), e);
             return 0;
         }
+    }
+
+    private void rebuildFolderNoteCountCache() {
+        folderNoteCountCache.clear();
+        allNotesCountCache = 0;
+        folderNoteCountCacheDirty = false;
+        if (noteService == null) {
+            return;
+        }
+        List<Note> allNotes = noteService.getAllNotes();
+        allNotesCountCache = allNotes.size();
+        for (Note note : allNotes) {
+            String folderId = resolveFolderIdForCount(note);
+            if (folderId == null || folderId.isBlank()) {
+                folderId = "ROOT";
+            }
+            folderNoteCountCache.merge(folderId, 1, Integer::sum);
+        }
+    }
+
+    private void ensureFolderNoteCountCache() {
+        if (folderNoteCountCacheDirty || folderNoteCountCache.isEmpty()) {
+            rebuildFolderNoteCountCache();
+        }
+    }
+
+    private void invalidateFolderNoteCountCache() {
+        folderNoteCountCacheDirty = true;
+    }
+
+    private String resolveFolderIdForCount(Note note) {
+        if (note == null) {
+            return null;
+        }
+        if (note.getParent() != null && note.getParent().getId() != null && !note.getParent().getId().isBlank()) {
+            return normalizeId(note.getParent().getId());
+        }
+        if (note.getId() == null || note.getId().isBlank()) {
+            return null;
+        }
+        String normalized = normalizeId(note.getId());
+        if (normalized.startsWith(".trash/")) {
+            return null;
+        }
+        int slash = normalized.lastIndexOf('/');
+        if (slash <= 0) {
+            return "ROOT";
+        }
+        return normalized.substring(0, slash);
+    }
+
+    private String normalizeId(String id) {
+        return id == null ? "" : id.replace("\\", "/");
     }
 
     private String getString(String k) {
