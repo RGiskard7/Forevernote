@@ -1935,6 +1935,36 @@
     -fx-fill: -fx-selected-text;
 }
 
+/* Sidebar tabs (icon mode): keep contrast in dark theme */
+.sidebar-tabs > .tab-header-area > .headers-region > .tab .feather-icon,
+.sidebar-tabs > .tab-header-area > .headers-region > .tab .ikonli-font-icon {
+    -fx-icon-color: -fx-text-main;
+    -fx-fill: -fx-text-main;
+}
+
+.sidebar-tabs > .tab-header-area > .headers-region > .tab:hover .feather-icon,
+.sidebar-tabs > .tab-header-area > .headers-region > .tab:hover .ikonli-font-icon {
+    -fx-icon-color: -fx-hover-text;
+    -fx-fill: -fx-hover-text;
+}
+
+.sidebar-tabs > .tab-header-area > .headers-region > .tab:selected .feather-icon,
+.sidebar-tabs > .tab-header-area > .headers-region > .tab:selected .ikonli-font-icon,
+.sidebar-tabs > .tab-header-area > .headers-region > .tab:selected:hover .feather-icon,
+.sidebar-tabs > .tab-header-area > .headers-region > .tab:selected:hover .ikonli-font-icon {
+    -fx-icon-color: -fx-selected-text;
+    -fx-fill: -fx-selected-text;
+}
+
+/* Generic selected icon buttons should not stay muted */
+.icon-btn:selected .feather-icon,
+.icon-btn-small:selected .feather-icon,
+.icon-btn:selected .ikonli-font-icon,
+.icon-btn-small:selected .ikonli-font-icon {
+    -fx-icon-color: -fx-selected-text;
+    -fx-fill: -fx-selected-text;
+}
+
 /* Responsive editor/view mode buttons */
 .icon-only-btn {
     -fx-content-display: graphic-only;
