@@ -129,6 +129,7 @@ public class AppDataDirectory {
             File logsDir = new File(getLogsDirectory());
             File pluginsDir = new File(getBaseDirectory(), "plugins");
             File backupsDir = new File(getBackupsDirectory());
+            File themesDir = new File(getBaseDirectory(), "themes");
 
             if (!dataDir.exists()) {
                 dataDir.mkdirs();
@@ -142,10 +143,14 @@ public class AppDataDirectory {
             if (!backupsDir.exists()) {
                 backupsDir.mkdirs();
             }
+            if (!themesDir.exists()) {
+                themesDir.mkdirs();
+            }
 
             return dataDir.exists() && dataDir.canWrite() &&
                     logsDir.exists() && logsDir.canWrite() &&
-                    backupsDir.exists() && backupsDir.canWrite();
+                    backupsDir.exists() && backupsDir.canWrite() &&
+                    themesDir.exists() && themesDir.canWrite();
         } catch (Exception e) {
             return false;
         }

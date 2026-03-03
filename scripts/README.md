@@ -9,6 +9,8 @@ This directory contains cross-platform scripts for building and running the Fore
 | `build_all.ps1` | Windows (PowerShell) | Builds and packages the project |
 | `build_all.sh` | macOS/Linux (Bash) | Builds and packages the project |
 | `build-plugins.ps1` | Windows (PowerShell) | Compiles plugins to `Forevernote/plugins/` |
+| `build-themes.ps1` | Windows (PowerShell) | Installs external themes to runtime directories |
+| `build-themes.sh` | macOS/Linux (Bash) | Installs external themes to runtime directories |
 | `package-windows.ps1` | Windows (PowerShell) | Creates Windows executable (app-image or MSI) with plugins |
 | `run_all.ps1` | Windows (PowerShell) | Runs the compiled application |
 | `run_all.sh` | macOS/Linux (Bash) | Runs the compiled application |
@@ -52,6 +54,7 @@ chmod +x scripts/*.sh
   - macOS: Homebrew or SDKMAN
   - Linux: apt-get (Debian/Ubuntu) or dnf (Fedora/RHEL)
 - **JAR Packaging**: Creates an executable uber-JAR at `Forevernote/target/forevernote-1.0.0-uber.jar`
+- **Theme Install**: `build-themes.*` validates and installs themes from `themes/` into `Forevernote/themes/`
 
 ### Run Scripts
 
@@ -89,6 +92,41 @@ chmod +x scripts/*.sh
 
 The packaged app looks for `plugins/` next to the executable. Ensure plugins are built before packaging, or run `.\scripts\build-plugins.ps1` first.
 
+## Themes Script
+
+`build-themes.*` installs external themes so the app can discover them at runtime.
+
+### Theme source format
+
+```
+themes/
+  <theme-id>/
+    theme.properties
+    theme.css
+```
+
+### Commands
+
+```powershell
+.\scripts\build-themes.ps1
+.\scripts\build-themes.ps1 -Clean
+.\scripts\build-themes.ps1 -AppData
+```
+
+```bash
+./scripts/build-themes.sh
+./scripts/build-themes.sh --clean
+./scripts/build-themes.sh --appdata
+```
+
+### Install targets
+
+- Project runtime: `Forevernote/themes/`
+- Optional user app-data runtime:
+  - Windows: `%APPDATA%\Forevernote\themes`
+  - macOS: `~/Library/Application Support/Forevernote/themes`
+  - Linux: `${XDG_CONFIG_HOME:-~/.config}/Forevernote/themes`
+
 ## Database Schema
 
 The `schema.txt` file contains an example SQLite schema. The application automatically creates the required tables on first run.
@@ -120,5 +158,4 @@ Make scripts executable:
 ```bash
 chmod +x scripts/*.sh
 ```
-
 

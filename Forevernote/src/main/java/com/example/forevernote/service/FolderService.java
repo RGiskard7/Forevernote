@@ -319,6 +319,51 @@ public class FolderService {
         }
     }
 
+    /**
+     * Moves a folder under a new parent folder.
+     *
+     * @param folder      Folder to move
+     * @param targetParent Destination parent folder
+     */
+    public void moveFolderToFolder(Folder folder, Folder targetParent) {
+        if (folder == null || folder.getId() == null) {
+            throw new IllegalArgumentException("Folder cannot be null");
+        }
+        if (targetParent == null || targetParent.getId() == null) {
+            throw new IllegalArgumentException("Target parent cannot be null");
+        }
+        if (folder.getId().equals(targetParent.getId())) {
+            throw new IllegalArgumentException("Folder cannot be moved into itself");
+        }
+        folderDAO.addSubFolder(targetParent, folder);
+        folderDAO.refreshCache();
+        noteDAO.refreshCache();
+        logger.info("Moved folder '" + folder.getTitle() + "' to folder: " + targetParent.getTitle());
+    }
+
+    /**
+     * Validates whether a folder can be moved under a target parent.
+     */
+    public boolean canMoveFolder(Folder folder, Folder targetParent) {
+        if (folder == null || targetParent == null || folder.getId() == null || targetParent.getId() == null) {
+            return false;
+        }
+        String folderId = folder.getId();
+        String targetId = targetParent.getId();
+        if (folderId.equals(targetId)) {
+            return false;
+        }
+        Folder cursor = targetParent;
+        int safety = 0;
+        while (cursor != null && cursor.getId() != null && safety++ < 512) {
+            if (folderId.equals(cursor.getId())) {
+                return false;
+            }
+            cursor = folderDAO.getParentFolder(cursor.getId());
+        }
+        return true;
+    }
+
     // ==================== Path Methods ====================
 
     /**

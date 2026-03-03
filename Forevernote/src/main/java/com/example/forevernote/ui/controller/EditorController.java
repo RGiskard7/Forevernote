@@ -12,6 +12,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.web.WebView;
+import javafx.scene.control.ContentDisplay;
 
 import java.util.Optional;
 import java.util.ResourceBundle;
@@ -24,6 +25,10 @@ public class EditorController {
 
     private Note currentNote;
     private boolean isModified = false;
+    private String viewModeButtonsPresentationMode = "text";
+    private String editorOnlyLabel = "";
+    private String splitViewLabel = "";
+    private String previewOnlyLabel = "";
 
     @FXML
     private VBox editorContainer;
@@ -93,6 +98,60 @@ public class EditorController {
 
     public void setBundle(ResourceBundle bundle) {
         this.bundle = bundle;
+    }
+
+    public void setViewModeButtonsPresentationMode(String mode) {
+        this.viewModeButtonsPresentationMode = mode != null ? mode : "text";
+        applyViewModeButtonsPresentation(viewModeButtonsPresentationMode,
+                editorContainer != null ? editorContainer.getWidth() : 1200);
+    }
+
+    public void applyViewModeButtonsPresentation(String mode, double width) {
+        if (editorOnlyButton == null || splitViewButton == null || previewOnlyButton == null) {
+            return;
+        }
+        cacheViewModeLabels();
+        String safeMode = mode != null ? mode : "text";
+        boolean iconOnly;
+        if ("icons".equalsIgnoreCase(safeMode)) {
+            iconOnly = true;
+        } else if ("auto".equalsIgnoreCase(safeMode)) {
+            iconOnly = width > 0 && width < 920;
+        } else {
+            iconOnly = false;
+        }
+        applyButtonPresentation(editorOnlyButton, editorOnlyLabel, iconOnly);
+        applyButtonPresentation(splitViewButton, splitViewLabel, iconOnly);
+        applyButtonPresentation(previewOnlyButton, previewOnlyLabel, iconOnly);
+    }
+
+    private void cacheViewModeLabels() {
+        if (editorOnlyButton != null && (editorOnlyLabel == null || editorOnlyLabel.isEmpty())) {
+            editorOnlyLabel = editorOnlyButton.getText() != null ? editorOnlyButton.getText() : "Edit";
+        }
+        if (splitViewButton != null && (splitViewLabel == null || splitViewLabel.isEmpty())) {
+            splitViewLabel = splitViewButton.getText() != null ? splitViewButton.getText() : "Split";
+        }
+        if (previewOnlyButton != null && (previewOnlyLabel == null || previewOnlyLabel.isEmpty())) {
+            previewOnlyLabel = previewOnlyButton.getText() != null ? previewOnlyButton.getText() : "Read";
+        }
+    }
+
+    private void applyButtonPresentation(ToggleButton button, String label, boolean iconOnly) {
+        if (button == null) {
+            return;
+        }
+        if (iconOnly) {
+            button.setText("");
+            button.setContentDisplay(ContentDisplay.GRAPHIC_ONLY);
+            if (!button.getStyleClass().contains("icon-only-btn")) {
+                button.getStyleClass().add("icon-only-btn");
+            }
+        } else {
+            button.setText(label);
+            button.setContentDisplay(ContentDisplay.LEFT);
+            button.getStyleClass().remove("icon-only-btn");
+        }
     }
 
     public Note getCurrentNote() {

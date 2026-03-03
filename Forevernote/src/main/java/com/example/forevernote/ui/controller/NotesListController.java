@@ -22,6 +22,9 @@ import javafx.scene.control.ContextMenu;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.ListCell;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -137,6 +140,18 @@ public class NotesListController {
                     }
                 });
                 contextMenu.getItems().addAll(openItem, favoriteItem, new SeparatorMenuItem(), deleteItem);
+
+                setOnDragDetected(event -> {
+                    Note note = getItem();
+                    if (note == null || note.getId() == null) {
+                        return;
+                    }
+                    Dragboard db = startDragAndDrop(TransferMode.MOVE);
+                    ClipboardContent content = new ClipboardContent();
+                    content.putString("note:" + note.getId());
+                    db.setContent(content);
+                    event.consume();
+                });
             }
 
             @Override

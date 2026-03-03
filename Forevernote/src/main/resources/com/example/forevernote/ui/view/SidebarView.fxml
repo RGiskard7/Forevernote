@@ -8,7 +8,7 @@
 <VBox fx:id="sidebarPane" styleClass="sidebar" minWidth="200" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.forevernote.ui.controller.SidebarController">
     <!-- Navigation Tabs -->
     <TabPane fx:id="navigationTabPane" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS" styleClass="sidebar-tabs">
-        <Tab text="%tab.folders" closable="false">
+        <Tab fx:id="foldersTab" text="%tab.folders" closable="false">
             <VBox spacing="0">
                 <HBox spacing="4" alignment="CENTER_LEFT" styleClass="sidebar-toolbar">
                     <padding><Insets top="4" right="4" bottom="4" left="4"/></padding>
@@ -30,7 +30,7 @@
             </VBox>
         </Tab>
         
-        <Tab text="%tab.tags" closable="false">
+        <Tab fx:id="tagsTab" text="%tab.tags" closable="false">
             <VBox spacing="0">
                  <HBox spacing="4" alignment="CENTER_LEFT" styleClass="sidebar-toolbar">
                     <padding><Insets top="4" right="4" bottom="4" left="4"/></padding>
@@ -44,7 +44,7 @@
             </VBox>
         </Tab>
         
-        <Tab text="%tab.recent" closable="false">
+        <Tab fx:id="recentTab" text="%tab.recent" closable="false">
             <VBox spacing="0">
                  <HBox spacing="4" alignment="CENTER_LEFT" styleClass="sidebar-toolbar">
                     <padding><Insets top="4" right="4" bottom="4" left="4"/></padding>
@@ -58,7 +58,7 @@
             </VBox>
         </Tab>
         
-        <Tab text="%tab.favorites" closable="false">
+        <Tab fx:id="favoritesTab" text="%tab.favorites" closable="false">
             <VBox spacing="0">
                  <HBox spacing="4" alignment="CENTER_LEFT" styleClass="sidebar-toolbar">
                     <padding><Insets top="4" right="4" bottom="4" left="4"/></padding>
@@ -72,7 +72,7 @@
             </VBox>
         </Tab>
         
-        <Tab text="%tab.trash" closable="false">
+        <Tab fx:id="trashTab" text="%tab.trash" closable="false">
             <VBox spacing="0">
                  <HBox spacing="4" alignment="CENTER_LEFT" styleClass="sidebar-toolbar">
                     <padding><Insets top="4" right="4" bottom="4" left="4"/></padding>

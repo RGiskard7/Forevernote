@@ -46,6 +46,16 @@ public class SidebarController {
     private VBox sidebarPane;
     @FXML
     private TabPane navigationTabPane;
+    @FXML
+    private Tab foldersTab;
+    @FXML
+    private Tab tagsTab;
+    @FXML
+    private Tab recentTab;
+    @FXML
+    private Tab favoritesTab;
+    @FXML
+    private Tab trashTab;
 
     // Folders
     @FXML
@@ -122,6 +132,7 @@ public class SidebarController {
     private final AtomicLong recentFavoritesLoadVersion = new AtomicLong(0);
     private final AtomicLong folderLoadVersion = new AtomicLong(0);
     private final AtomicLong trashLoadVersion = new AtomicLong(0);
+    private String sidebarTabsPresentationMode = "text";
 
     private static final class FolderTreeBuildResult {
         private final List<Folder> roots;
@@ -174,6 +185,7 @@ public class SidebarController {
         this.bundle = b;
         refreshLocalizedRootLabels();
         refreshLocalizedMenus();
+        applySidebarTabPresentation(sidebarTabsPresentationMode);
     }
 
     public void setFolderDAO(FolderDAO fd) {
@@ -370,6 +382,9 @@ public class SidebarController {
                         setContextMenu(folderContextMenu);
                     else
                         setContextMenu(null);
+
+                    setupFolderDragSource(this, folder);
+                    setupFolderDropTargets(this, folder);
                 }
             }
         });
@@ -430,6 +445,129 @@ public class SidebarController {
         });
     }
 
+    private void setupFolderDragSource(TreeCell<Folder> cell, Folder folder) {
+        if (folder == null || folder.getId() == null) {
+            return;
+        }
+        String folderId = normalizeId(folder.getId());
+        if ("ALL_NOTES_VIRTUAL".equals(folderId) || "ROOT".equals(folderId)) {
+            return;
+        }
+        cell.setOnDragDetected(event -> {
+            if (cell.isEmpty()) {
+                return;
+            }
+            Dragboard db = cell.startDragAndDrop(TransferMode.MOVE);
+            ClipboardContent content = new ClipboardContent();
+            content.putString("folder:" + folderId);
+            db.setContent(content);
+            event.consume();
+        });
+    }
+
+    private void setupFolderDropTargets(TreeCell<Folder> cell, Folder targetFolder) {
+        cell.setOnDragOver(event -> {
+            Dragboard db = event.getDragboard();
+            if (!db.hasString()) {
+                return;
+            }
+            String payload = db.getString();
+            if (canAcceptDropPayload(payload, targetFolder)) {
+                event.acceptTransferModes(TransferMode.MOVE);
+            }
+            event.consume();
+        });
+
+        cell.setOnDragEntered(event -> {
+            Dragboard db = event.getDragboard();
+            if (db.hasString() && canAcceptDropPayload(db.getString(), targetFolder)) {
+                if (!cell.getStyleClass().contains("drag-over-target")) {
+                    cell.getStyleClass().add("drag-over-target");
+                }
+            }
+            event.consume();
+        });
+
+        cell.setOnDragExited(event -> {
+            cell.getStyleClass().remove("drag-over-target");
+            event.consume();
+        });
+
+        cell.setOnDragDropped(event -> {
+            Dragboard db = event.getDragboard();
+            boolean success = false;
+            if (db.hasString()) {
+                success = handleDroppedPayload(db.getString(), targetFolder);
+            }
+            event.setDropCompleted(success);
+            event.consume();
+        });
+    }
+
+    private boolean canAcceptDropPayload(String payload, Folder targetFolder) {
+        if (payload == null || targetFolder == null || targetFolder.getId() == null) {
+            return false;
+        }
+        String targetId = normalizeId(targetFolder.getId());
+        if ("ALL_NOTES_VIRTUAL".equals(targetId) || "INVISIBLE_ROOT".equals(targetId)) {
+            return false;
+        }
+        if (payload.startsWith("note:")) {
+            return noteService != null && folderService != null;
+        }
+        if (payload.startsWith("folder:")) {
+            String sourceFolderId = normalizeId(payload.substring("folder:".length()));
+            if (sourceFolderId.isBlank() || sourceFolderId.equals(targetId)) {
+                return false;
+            }
+            if (targetId.startsWith(sourceFolderId + "/")) {
+                return false;
+            }
+            if (folderService == null) {
+                return false;
+            }
+            Optional<Folder> source = folderService.getFolderById(sourceFolderId);
+            return source.isPresent() && folderService.canMoveFolder(source.get(), targetFolder);
+        }
+        return false;
+    }
+
+    private boolean handleDroppedPayload(String payload, Folder targetFolder) {
+        if (!canAcceptDropPayload(payload, targetFolder)) {
+            return false;
+        }
+        try {
+            if (payload.startsWith("note:")) {
+                String noteId = payload.substring("note:".length());
+                Optional<Note> noteOpt = noteService.getNoteById(noteId);
+                if (noteOpt.isEmpty()) {
+                    return false;
+                }
+                folderService.moveNoteToFolder(noteOpt.get(), targetFolder);
+                publishStatusUpdate(java.text.MessageFormat.format(getString("status.note_moved_folder"), targetFolder.getTitle()));
+            } else if (payload.startsWith("folder:")) {
+                String folderId = payload.substring("folder:".length());
+                Optional<Folder> folderOpt = folderService.getFolderById(folderId);
+                if (folderOpt.isEmpty()) {
+                    return false;
+                }
+                folderService.moveFolderToFolder(folderOpt.get(), targetFolder);
+                publishStatusUpdate(java.text.MessageFormat.format(getString("status.folder_moved"), targetFolder.getTitle()));
+            } else {
+                return false;
+            }
+            invalidateFolderNoteCountCache();
+            requestFoldersReload();
+            requestRecentFavoritesReload();
+            requestTrashReload();
+            return true;
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Failed to process drag and drop payload: " + payload, e);
+            publishStatusUpdate(getString("status.error"));
+            return false;
+        }
+    }
+
     private void setupTrashContextMenu() {
         if (trashTreeView == null) {
             return;
@@ -445,6 +583,7 @@ public class SidebarController {
 
     private void refreshLocalizedMenus() {
         setupTrashContextMenu();
+        applySidebarTabPresentation(sidebarTabsPresentationMode);
     }
 
     private void registerEventSubscriptions() {
@@ -1313,5 +1452,34 @@ public class SidebarController {
 
     public TextField getFilterTrashField() {
         return filterTrashField;
+    }
+
+    public void applySidebarTabPresentation(String mode) {
+        sidebarTabsPresentationMode = "icons".equalsIgnoreCase(mode) ? "icons" : "text";
+        if (foldersTab == null || tagsTab == null || recentTab == null || favoritesTab == null || trashTab == null) {
+            return;
+        }
+        applyTabPresentation(foldersTab, getString("tab.folders"), "fth-folder");
+        applyTabPresentation(tagsTab, getString("tab.tags"), "fth-hash");
+        applyTabPresentation(recentTab, getString("tab.recent"), "fth-clock");
+        applyTabPresentation(favoritesTab, getString("tab.favorites"), "fth-star");
+        applyTabPresentation(trashTab, getString("tab.trash"), "fth-trash-2");
+    }
+
+    private void applyTabPresentation(Tab tab, String text, String iconLiteral) {
+        if (tab == null) {
+            return;
+        }
+        if ("icons".equals(sidebarTabsPresentationMode)) {
+            FontIcon icon = new FontIcon(iconLiteral);
+            icon.getStyleClass().add("feather-icon");
+            tab.setText("");
+            tab.setGraphic(icon);
+            tab.setTooltip(new Tooltip(text));
+        } else {
+            tab.setGraphic(null);
+            tab.setText(text);
+            tab.setTooltip(null);
+        }
     }
 }

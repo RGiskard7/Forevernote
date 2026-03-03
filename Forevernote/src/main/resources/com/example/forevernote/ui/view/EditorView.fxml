@@ -16,7 +16,7 @@
         <Separator orientation="VERTICAL" styleClass="header-separator"/>
          
         <!-- Tags Toggle UI -->
-         <ToggleButton fx:id="toggleTagsBtn" onAction="#handleToggleTags" styleClass="modern-toggle-btn" selected="true">
+         <ToggleButton fx:id="toggleTagsBtn" onAction="#handleToggleTags" styleClass="modern-toggle-btn" selected="false">
             <tooltip><Tooltip text="%tooltip.toggle_tags"/></tooltip>
             <graphic>
                 <FontIcon iconLiteral="fth-hash" styleClass="feather-icon"/>
@@ -28,12 +28,21 @@
         <!-- View Mode Toggle -->
         <ToggleButton fx:id="editorOnlyButton" text="%action.editor_only" onAction="#handleEditorOnlyMode" styleClass="modern-toggle-btn">
             <tooltip><Tooltip text="%tooltip.editor_only"/></tooltip>
+            <graphic>
+                <FontIcon iconLiteral="fth-edit-3" styleClass="feather-icon"/>
+            </graphic>
         </ToggleButton>
         <ToggleButton fx:id="splitViewButton" text="%action.split_view" onAction="#handleSplitViewMode" styleClass="modern-toggle-btn">
             <tooltip><Tooltip text="%tooltip.split_view"/></tooltip>
+            <graphic>
+                <FontIcon iconLiteral="fth-columns" styleClass="feather-icon"/>
+            </graphic>
         </ToggleButton>
         <ToggleButton fx:id="previewOnlyButton" text="%action.preview_only" onAction="#handlePreviewOnlyMode" styleClass="modern-toggle-btn">
             <tooltip><Tooltip text="%tooltip.preview_only"/></tooltip>
+            <graphic>
+                <FontIcon iconLiteral="fth-book-open" styleClass="feather-icon"/>
+            </graphic>
         </ToggleButton>
         <Separator orientation="VERTICAL" styleClass="header-separator"/>
         <ToggleButton fx:id="pinButton" onAction="#handleTogglePin" styleClass="modern-toggle-btn">
@@ -57,7 +66,7 @@
     </HBox>
     
     <!-- Tags Bar (Collapsible) -->
-    <VBox fx:id="tagsContainer">
+    <VBox fx:id="tagsContainer" visible="false" managed="false">
         <HBox alignment="CENTER_LEFT" spacing="8" styleClass="tags-bar">
             <padding>
                 <Insets top="6" right="16" bottom="6" left="16"/>

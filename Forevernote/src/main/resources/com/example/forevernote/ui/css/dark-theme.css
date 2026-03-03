@@ -1934,3 +1934,17 @@
     -fx-icon-color: -fx-selected-text;
     -fx-fill: -fx-selected-text;
 }
+
+/* Responsive editor/view mode buttons */
+.icon-only-btn {
+    -fx-content-display: graphic-only;
+    -fx-padding: 6 8;
+    -fx-min-width: 34px;
+}
+
+.drag-over-target {
+    -fx-background-color: rgba(124, 58, 237, 0.24);
+    -fx-border-color: -fx-accent;
+    -fx-border-width: 1px;
+    -fx-border-radius: 6;
+}

@@ -28,6 +28,7 @@
 - [Technology Stack](#technology-stack)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
+- [Command Reference](#command-reference)
 - [Documentation](#documentation)
 - [Project Structure](#project-structure)
 - [Configuration](#configuration)
@@ -56,9 +57,10 @@
 - **Dual View Modes**: Switch between list view and grid view for notes
 - **Drag & Drop**: Drag notes between folders for easy organization
 - **Resizable Panels**: All panels (sidebar, notes list, editor) are fully resizable
-- **Theme Support**: Light, dark, and system theme options with professional styling
+- **Theme Support**: Light, dark, system, and external themes loaded from `themes/`
 - **Responsive Design**: Fully responsive interface that adapts to window resizing
 - **Scrollable Toolbar**: Professional format toolbar with horizontal scrolling
+- **Configurable UI Density**: Sidebar tabs and editor mode buttons can switch text/icons from Preferences
 
 ### Markdown & Preview
 
@@ -75,6 +77,7 @@
 - **Quick Switcher**: Fast note navigation (Ctrl+O)
 - **Favorites**: Mark notes as favorites for quick access
 - **Recent Notes**: Quick access to recently modified notes
+- **Autosave**: Automatic save after short inactivity while editing
 - **Import/Export**: Import Markdown/TXT files and export notes to Markdown or TXT
 
 ### Plugin System
@@ -209,7 +212,187 @@ This creates an executable JAR at `Forevernote/target/forevernote-1.0.0-uber.jar
 
 The scripts automatically detect JavaFX modules in your Maven repository and configure the Java module-path correctly.
 
+### 4. Build Plugins (External JARs)
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\build-plugins.ps1
+.\scripts\build-plugins.ps1 -Clean
+```
+
+**macOS/Linux (Bash):**
+```bash
+./scripts/build-plugins.sh
+./scripts/build-plugins.sh --clean
+```
+
+### 5. Install External Themes
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\build-themes.ps1
+.\scripts\build-themes.ps1 -Clean
+.\scripts\build-themes.ps1 -AppData
+```
+
+**macOS/Linux (Bash):**
+```bash
+./scripts/build-themes.sh
+./scripts/build-themes.sh --clean
+./scripts/build-themes.sh --appdata
+```
+
 For more detailed build and setup instructions, see [Build and Setup Guide](doc/BUILD.md).
+
+## Command Reference
+
+All commands below assume you are at repository root:
+`/Users/edu/visual-studio-code-workspace/Forevernote`
+
+### Build and Run
+
+**Build app (tests skipped):**
+
+```powershell
+.\scripts\build_all.ps1
+```
+
+```bash
+./scripts/build_all.sh
+```
+
+**Run app (recommended):**
+
+```powershell
+.\scripts\run_all.ps1
+.\scripts\launch-forevernote.bat
+```
+
+```bash
+./scripts/run_all.sh
+./scripts/launch-forevernote.sh
+```
+
+**Manual Maven run (dev):**
+
+```bash
+mvn -f Forevernote/pom.xml clean compile exec:java -Dexec.mainClass="com.example.forevernote.Main"
+```
+
+### Tests and Quality Gates
+
+**Full test suite:**
+
+```bash
+mvn -f Forevernote/pom.xml test
+```
+
+**Full clean test cycle:**
+
+```bash
+mvn -f Forevernote/pom.xml clean test
+```
+
+**Hardening phase gate:**
+
+```powershell
+.\scripts\smoke-phase-gate.ps1
+```
+
+```bash
+./scripts/smoke-phase-gate.sh
+```
+
+**Storage parity gate (SQLite + FileSystem):**
+
+```powershell
+.\scripts\hardening-storage-matrix.ps1
+```
+
+```bash
+./scripts/hardening-storage-matrix.sh
+```
+
+### Plugins (External)
+
+**Build all plugins from `plugins-source/` into `Forevernote/plugins/`:**
+
+```powershell
+.\scripts\build-plugins.ps1
+.\scripts\build-plugins.ps1 -Clean
+```
+
+```bash
+./scripts/build-plugins.sh
+./scripts/build-plugins.sh --clean
+```
+
+### Themes (External)
+
+**Install all themes from `themes/` into runtime path `Forevernote/themes/`:**
+
+```powershell
+.\scripts\build-themes.ps1
+.\scripts\build-themes.ps1 -Clean
+```
+
+```bash
+./scripts/build-themes.sh
+./scripts/build-themes.sh --clean
+```
+
+**Also install to user app-data themes directory (for packaged/runtime fallback):**
+
+```powershell
+.\scripts\build-themes.ps1 -AppData
+```
+
+```bash
+./scripts/build-themes.sh --appdata
+```
+
+Theme folder format:
+
+```text
+themes/<theme-id>/theme.properties
+themes/<theme-id>/theme.css
+```
+
+### Packaging
+
+```bash
+mvn -f Forevernote/pom.xml clean package -DskipTests
+```
+
+Windows installer pipeline:
+
+```powershell
+.\scripts\package-windows.ps1
+```
+
+macOS installer pipeline:
+
+```bash
+./scripts/package-macos.sh
+```
+
+Linux installer pipeline:
+
+```bash
+./scripts/package-linux.sh
+```
+
+### Clean Helpers
+
+```bash
+rm -rf Forevernote/target
+rm -rf Forevernote/plugins/*.jar
+```
+
+```powershell
+Remove-Item -Recurse -Force .\Forevernote\target
+Remove-Item -Force .\Forevernote\plugins\*.jar
+```
 
 ## Documentation
 
@@ -267,6 +450,8 @@ Forevernote/
 │   ├── build_all.ps1                    # Windows build script
 │   ├── build_all.sh                     # Unix build script
 │   ├── build-plugins.ps1                # Plugin compilation script
+│   ├── build-themes.ps1                 # Themes installation script (Windows)
+│   ├── build-themes.sh                  # Themes installation script (Unix)
 │   ├── run_all.ps1                      # Windows run script
 │   ├── run_all.sh                       # Unix run script
 │   ├── launch-forevernote.ps1           # Windows PowerShell standalone launcher
@@ -367,6 +552,12 @@ For more detailed troubleshooting information, see the [Build and Setup Guide](d
 ```bash
 cd Forevernote
 mvn test
+```
+
+Equivalent from repo root:
+
+```bash
+mvn -f Forevernote/pom.xml test
 ```
 
 ### Code Style

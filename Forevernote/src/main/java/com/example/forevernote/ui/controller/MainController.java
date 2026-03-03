@@ -66,8 +66,10 @@ import com.example.forevernote.ui.workflow.EditorCommandWorkflow;
 import com.example.forevernote.ui.workflow.NavigationCommandWorkflow;
 import com.example.forevernote.ui.workflow.UiDialogWorkflow;
 import com.example.forevernote.ui.workflow.ThemeCommandWorkflow;
+import com.example.forevernote.ui.workflow.ThemeCatalogWorkflow;
 import com.example.forevernote.ui.workflow.PluginUiWorkflow;
 import com.example.forevernote.ui.workflow.AppSettingsWorkflow;
+import com.example.forevernote.ui.workflow.UiPreferencesWorkflow;
 
 public class MainController implements PluginMenuRegistry, SidePanelRegistry, PreviewEnhancerRegistry {
 
@@ -257,6 +259,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private final NavigationCommandWorkflow navigationCommandWorkflow = new NavigationCommandWorkflow();
     private final UiDialogWorkflow uiDialogWorkflow = new UiDialogWorkflow();
     private final ThemeCommandWorkflow themeCommandWorkflow = new ThemeCommandWorkflow();
+    private final ThemeCatalogWorkflow themeCatalogWorkflow = new ThemeCatalogWorkflow();
+    private final UiPreferencesWorkflow uiPreferencesWorkflow = new UiPreferencesWorkflow();
     private final PluginUiWorkflow pluginUiWorkflow = new PluginUiWorkflow();
     private final AppSettingsWorkflow appSettingsWorkflow = new AppSettingsWorkflow();
     private final List<EventBus.Subscription> uiEventSubscriptions = new ArrayList<>();
@@ -269,6 +273,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private double editorFontSize = 14.0;
     private final PauseTransition noteModifiedDebounce = new PauseTransition(Duration.millis(120));
     private final PauseTransition toolbarSearchDebounce = new PauseTransition(Duration.millis(180));
+    private final PauseTransition autosaveDebounce = new PauseTransition(
+            Duration.millis(UiPreferencesWorkflow.DEFAULT_AUTOSAVE_IDLE_MS));
     private String pendingModifiedNoteId;
     private String pendingSearchText = "";
     private boolean searchListenerBound = false;
@@ -279,6 +285,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     });
     private final AtomicLong quickSwitcherLoadVersion = new AtomicLong(0);
     private volatile List<Note> quickSwitcherNotesCache = List.of();
+    private String sidebarTabsMode = UiPreferencesWorkflow.MODE_TEXT;
+    private String editorViewButtonsMode = UiPreferencesWorkflow.MODE_TEXT;
+    private boolean autosaveEnabled = true;
+    private int autosaveIdleMs = UiPreferencesWorkflow.DEFAULT_AUTOSAVE_IDLE_MS;
+    private boolean autosaveRunning = false;
+    private String themeSource = UiPreferencesWorkflow.THEME_SOURCE_BUILTIN;
+    private String externalThemeId = "";
 
     private enum SaveDialogDecision {
         SAVE,
@@ -302,6 +315,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         try {
             configureNoteModifiedDebounce();
             configureToolbarSearchDebounce();
+            configureAutosaveDebounce();
             navSplitPane = new SplitPane();
             navSplitPane.setOrientation(javafx.geometry.Orientation.VERTICAL);
 
@@ -349,6 +363,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             if (editorController != null) {
                 editorController.setEventBus(eventBus);
                 editorController.setServices(noteService);
+                editorController.setBundle(resources);
                 editorContainer = editorController.getEditorContainer();
                 noteTitleField = editorController.getNoteTitleField();
                 toggleTagsBtn = editorController.getToggleTagsBtn();
@@ -367,6 +382,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 wordCountLabel = editorController.getWordCountLabel();
                 previewPane = editorController.getPreviewPane();
                 previewWebView = editorController.getPreviewWebView();
+                if (toggleTagsBtn != null) {
+                    toggleTagsBtn.setSelected(false);
+                }
+                if (tagsContainer != null) {
+                    tagsContainer.setVisible(false);
+                    tagsContainer.setManaged(false);
+                }
             }
 
             bindToolbarSearchFieldDebounced();
@@ -378,6 +400,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             setupToolbarResponsiveness();
             initializeThemeMenu();
             initializeLanguageMenu();
+            applyUiPreferencesFromStore();
 
             sidebarController.loadFolders();
             sidebarController.loadTags();
@@ -748,6 +771,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
         pendingModifiedNoteId = note.getId();
         noteModifiedDebounce.playFromStart();
+        if (autosaveEnabled) {
+            autosaveDebounce.playFromStart();
+        }
     }
 
     private void configureNoteModifiedDebounce() {
@@ -776,6 +802,44 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
             performSearch(query);
         });
+    }
+
+    private void configureAutosaveDebounce() {
+        autosaveDebounce.setOnFinished(e -> {
+            if (!autosaveEnabled || autosaveRunning) {
+                return;
+            }
+            Note active = getCurrentNote();
+            if (active == null || pendingModifiedNoteId == null || !Objects.equals(pendingModifiedNoteId, active.getId())) {
+                return;
+            }
+            if (!isModified()) {
+                return;
+            }
+            autosaveRunning = true;
+            try {
+                handleSave(null);
+                updateStatus(getString("status.autosave_done"));
+            } finally {
+                autosaveRunning = false;
+            }
+        });
+    }
+
+    private void applyUiPreferencesFromStore() {
+        UiPreferencesWorkflow.UiPreferences uiPrefs = uiPreferencesWorkflow.load(prefs);
+        sidebarTabsMode = uiPrefs.sidebarTabsMode();
+        editorViewButtonsMode = uiPrefs.editorViewModeButtonsMode();
+        autosaveEnabled = uiPrefs.autosaveEnabled();
+        autosaveIdleMs = uiPrefs.autosaveIdleMs();
+        themeSource = uiPrefs.themeSource();
+        externalThemeId = uiPrefs.externalThemeId();
+        autosaveDebounce.setDuration(Duration.millis(autosaveIdleMs));
+
+        if (sidebarController != null) {
+            sidebarController.applySidebarTabPresentation(sidebarTabsMode);
+        }
+        applyEditorButtonsPresentation();
     }
 
     private void bindToolbarSearchFieldDebounced() {
@@ -1179,6 +1243,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 toolbarController,
                 this::initializeGridView,
                 this::applyViewMode);
+        applyEditorButtonsPresentation();
     }
 
     private void initializeGridView() {
@@ -1239,6 +1304,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     private void setupToolbarResponsiveness() {
         uiInitializationWorkflow.setupToolbarResponsiveness(toolbarController, this::updateToolbarOverflow);
+        if (editorContainer != null) {
+            editorContainer.widthProperty().addListener((obs, oldVal, newVal) -> applyEditorButtonsPresentation());
+        }
     }
 
     private void updateToolbarOverflow(double width) {
@@ -1304,6 +1372,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 splitViewButton,
                 previewOnlyButton,
                 this::updatePreview);
+    }
+
+    private void applyEditorButtonsPresentation() {
+        if (editorController == null) {
+            return;
+        }
+        double width = editorContainer != null ? editorContainer.getWidth() : 1200.0;
+        editorController.applyViewModeButtonsPresentation(editorViewButtonsMode, width);
     }
 
     @FXML
@@ -2149,6 +2225,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private void handleLightTheme(ActionEvent event) {
         currentTheme = themeCommandWorkflow.setLightTheme(prefs);
+        themeSource = UiPreferencesWorkflow.THEME_SOURCE_BUILTIN;
+        externalThemeId = "";
+        prefs.put(UiPreferencesWorkflow.THEME_SOURCE_KEY, themeSource);
+        prefs.put(UiPreferencesWorkflow.THEME_EXTERNAL_ID_KEY, externalThemeId);
         updateThemeMenuSelection();
         applyTheme();
         updateStatus(getString("status.theme_light"));
@@ -2157,6 +2237,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     @FXML
     private void handleDarkTheme(ActionEvent event) {
         currentTheme = themeCommandWorkflow.setDarkTheme(prefs);
+        themeSource = UiPreferencesWorkflow.THEME_SOURCE_BUILTIN;
+        externalThemeId = "";
+        prefs.put(UiPreferencesWorkflow.THEME_SOURCE_KEY, themeSource);
+        prefs.put(UiPreferencesWorkflow.THEME_EXTERNAL_ID_KEY, externalThemeId);
         updateThemeMenuSelection();
         applyTheme();
         updateStatus(getString("status.theme_dark"));
@@ -2169,6 +2253,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 this::detectWindowsTheme,
                 e -> logger.log(Level.WARNING, "Could not detect macOS theme", e));
         currentTheme = result.currentTheme();
+        themeSource = UiPreferencesWorkflow.THEME_SOURCE_BUILTIN;
+        externalThemeId = "";
+        prefs.put(UiPreferencesWorkflow.THEME_SOURCE_KEY, themeSource);
+        prefs.put(UiPreferencesWorkflow.THEME_EXTERNAL_ID_KEY, externalThemeId);
         updateThemeMenuSelection();
         applyTheme();
         updateStatus(java.text.MessageFormat.format(getString("status.theme_system"), result.detectedTheme()));
@@ -2180,6 +2268,30 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     private void applyTheme() {
         javafx.scene.Scene scene = mainSplitPane != null ? mainSplitPane.getScene() : null;
+        if (UiPreferencesWorkflow.THEME_SOURCE_EXTERNAL.equals(themeSource)) {
+            List<ThemeCatalogWorkflow.ThemeDescriptor> themes = themeCatalogWorkflow.getAvailableThemes();
+            ThemeCatalogWorkflow.ThemeDescriptor external = themeCatalogWorkflow.findById(themes, externalThemeId);
+            if (scene != null) {
+                scene.getStylesheets().removeIf(stylesheet -> stylesheet.contains("modern-theme.css")
+                        || stylesheet.contains("dark-theme.css") || stylesheet.contains("/themes/"));
+            }
+            if (external != null && external.cssPath() != null && !external.cssPath().isBlank() && scene != null) {
+                scene.getStylesheets().add(external.cssPath());
+                if (previewWebView != null) {
+                    if (!previewWebView.getStyleClass().contains("webview-theme")) {
+                        previewWebView.getStyleClass().add("webview-theme");
+                    }
+                    String bgColor = external.darkLike() ? "#00160c" : "#f5f5f5";
+                    previewWebView.getEngine().executeScript("document.body.style.backgroundColor = '" + bgColor + "';");
+                }
+                if (getCurrentNote() != null) {
+                    updatePreview();
+                }
+                logger.info("Applied external theme: " + external.id());
+                return;
+            }
+            logger.warning("External theme not available, falling back to built-in light.");
+        }
         themeCommandWorkflow.applyTheme(
                 scene,
                 currentTheme,
@@ -2204,10 +2316,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     private String resolveThemeToApply() {
+        if (UiPreferencesWorkflow.THEME_SOURCE_EXTERNAL.equals(themeSource)) {
+            return "external";
+        }
         return themeCommandWorkflow.resolveThemeToApply(currentTheme, this::detectSystemTheme);
     }
 
     private boolean isDarkThemeActive() {
+        if (UiPreferencesWorkflow.THEME_SOURCE_EXTERNAL.equals(themeSource)) {
+            ThemeCatalogWorkflow.ThemeDescriptor external = themeCatalogWorkflow.findById(
+                    themeCatalogWorkflow.getAvailableThemes(),
+                    externalThemeId);
+            return external != null && external.darkLike();
+        }
         return themeCommandWorkflow.isDarkThemeActive(currentTheme, this::detectSystemTheme);
     }
 
@@ -2231,7 +2352,33 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     @FXML
     private void handlePreferences(ActionEvent event) {
-        uiDialogWorkflow.showPreferences(this::getString);
+        UiPreferencesWorkflow.UiPreferences currentUiPrefs = new UiPreferencesWorkflow.UiPreferences(
+                sidebarTabsMode,
+                editorViewButtonsMode,
+                autosaveEnabled,
+                autosaveIdleMs,
+                themeSource,
+                externalThemeId);
+        List<ThemeCatalogWorkflow.ThemeDescriptor> themes = themeCatalogWorkflow.getAvailableThemes();
+        Optional<UiDialogWorkflow.PreferencesDialogResult> result = uiDialogWorkflow.showPreferences(
+                this::getString,
+                currentUiPrefs,
+                themes);
+        if (result.isEmpty()) {
+            return;
+        }
+        UiDialogWorkflow.PreferencesDialogResult values = result.get();
+        UiPreferencesWorkflow.UiPreferences newPrefs = new UiPreferencesWorkflow.UiPreferences(
+                values.sidebarTabsMode(),
+                values.editorButtonsMode(),
+                values.autosaveEnabled(),
+                values.autosaveIdleMs(),
+                values.themeSource(),
+                values.externalThemeId());
+        uiPreferencesWorkflow.save(prefs, newPrefs);
+        applyUiPreferencesFromStore();
+        applyTheme();
+        updateStatus(getString("status.preferences_saved"));
     }
 
     @FXML

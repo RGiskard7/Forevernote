@@ -408,6 +408,22 @@ Code cleanup session addressing priority issues from project analysis. All tests
 
 ---
 
+## [1.0.0] - 2026-03-03
+
+### Stable Release
+
+- Unified stable versioning to **1.0.0** across app metadata and user-facing labels.
+- Added configurable UI preferences for:
+  - Sidebar tabs text/icons
+  - Editor mode buttons text/icons/auto
+  - Autosave enable/interval
+  - External theme selection
+- Default tags bar starts collapsed.
+- Improved responsive behavior of editor mode buttons using icon fallback in constrained widths.
+- Added drag and drop support path for moving notes/folders onto folder targets in sidebar tree.
+- Added autosave on 2s idle for active modified note.
+- Added external theme catalog support and sample retro phosphor green theme in `themes/retro-phosphor`.
+
 ## [4.4.0] - 2026-01-18
 
 ### Complete Plugin Decoupling + AI Plugin Fixes
