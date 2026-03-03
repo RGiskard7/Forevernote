@@ -1,61 +1,12 @@
 # Hardening Baseline
 
-## Scope
-- Project: Forevernote
-- Objective: provide a reproducible baseline and strict per-phase quality gates.
-- Compatibility mode: strict (SQLite, FileSystem, existing plugins).
+- Baseline version: 1.0.0
+- Baseline date: 2026-03-03
 
-## Current Technical Baseline
-- Java: 17
-- JavaFX: 21
-- Build tool: Maven 3.x
-- Main module path: `Forevernote/pom.xml`
-- Test command: `mvn -f Forevernote/pom.xml clean test`
+## Baseline Gate
 
-## Validation Matrix
-- Storage mode:
-  - SQLite (`storage_type=sqlite`)
-  - FileSystem (`storage_type=filesystem`)
-- Plugin mode:
-  - Core only
-  - Core + external plugins in `plugins/`
-- Theme mode:
-  - Light
-  - Dark
-  - System
-
-## Mandatory Phase Gate
-1. `mvn -f Forevernote/pom.xml clean test` passes.
-2. Smoke checklist completed (manual):
-   - Create/edit/save note.
-   - Move note to trash and restore.
-   - Create folder and subfolder.
-   - Add/remove tags in note.
-   - Switch themes.
-   - Open plugin manager.
-3. No critical runtime errors in logs.
-4. No visible UI regressions in main views.
-
-## Rollback Policy
-- Work in small commits by phase.
-- If gate fails:
-  - Revert phase commit(s) only.
-  - Keep previous phase as release candidate baseline.
-
-## Notes
-- This file is the baseline reference for hardening execution.
-- Update this file at the end of every completed phase.
-
-## Execution status
-- Phase 0: completed
-- Phase 1: completed
-- Phase 2: completed
-- Phase 3: completed
-- Phase 4: completed
-- Phase 5: completed
-- Phase 6: completed
-- Phase 7: completed
-- Phase 8: completed
-- Phase 9: completed
-- Phase 10: completed (pragmatic optimization scope)
-- Phase 11: completed
+1. `mvn -f Forevernote/pom.xml test` passes.
+2. Smoke flow works in SQLite and FileSystem.
+3. Plugin manager opens and external plugins are detected.
+4. Theme switching works for built-in and external themes.
+5. No critical regressions in save/delete/restore workflows.

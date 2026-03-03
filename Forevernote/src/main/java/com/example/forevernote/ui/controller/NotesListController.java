@@ -88,7 +88,8 @@ public class NotesListController {
 
         // Use custom cell factory
         notesListView.setCellFactory(lv -> createNoteListCell());
-        notesListView.setFixedCellSize(72);
+        // Slimmer row density for a cleaner, more compact notes list.
+        notesListView.setFixedCellSize(62);
     }
 
     private ListCell<Note> createNoteListCell() {
@@ -107,7 +108,7 @@ public class NotesListController {
 
             {
                 container.getStyleClass().add("note-cell-container");
-                container.setPadding(new javafx.geometry.Insets(4, 8, 4, 8));
+                container.setPadding(new javafx.geometry.Insets(2, 8, 2, 8));
 
                 titleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
                 pinIcon.getStyleClass().add("feather-pin-active");

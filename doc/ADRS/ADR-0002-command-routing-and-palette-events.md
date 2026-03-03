@@ -1,24 +1,20 @@
-# ADR-0002: Command Routing by Stable IDs + UI Event Wiring for Command Palette
+# ADR-0002: Command Routing and Palette Events
 
-## Estado
-Aceptado - 2026-02-27
+- Status: Accepted
+- Date: 2026-03-03
 
-## Contexto
-El Command Palette dependía de nombres visibles de comandos (strings en inglés) y de un switch monolítico en `MainController`. Además, el botón de toolbar publicaba `UIEvents.ShowCommandPaletteEvent`, pero `MainController` no estaba suscrito a ese evento, causando que la paleta no apareciera.
+## Context
 
-## Decisión
-1. Mantener IDs estables de comandos (`cmd.*`) en `CommandPalette.Command`.
-2. Despachar comandos en `MainController` usando tabla de rutas (`Map<String, Runnable>`) y alias backward-compatible.
-3. Suscribir `MainController` a `UIEvents.ShowCommandPaletteEvent` y `UIEvents.ShowQuickSwitcherEvent`.
-4. Inicialización lazy/robusta de Command Palette y Quick Switcher al mostrarse.
+The UI had growing command handling complexity in `MainController`, with risk of duplicated routing and command regressions in palette execution.
 
-## Consecuencias
-- Menor acoplamiento a textos visibles e idioma.
-- Menor complejidad ciclomática en ejecución de comandos.
-- Compatibilidad con comandos legacy y plugins externos conservada.
-- Se elimina el fallo funcional de apertura del Command Palette desde toolbar/eventos.
+## Decision
 
-## Verificación
-- `mvn -f Forevernote/pom.xml clean test`
-- `mvn -f Forevernote/pom.xml -DskipTests clean package`
-- Apertura de Command Palette por toolbar, `Ctrl+P` y `Ctrl+Shift+P`.
+- Keep command IDs and aliases backward compatible.
+- Consolidate routing setup into dedicated workflow-level registration helpers.
+- Ensure command palette and legacy routes use a unified command registry path.
+
+## Consequences
+
+- Reduced routing drift risk.
+- Easier guard testing for command compatibility.
+- MainController still large, but routing logic is less fragmented.

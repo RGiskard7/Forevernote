@@ -1,106 +1,91 @@
 # Forevernote
 
 <div align="center">
+  <a href="README.es.md">Español</a> |
+  <strong>English</strong>
+</div>
+
+<div align="center">
   <img src="resources/images/banner.png" alt="Forevernote Banner" style="width: 100%; max-width: 100%;">
 </div>
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.0.0-success.svg)](changelog.md)
 [![Java](https://img.shields.io/badge/Java-17+-orange.svg)](https://www.oracle.com/java/)
 [![JavaFX](https://img.shields.io/badge/JavaFX-21-blue.svg)](https://openjfx.io/)
 [![SQLite](https://img.shields.io/badge/SQLite-3-lightgrey.svg)](https://www.sqlite.org/)
-[![Maven](https://img.shields.io/badge/Maven-3.6+-red.svg)](https://maven.apache.org/)
+[![Maven](https://img.shields.io/badge/Maven-3.9+-red.svg)](https://maven.apache.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)]()
 
 </div>
 
 <div align="center">
-  <strong>A lightweight desktop application for managing notes with hierarchical organization through folders and tags.</strong>
-  <br>
-   Built with Java and JavaFX, featuring SQLite for persistent storage or File System Vaults, Markdown support with live preview, and a modern, intuitive user interface.
+  <strong>Local-first desktop note-taking app with Markdown preview, plugins, themes, and dual storage backends.</strong>
 </div>
 
 ## Table of Contents
 
+- [Overview](#overview)
 - [Features](#features)
 - [Screenshots](#screenshots)
 - [Technology Stack](#technology-stack)
 - [Prerequisites](#prerequisites)
 - [Quick Start](#quick-start)
-- [Command Reference](#command-reference)
-- [Documentation](#documentation)
+- [Scripts and Commands (All OS)](#scripts-and-commands-all-os)
 - [Project Structure](#project-structure)
 - [Configuration](#configuration)
+- [Documentation](#documentation)
 - [Troubleshooting](#troubleshooting)
-- [Development](#development)
-- [License](#license)
 - [Contributing](#contributing)
+- [License](#license)
+
+## Overview
+
+Forevernote is a Java 17 + JavaFX 21 desktop application inspired by Obsidian-like workflows:
+
+- Fast note writing/editing with Markdown preview
+- Folder hierarchy + tags + favorites + recent + trash
+- Command palette and quick switcher
+- External plugins (`plugins/`) and external themes (`themes/`)
+- Storage mode: SQLite or FileSystem vault
 
 ## Features
 
-### Core Features
+### Core
 
-- **Store anywhere**: Choose between SQLite database or Local File System (Vault) storage
-- **Note Management**: Create, edit, and delete notes with titles and content
-- **Folder Organization**: Organize notes hierarchically using folders
-- **Tags**: Categorize and search notes using tags with full tag management interface
-- **Markdown Support**: Write notes in Markdown with live preview and emoji support
-- **Rich Text Formatting**: Bold, italic, underline, links, images, todo lists, and numbered lists
-- **Search**: Global search across all notes (titles and content)
-- **Auto-refresh**: Notes list automatically updates on save/delete operations
-- **Trash Support**: Deleted notes are moved to a `.trash` folder (File System mode)
+- Create, edit, save, delete, and restore notes
+- Hierarchical folders and subfolders
+- Tags with assignment/removal workflows
+- Favorites and recent notes
+- Trash with restore for notes and nested folders
+- Global search and sorting
 
-### User Interface
+### Editor & Preview
 
-- **Modern Interface**: Split view editor with toggle between editor-only, split, and preview-only modes
-- **Dual View Modes**: Switch between list view and grid view for notes
-- **Drag & Drop**: Drag notes between folders for easy organization
-- **Resizable Panels**: All panels (sidebar, notes list, editor) are fully resizable
-- **Theme Support**: Light, dark, system, and external themes loaded from `themes/`
-- **Responsive Design**: Fully responsive interface that adapts to window resizing
-- **Scrollable Toolbar**: Professional format toolbar with horizontal scrolling
-- **Configurable UI Density**: Sidebar tabs and editor mode buttons can switch text/icons from Preferences
+- Markdown rendering with GFM tables, autolinks, strikethrough
+- Live preview and split mode
+- Syntax highlighting for fenced code blocks (highlight.js)
+- Emoji support in preview:
+  - Unicode emoji (e.g., `😄`)
+  - Common shortcodes (e.g., `:smile:`, `:rocket:`)
+  - Classic emoticons (e.g., `:)`, `:D`, `<3`)
 
-### Markdown & Preview
+### UI/UX
 
-- **Syntax Highlighting**: Code blocks with syntax highlighting using highlight.js (VS Code themes)
-- **Live Preview**: Real-time Markdown preview with theme-aware styling
-- **Emoji Support**: Full emoji rendering with Noto Color Emoji font
-- **Code Blocks**: Professional code block styling with language detection
-- **Table Support**: Markdown tables with hover effects
+- Light, dark, system themes + external themes
+- Retro phosphor sample external theme
+- Configurable sidebar/editor button presentation (text/icons/auto)
+- List and grid note views
+- Compact and responsive layout behavior
 
-### Productivity
+### Extensibility
 
-- **Keyboard Shortcuts**: Comprehensive keyboard shortcuts for all operations
-- **Command Palette**: Quick command access (Ctrl+P) for power users
-- **Quick Switcher**: Fast note navigation (Ctrl+O)
-- **Favorites**: Mark notes as favorites for quick access
-- **Recent Notes**: Quick access to recently modified notes
-- **Autosave**: Automatic save after short inactivity while editing
-- **Import/Export**: Import Markdown/TXT files and export notes to Markdown or TXT
-
-### Plugin System
-
-- **Extensible Architecture**: Robust plugin system with external plugin support
-- **Dynamic Plugin Loading**: Plugins loaded from `plugins/` directory as JAR files
-- **Dynamic Menu Registration**: Plugins register their own menu items in categorized submenus
-- **UI Modification**: Plugins can add custom UI panels to the sidebar (e.g., Calendar, Outline)
-- **Event System**: Plugins can subscribe to application events (note open, save, etc.)
-- **Built-in Plugins**: 
-  - Word Count, Daily Notes, Reading Time
-  - Templates, Table of Contents, Auto Backup
-  - AI Assistant (configurable with multiple providers)
-  - Calendar (sidebar widget)
-  - Outline (document structure viewer)
-- **Plugin Manager**: UI for enabling/disabling plugins (Tools > Plugins > Manage Plugins)
-- **Community Support**: Create custom plugins without modifying core code
-
-### Future-Ready
-
-- **Sync Architecture**: Pluggable sync system ready for cloud integration (Dropbox, Google Drive, OneDrive, WebDAV, S3, Local Network)
-- **Conflict Resolution**: Built-in conflict detection and resolution framework
-- **Auto-sync**: Configurable automatic synchronization
+- External plugin loading from JAR files in `plugins/`
+- Plugin manager UI
+- Plugin lifecycle support (load/enable/disable/shutdown)
+- Theme catalog with external theme discovery and safe fallback
 
 ## Screenshots
 
@@ -108,483 +93,243 @@
 
 ![Main Interface](resources/images/interfaz-3.png)
 
-The main interface features a three-panel layout: navigation sidebar (folders, tags, recent, favorites), notes list, and editor with live preview.
-
 ### Dark Theme
 
 ![Dark Theme](resources/images/interfaz-1.png)
-
-Professional dark theme with purple accents, optimized for extended writing sessions.
 
 ### Light Theme
 
 ![Light Theme](resources/images/interfaz-2.png)
 
-Clean light theme with modern styling and excellent readability.
-
-### Editor Features
+### Editor & Preview
 
 ![Editor Features](resources/images/interfaz-4.png)
 
-Split-view editor with Markdown formatting toolbar, live preview, and comprehensive note management tools.
-
 ## Technology Stack
 
-- **Java 17**: Core programming language (required)
-- **JavaFX 21**: Desktop user interface framework
-- **SQLite**: Lightweight relational database
-- **Maven 3.9+**: Build automation and dependency management
-- **JUnit 5**: Unit testing framework
-- **CommonMark**: Markdown processing library
+- Java 17
+- JavaFX 21
+- Maven 3.9+
+- SQLite JDBC
+- CommonMark
+- Ikonli (Feather icons)
+- JUnit 5 + H2 (tests)
 
 ## Prerequisites
 
-### Required Software
+1. Java JDK 17
+2. Maven 3.9+
 
-1. **Java JDK 17** (required)
-   - Download from: https://adoptium.net/ or https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html
-   - **Important**: You need JDK (Java Development Kit), not just JRE (Java Runtime Environment)
-   - Verify installation:
-     ```bash
-     java -version
-     # Should show: openjdk version "17" or java version "17"
-     ```
+Check installation:
 
-2. **Apache Maven 3.6+** (required for building)
-   - Download from: https://maven.apache.org/download.cgi
-   - Or use package managers:
-     - **Windows**: `choco install maven` or `winget install Apache.Maven`
-     - **macOS**: `brew install maven`
-     - **Linux (Ubuntu/Debian)**: `sudo apt-get install maven`
-   - Verify installation:
-     ```bash
-     mvn -version
-     # Should show: Apache Maven 3.x.x
-     ```
-
-### Optional: VS Code Extensions
-
-For development in VS Code, install:
-- **Extension Pack for Java** (includes Java Language Support, Debugger, Test Runner, etc.)
-- **Maven for Java**
+```bash
+java -version
+mvn -version
+```
 
 ## Quick Start
 
-### 1. Clone the Repository
+### 1) Clone
 
 ```bash
 git clone https://github.com/RGiskard7/Forevernote.git
 cd Forevernote
 ```
 
-### 2. Build the Project
+### 2) Build
 
-**Windows (PowerShell):**
-```powershell
-.\scripts\build_all.ps1
-```
-
-**macOS/Linux (Bash):**
 ```bash
 ./scripts/build_all.sh
 ```
 
-This creates an executable JAR at `Forevernote/target/forevernote-1.0.0-uber.jar`.
-
-**Note**: During compilation, you may see warnings like "Failed to build parent project for org.openjfx:javafx-*". These are normal and harmless - they occur because Maven tries to build the JavaFX parent project, which is not necessary. The build will still succeed.
-
-### 3. Run the Application
-
-**Windows (PowerShell):**
 ```powershell
-.\scripts\run_all.ps1
+.\scripts\build_all.ps1
 ```
 
-**Windows (CMD):**
-```cmd
-.\scripts\launch-forevernote.bat
-```
+### 3) Run
 
-**macOS/Linux (Bash):**
 ```bash
 ./scripts/launch-forevernote.sh
 ```
 
-The scripts automatically detect JavaFX modules in your Maven repository and configure the Java module-path correctly.
-
-### 4. Build Plugins (External JARs)
-
-**Windows (PowerShell):**
 ```powershell
-.\scripts\build-plugins.ps1
-.\scripts\build-plugins.ps1 -Clean
+.\scripts\launch-forevernote.bat
+# or
+.\scripts\launch-forevernote.ps1
 ```
 
-**macOS/Linux (Bash):**
-```bash
-./scripts/build-plugins.sh
-./scripts/build-plugins.sh --clean
-```
+## Scripts and Commands (All OS)
 
-### 5. Install External Themes
+All commands assume repository root:
 
-**Windows (PowerShell):**
-```powershell
-.\scripts\build-themes.ps1
-.\scripts\build-themes.ps1 -Clean
-.\scripts\build-themes.ps1 -AppData
-```
-
-**macOS/Linux (Bash):**
-```bash
-./scripts/build-themes.sh
-./scripts/build-themes.sh --clean
-./scripts/build-themes.sh --appdata
-```
-
-For more detailed build and setup instructions, see [Build and Setup Guide](doc/BUILD.md).
-
-## Command Reference
-
-All commands below assume you are at repository root:
 `/Users/edu/visual-studio-code-workspace/Forevernote`
 
-### Build and Run
+### Build / Run Matrix
 
-**Build app (tests skipped):**
-
-```powershell
-.\scripts\build_all.ps1
-```
-
-```bash
-./scripts/build_all.sh
-```
-
-**Run app (recommended):**
-
-```powershell
-.\scripts\run_all.ps1
-.\scripts\launch-forevernote.bat
-```
-
-```bash
-./scripts/run_all.sh
-./scripts/launch-forevernote.sh
-```
-
-**Manual Maven run (dev):**
-
-```bash
-mvn -f Forevernote/pom.xml clean compile exec:java -Dexec.mainClass="com.example.forevernote.Main"
-```
+| Purpose | Linux/macOS | Windows PowerShell | Windows CMD |
+|---|---|---|---|
+| Build app | `./scripts/build_all.sh` | `.\scripts\build_all.ps1` | N/A |
+| Run app (dev runner) | `./scripts/run_all.sh` | `.\scripts\run_all.ps1` | N/A |
+| Run app (launcher, recommended) | `./scripts/launch-forevernote.sh` | `.\scripts\launch-forevernote.ps1` | `.\scripts\launch-forevernote.bat` |
 
 ### Tests and Quality Gates
 
-**Full test suite:**
-
 ```bash
 mvn -f Forevernote/pom.xml test
-```
-
-**Full clean test cycle:**
-
-```bash
 mvn -f Forevernote/pom.xml clean test
-```
-
-**Hardening phase gate:**
-
-```powershell
-.\scripts\smoke-phase-gate.ps1
 ```
 
 ```bash
 ./scripts/smoke-phase-gate.sh
-```
-
-**Storage parity gate (SQLite + FileSystem):**
-
-```powershell
-.\scripts\hardening-storage-matrix.ps1
-```
-
-```bash
 ./scripts/hardening-storage-matrix.sh
 ```
 
-### Plugins (External)
-
-**Build all plugins from `plugins-source/` into `Forevernote/plugins/`:**
-
 ```powershell
-.\scripts\build-plugins.ps1
-.\scripts\build-plugins.ps1 -Clean
+.\scripts\smoke-phase-gate.ps1
+.\scripts\hardening-storage-matrix.ps1
 ```
+
+### Plugins (external JARs)
 
 ```bash
 ./scripts/build-plugins.sh
 ./scripts/build-plugins.sh --clean
 ```
 
-### Themes (External)
-
-**Install all themes from `themes/` into runtime path `Forevernote/themes/`:**
-
 ```powershell
-.\scripts\build-themes.ps1
-.\scripts\build-themes.ps1 -Clean
+.\scripts\build-plugins.ps1
+.\scripts\build-plugins.ps1 -Clean
 ```
+
+### Themes (external)
 
 ```bash
 ./scripts/build-themes.sh
 ./scripts/build-themes.sh --clean
-```
-
-**Also install to user app-data themes directory (for packaged/runtime fallback):**
-
-```powershell
-.\scripts\build-themes.ps1 -AppData
-```
-
-```bash
 ./scripts/build-themes.sh --appdata
 ```
 
-Theme folder format:
-
-```text
-themes/<theme-id>/theme.properties
-themes/<theme-id>/theme.css
+```powershell
+.\scripts\build-themes.ps1
+.\scripts\build-themes.ps1 -Clean
+.\scripts\build-themes.ps1 -AppData
 ```
 
 ### Packaging
 
 ```bash
 mvn -f Forevernote/pom.xml clean package -DskipTests
+./scripts/package-linux.sh
+./scripts/package-macos.sh
 ```
-
-Windows installer pipeline:
 
 ```powershell
 .\scripts\package-windows.ps1
 ```
 
-macOS installer pipeline:
+### Maven Development Run
 
 ```bash
-./scripts/package-macos.sh
+mvn -f Forevernote/pom.xml clean compile exec:java -Dexec.mainClass="com.example.forevernote.Launcher"
 ```
-
-Linux installer pipeline:
-
-```bash
-./scripts/package-linux.sh
-```
-
-### Clean Helpers
-
-```bash
-rm -rf Forevernote/target
-rm -rf Forevernote/plugins/*.jar
-```
-
-```powershell
-Remove-Item -Recurse -Force .\Forevernote\target
-Remove-Item -Force .\Forevernote\plugins\*.jar
-```
-
-## Documentation
-
-Comprehensive documentation is available in the `doc/` directory:
-
-- **[Build and Setup Guide](doc/BUILD.md)**: Complete guide for building, running, and setting up the development environment. Includes prerequisites, build methods, VS Code configuration, troubleshooting, and project structure.
-
-- **[Plugin System Guide](doc/PLUGINS.md)**: Comprehensive documentation for the plugin system. Includes plugin architecture, API reference, built-in plugins, and guide for creating external plugins.
-
-- **[Architecture Documentation](doc/ARCHITECTURE.md)**: Detailed explanation of the application architecture, design patterns, and component structure.
-
-For agent-oriented development guidelines, see [AGENTS.md](AGENTS.md).
 
 ## Project Structure
 
-```
+```text
 Forevernote/
-├── Forevernote/                          # Main project module
-│   ├── src/
-│   │   ├── main/
-│   │   │   ├── java/com/example/forevernote/
-│   │   │   │   ├── Main.java            # Application entry point
-│   │   │   │   ├── config/              # Configuration classes
-│   │   │   │   ├── data/                # Data access layer
-│   │   │   │   │   ├── SQLiteDB.java    # Database connection management
-│   │   │   │   │   ├── dao/             # Data Access Objects
-│   │   │   │   │   └── models/          # Data models (Note, Folder, Tag)
-│   │   │   │   ├── exceptions/          # Custom exceptions
-│   │   │   │   ├── ui/                  # User interface
-│   │   │   │   │   ├── controller/      # JavaFX controllers
-│   │   │   │   │   ├── view/            # FXML layouts
-│   │   │   │   │   ├── css/             # Stylesheets
-│   │   │   │   │   └── components/      # Reusable UI components
-│   │   │   │   ├── service/             # Business logic layer
-│   │   │   │   ├── event/               # Event system
-│   │   │   │   └── plugin/              # Plugin system
-│   │   │   └── resources/               # Configuration and assets
-│   │   └── test/                        # Unit tests
-│   ├── pom.xml                          # Maven configuration
-│   ├── target/                          # Build output directory
-│   ├── plugins/                         # Compiled plugin JARs (created at runtime)
-│   ├── data/                            # Runtime data directory (created on first run)
-│   └── logs/                            # Runtime logs directory (created on first run)
-│
-├── plugins-source/                       # Plugin source code (external to core)
-│   └── com/example/forevernote/plugin/builtin/  # Built-in plugin implementations
-│
 ├── Forevernote/
-│   ├── sync/                            # Sync architecture (future-ready)
-│   │   ├── SyncService.java             # Sync provider interface
-│   │   ├── SyncConfig.java              # Sync configuration
-│   │   └── SyncManager.java             # Sync management
-│
+│   ├── pom.xml
+│   ├── src/main/java/com/example/forevernote/
+│   │   ├── config/
+│   │   ├── data/
+│   │   ├── event/
+│   │   ├── exceptions/
+│   │   ├── plugin/
+│   │   ├── service/
+│   │   ├── sync/
+│   │   ├── ui/
+│   │   └── util/
+│   ├── src/main/resources/com/example/forevernote/
+│   │   ├── i18n/
+│   │   ├── plugin/
+│   │   ├── ui/css/
+│   │   ├── ui/preview/
+│   │   └── ui/view/
+│   ├── src/test/
+│   └── themes/                     # runtime-installed external themes
+├── plugins/                        # external plugin jars
+├── plugins-source/                 # sample plugin source workspace
+├── themes/                         # source external themes
 ├── scripts/
-│   ├── build_all.ps1                    # Windows build script
-│   ├── build_all.sh                     # Unix build script
-│   ├── build-plugins.ps1                # Plugin compilation script
-│   ├── build-themes.ps1                 # Themes installation script (Windows)
-│   ├── build-themes.sh                  # Themes installation script (Unix)
-│   ├── run_all.ps1                      # Windows run script
-│   ├── run_all.sh                       # Unix run script
-│   ├── launch-forevernote.ps1           # Windows PowerShell standalone launcher
-│   ├── launch-forevernote.bat           # Windows CMD standalone launcher
-│   ├── launch-forevernote.sh            # Unix standalone launcher
-│   ├── schema.txt                       # Database schema definition
-│   ├── package-windows.ps1              # Windows installer generator
-│   ├── package-macos.sh                 # macOS installer generator
-│   ├── package-linux.sh                 # Linux installer generator
-│   └── README.md                        # Scripts documentation
-│
-├── doc/                                  # Documentation
-│   ├── BUILD.md                          # Build and setup guide
-│   ├── PLUGINS.md                        # Plugin system documentation
-│   ├── ARCHITECTURE.md                   # Architecture documentation
-│   └── interfaz-*.png                    # Application screenshots
-│
-├── .vscode/                              # VS Code configuration
-│   ├── settings.json                     # Java configuration
-│   ├── tasks.json                       # Build tasks
-│   ├── launch.json                       # Debug/run configurations
-│   └── extensions.json                  # Recommended extensions
-│
-├── README.md                             # This file
-├── AGENTS.md                             # Agent-oriented development guide
-├── changelog.md                          # Project changelog
-└── LICENSE                               # MIT License
+├── doc/
+├── AGENTS.md
+├── changelog.md
+├── README.md
+└── README.es.md
 ```
 
 ## Configuration
 
-### Database
+### Storage
 
-The application automatically creates a SQLite database at `Forevernote/data/database.db` on first run (when executed from the `Forevernote/` directory). The database includes tables for notes, folders, tags, and their relationships.
+- SQLite database (default) or FileSystem vault mode
+- Runtime folders are created automatically as needed:
+  - `Forevernote/data/`
+  - `Forevernote/logs/`
 
-For the complete database schema, see [`scripts/schema.txt`](scripts/schema.txt). This file contains the SQL schema definition that can be used to manually create or restore the database structure.
+### Themes
 
-**Note**: The `data/` and `logs/` directories are created automatically when the application runs, not during compilation. The build scripts do not create these directories.
+External theme format:
 
-### Logging
+```text
+themes/<theme-id>/theme.properties
+themes/<theme-id>/theme.css
+```
 
-Logging configuration is defined in `src/main/resources/logging.properties`. Logs are written to the `Forevernote/logs/` directory by default (created automatically on first run).
+### Plugins
 
-### JavaFX Module-Path
+- Place plugin JAR files in `plugins/`
+- Open plugin manager from Tools menu for enable/disable operations
 
-The build and run scripts automatically detect JavaFX modules from your Maven repository (`~/.m2/repository/org/openjfx/`). They use specific JAR files (not directories) to avoid loading `-sources.jar` files as modules.
+## Documentation
 
-If running the JAR directly fails, use the provided scripts which handle module-path configuration automatically.
+- [doc/BUILD.md](doc/BUILD.md)
+- [doc/ARCHITECTURE.md](doc/ARCHITECTURE.md)
+- [doc/PLUGINS.md](doc/PLUGINS.md)
+- [doc/LAUNCH_APP.md](doc/LAUNCH_APP.md)
+- [doc/PACKAGING.md](doc/PACKAGING.md)
+- [doc/EVENT_BUS_CONTRACT.md](doc/EVENT_BUS_CONTRACT.md)
+- [doc/DEFINITION_OF_DONE.md](doc/DEFINITION_OF_DONE.md)
+- [doc/PROJECT_STATUS.md](doc/PROJECT_STATUS.md)
+- [doc/PROJECT_ANALYSIS.md](doc/PROJECT_ANALYSIS.md)
+- [AGENTS.md](AGENTS.md)
 
 ## Troubleshooting
 
-### Build Warnings
+### JavaFX Runtime Errors
 
-**Warning**: "Failed to build parent project for org.openjfx:javafx-*"
-- **Status**: Normal and harmless
-- **Explanation**: Maven tries to build the JavaFX parent project, which is not necessary
-- **Action**: Ignore these warnings - they don't affect functionality
+If you get JavaFX runtime/module-path issues, use launcher scripts (`launch-forevernote.*`) instead of running JAR directly.
 
-**Warning**: "6 problems were encountered while building the effective model"
-- **Status**: Normal and harmless
-- **Explanation**: Related to the JavaFX parent project warnings
-- **Action**: Ignore - build will still succeed
+### Maven/Java Missing
 
-### Runtime Errors
-
-**Error**: "JavaFX runtime components are missing"
-- **Solution**: Use the run scripts (`.\scripts\run_all.ps1` or `./scripts/run_all.sh`)
-- **Alternative**: Run via Maven: `mvn javafx:run` or `mvn exec:java -Dexec.mainClass="com.example.forevernote.Main"`
-
-**Error**: "Invalid module name: '21' is not a Java identifier"
-- **Solution**: This was fixed in the scripts. Make sure you're using the latest version of the scripts
-- **Cause**: Scripts were pointing to directories containing `-sources.jar` files
-- **Fix**: Scripts now use specific JAR file paths
-
-### VS Code Issues
-
-**Problem**: JavaFX imports show errors
-- **Solution**: 
-  1. `Ctrl+Shift+P` → `Java: Clean Java Language Server Workspace`
-  2. `Ctrl+Shift+P` → `Java: Reload Projects`
-  3. Wait for Maven to sync (1-2 minutes)
-
-**Problem**: VS Code uses wrong Java version
-- **Solution**: 
-  1. `Ctrl+Shift+P` → `Java: Configure Java Runtime`
-  2. Set Java 17 as default
-  3. Check `.vscode/settings.json` has `"java.jdt.ls.java.home": "C:\\Program Files\\Java\\jdk-17"` (adjust path for your system)
-
-**Problem**: Can't run from VS Code
-- **Solution**: Use "Launch Forevernote (Maven JavaFX)" configuration which handles everything automatically
-
-For more detailed troubleshooting information, see the [Build and Setup Guide](doc/BUILD.md).
-
-## Development
-
-### Running Tests
+Ensure both are available in `PATH`:
 
 ```bash
-cd Forevernote
-mvn test
+java -version
+mvn -version
 ```
 
-Equivalent from repo root:
+### JavaFX Parent-POM Warnings
 
-```bash
-mvn -f Forevernote/pom.xml test
-```
-
-### Code Style
-
-- Follow Java naming conventions (PascalCase for classes, camelCase for methods/variables)
-- Use `LoggerConfig.getLogger(ClassName.class)` for logging (not `System.out.println`)
-- Handle exceptions appropriately (use custom exceptions from `exceptions/` package)
-- No wildcard imports (`import java.util.*` not allowed)
-
-### Adding Dependencies
-
-Add dependencies to `Forevernote/pom.xml` in the `<dependencies>` section. Maven will automatically download them.
-
-For detailed development guidelines, see [AGENTS.md](AGENTS.md).
-
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+Warnings such as `Failed to build parent project for org.openjfx:javafx-*` are known and non-blocking.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- Keep changes focused and incremental.
+- Run tests before opening PR.
+- Preserve SQLite/FileSystem and plugin compatibility.
+- Update documentation when behavior changes.
 
-For detailed development guidelines and contribution standards, see [AGENTS.md](AGENTS.md).
+## License
 
----
-
-<p align="center">
-  <small>Developed by <b>Edu Díaz</b> (<b>RGiskard7</b>)</small>
-</p>
+MIT. See [LICENSE](LICENSE).

@@ -137,17 +137,7 @@ public class NotesGridWorkflow {
         card.setPrefHeight(140);
         card.setPadding(new javafx.geometry.Insets(12));
         card.getStyleClass().add("note-card");
-
-        String bgColor = isDarkTheme ? "#2d2d2d" : "#ffffff";
-        String borderColor = isDarkTheme ? "#404040" : "#e0e0e0";
-        String titleColor = isDarkTheme ? "#e0e0e0" : "#333333";
-        String previewColor = isDarkTheme ? "#888888" : "#666666";
-        String dateColor = isDarkTheme ? "#666666" : "#999999";
-
-        card.setStyle(String.format(
-                "-fx-background-color: %s; -fx-border-color: %s; -fx-border-radius: 8; "
-                        + "-fx-background-radius: 8; -fx-cursor: hand; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 4, 0, 0, 2);",
-                bgColor, borderColor));
+        card.setCursor(javafx.scene.Cursor.HAND);
 
         HBox titleRow = new HBox(5);
         titleRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
@@ -161,13 +151,13 @@ public class NotesGridWorkflow {
 
         if (note.isFavorite()) {
             FontIcon favIcon = new FontIcon("fth-star");
-            favIcon.setIconColor(Color.GOLD);
+            favIcon.getStyleClass().add("feather-favorite-active");
             favIcon.setIconSize(12);
             titleRow.getChildren().add(favIcon);
         }
 
         Label titleLabel = new Label(note.getTitle() != null ? note.getTitle() : i18n.apply("app.untitled"));
-        titleLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 13px; -fx-text-fill: " + titleColor + ";");
+        titleLabel.getStyleClass().add("note-card-title");
         titleLabel.setWrapText(true);
         titleLabel.setMaxHeight(40);
         titleRow.getChildren().add(titleLabel);
@@ -179,7 +169,7 @@ public class NotesGridWorkflow {
             preview = preview.substring(0, 77) + "...";
         }
         Label previewLabel = new Label(preview);
-        previewLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: " + previewColor + ";");
+        previewLabel.getStyleClass().add("note-card-preview");
         previewLabel.setWrapText(true);
         previewLabel.setMaxHeight(60);
         VBox.setVgrow(previewLabel, Priority.ALWAYS);
@@ -189,18 +179,9 @@ public class NotesGridWorkflow {
             dateText = dateText.substring(0, 10);
         }
         Label dateLabel = new Label(dateText != null ? dateText : "");
-        dateLabel.setStyle("-fx-font-size: 10px; -fx-text-fill: " + dateColor + ";");
+        dateLabel.getStyleClass().add("note-card-date");
 
         card.getChildren().addAll(titleRow, previewLabel, dateLabel);
-
-        card.setOnMouseEntered(e -> {
-            String hoverBg = isDarkTheme ? "#3a3a3a" : "#f5f5f5";
-            card.setStyle(card.getStyle().replace("-fx-background-color: " + bgColor, "-fx-background-color: " + hoverBg));
-        });
-        card.setOnMouseExited(e -> {
-            card.setStyle(card.getStyle().replace("-fx-background-color: " + (isDarkTheme ? "#3a3a3a" : "#f5f5f5"),
-                    "-fx-background-color: " + bgColor));
-        });
 
         card.setOnMouseClicked(e -> {
             notesListView.getSelectionModel().select(note);

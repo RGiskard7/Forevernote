@@ -1,40 +1,28 @@
-# Release & Rollback Playbook
+# Release and Rollback Playbook
 
-## Objetivo
-Desplegar cambios por fases sin dejar la app rota y con rollback claro.
+## Release Steps
 
-## Pre-release gate (obligatorio)
-1. `mvn -f Forevernote/pom.xml clean test`
-2. `mvn -f Forevernote/pom.xml -DskipTests clean package`
-3. Smoke manual mínimo:
-   - Crear/editar/guardar nota
-   - Papelera: mover/restaurar/eliminar
-   - Crear carpeta/subcarpeta
-   - Tags (crear/asignar/quitar)
-   - Tema (light/dark/system)
-   - Abrir Command Palette y Plugin Manager
-4. Validación dual de storage: SQLite + FileSystem.
+1. Run tests:
 
-## Estrategia de release
-1. Congelar cambios de fase en una rama de release.
-2. Ejecutar gate completo y documentar resultados.
-3. Publicar artefacto (`forevernote-1.0.0-uber.jar`) con changelog asociado.
-4. Monitorear logs iniciales de arranque y acciones críticas.
+```bash
+mvn -f Forevernote/pom.xml test
+```
 
-## Criterios de rollback inmediato
-- Fallo de arranque
-- Corrupción o pérdida de notas
-- Imposibilidad de guardar/restaurar
-- Bloqueo funcional de navegación principal
+2. Run smoke/hardening checks.
+3. Build plugins and themes.
+4. Build production artifact.
+5. Validate startup with launcher scripts.
 
-## Procedimiento de rollback
-1. Volver al último tag/commit estable publicado.
-2. Recompilar artefacto estable.
-3. Verificar gate mínimo (test + package + smoke reducido).
-4. Comunicar incidente y causa raíz.
-5. Abrir hotfix aislado con reproducción y prueba de regresión.
+## Rollback Triggers
 
-## Post-release
-1. Registrar hallazgos en ADR/changelog.
-2. Añadir test de regresión si aplica.
-3. Actualizar estado de fases de hardening.
+- Data integrity issue in note/folder operations.
+- Save/restore regressions.
+- Plugin/theme loading breakage.
+- Startup failure in target OS.
+
+## Rollback Procedure
+
+1. Revert to previous stable tag/commit.
+2. Rebuild artifact and reinstall plugins/themes from known-good bundle.
+3. Re-run smoke gate.
+4. Publish incident note with root cause and fix-forward plan.

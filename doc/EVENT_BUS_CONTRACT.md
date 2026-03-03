@@ -1,24 +1,20 @@
-# EventBus Contract
+# Event Bus Contract
 
-## Objetivo
-Definir reglas claras para publicación/suscripción y evitar efectos secundarios ambiguos.
+## Principles
 
-## Reglas de publicación
-- Los eventos mutables (`SystemActionEvent.SAVE`, `SystemActionEvent.DELETE`) deben tener **un único dueño** de ejecución.
-- Un handler **no debe** republicar el mismo comando mutable que está procesando.
-- `publish(...)` se usa para flujo UI-safe y despacha en hilo JavaFX.
-- `publishSync(...)` se reserva para casos controlados (tests, lógica no-UI que requiere sincronía).
+- Events represent state changes or commands with explicit semantics.
+- Mutable command events (e.g., save/delete) must not be republished in loops.
+- Subscriptions must always return a safe handle (no null subscription contract).
 
-## Reglas de suscripción
-- `subscribe(...)` siempre devuelve una `EventBus.Subscription` válida.
-- En contexto de plugin sin bus disponible se devuelve `Subscription.NO_OP` (nunca `null`).
-- Cada suscriptor debe cancelar su suscripción en su ciclo de vida de cierre cuando corresponda.
+## Required Practices
 
-## Casos prohibidos
-- Re-publicar `SAVE`/`DELETE` desde el mismo handler que los procesa.
-- Ignorar excepciones de handlers con `printStackTrace()`.
-- Asumir orden cross-thread fuera del contrato de JavaFX `runLater`.
+1. Publish typed events only.
+2. Avoid side effects in subscribers that trigger the same command path recursively.
+3. Unsubscribe/cleanup on controller or plugin teardown.
+4. Log exceptions via structured logger; avoid `printStackTrace()`.
 
-## Observabilidad
-- Errores de handlers se registran con `Logger` y stacktrace (`Level.SEVERE`).
-- No se permite salida por consola directa para fallos del bus.
+## Prohibited Patterns
+
+- Recursive publication of `SAVE`/`DELETE` command events.
+- Returning null subscriptions from plugin or UI contexts.
+- Swallowing exceptions in event handlers without logging.

@@ -1,28 +1,13 @@
 # Hardening Phase Checklist
 
-Use this checklist at the end of each phase.
+Use this checklist before closing any hardening phase.
 
-## Automated checks
-- [ ] `mvn -f Forevernote/pom.xml clean test`
-- [ ] `mvn -f Forevernote/pom.xml -DskipTests clean package`
-- [ ] `./scripts/smoke-phase-gate.sh` (if running on macOS/Linux)
-- [ ] `.\scripts\smoke-phase-gate.ps1` (if running on Windows PowerShell)
-- [ ] `./scripts/hardening-storage-matrix.sh` or `.\scripts\hardening-storage-matrix.ps1`
-
-## Manual smoke checks
-- [ ] Create, edit and save a note
-- [ ] Move note to trash and restore it
-- [ ] Create folder and subfolder
-- [ ] Add and remove tags in note
-- [ ] Switch light/dark/system theme
-- [ ] Open plugin manager
-
-## Compatibility checks
-- [ ] SQLite mode verified
-- [ ] FileSystem mode verified
-- [ ] Plugins enabled/disabled flow verified
-
-## Release safety
-- [ ] No critical runtime errors in logs
-- [ ] No major visual regressions
-- [ ] Changelog and docs updated for the phase
+1. Tests pass (`mvn -f Forevernote/pom.xml test`).
+2. Smoke manual executed:
+   - note create/edit/save
+   - folder create/subfolder/delete/restore
+   - tag assignment and deletion
+   - command palette and quick switcher
+3. Verify SQLite and FileSystem parity.
+4. Validate plugin and theme loading.
+5. Update changelog and relevant docs.
