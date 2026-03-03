@@ -288,6 +288,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private String sidebarTabsMode = UiPreferencesWorkflow.MODE_TEXT;
     private String editorViewButtonsMode = UiPreferencesWorkflow.MODE_TEXT;
     private boolean autosaveEnabled = true;
+    private String previewStorageType = "sqlite";
+    private String previewFileSystemRootDirectory = "";
     private int autosaveIdleMs = UiPreferencesWorkflow.DEFAULT_AUTOSAVE_IDLE_MS;
     private boolean autosaveRunning = false;
     private String themeSource = UiPreferencesWorkflow.THEME_SOURCE_BUILTIN;
@@ -423,7 +425,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private void initializeDatabase() {
         try {
 
-            Preferences prefs = Preferences.userNodeForPackage(MainController.class);
             String storageType = prefs.get("storage_type", System.getProperty("forevernote.storage", "sqlite"));
 
             if ("filesystem".equalsIgnoreCase(storageType)) {
@@ -438,11 +439,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 }
 
                 factoryDAO = FactoryDAO.getFactory(FactoryDAO.FILE_SYSTEM_FACTORY, dataDir);
+                previewStorageType = "filesystem";
+                previewFileSystemRootDirectory = dataDir;
             } else {
                 SQLiteDB db = SQLiteDB.getInstance();
                 connection = db.openConnection();
                 factoryDAO = FactoryDAO.getFactory(FactoryDAO.SQLITE_FACTORY, connection);
                 logger.info("Initialized SQLite Storage");
+                previewStorageType = "sqlite";
+                previewFileSystemRootDirectory = "";
             }
 
             folderDAO = factoryDAO.getFolderDAO();
@@ -645,6 +650,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             public void applyTheme(String theme) {
                 currentTheme = theme;
                 prefs.put("theme", currentTheme);
+                // Theme changes coming from ToolbarController via EventBus must force built-in mode.
+                // Otherwise, a previously selected external theme can override light/dark/system.
+                themeSource = UiPreferencesWorkflow.THEME_SOURCE_BUILTIN;
+                externalThemeId = "";
+                prefs.put(UiPreferencesWorkflow.THEME_SOURCE_KEY, themeSource);
+                prefs.put(UiPreferencesWorkflow.THEME_EXTERNAL_ID_KEY, externalThemeId);
                 MainController.this.applyTheme();
             }
 
@@ -1737,8 +1748,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
         String content = noteContentArea != null ? noteContentArea.getText() : "";
         boolean isDarkTheme = "dark".equals(resolveThemeToApply());
+        Note currentNote = getCurrentNote();
+        PreviewWorkflow.PreviewContext previewContext = new PreviewWorkflow.PreviewContext(
+                previewStorageType,
+                previewFileSystemRootDirectory,
+                currentNote != null ? currentNote.getId() : null);
         String html = (content != null && !content.trim().isEmpty())
-                ? previewWorkflow.buildPreviewHtml(content, isDarkTheme, previewEnhancers.values())
+                ? previewWorkflow.buildPreviewHtml(content, isDarkTheme, previewEnhancers.values(), previewContext)
                 : previewWorkflow.buildEmptyHtml(isDarkTheme);
         previewWebView.getEngine().loadContent(html, "text/html");
     }

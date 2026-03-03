@@ -1978,3 +1978,36 @@
     -fx-border-width: 1px;
     -fx-border-radius: 6;
 }
+
+/* ========================================
+   SIDEBAR TAB ICON CONTRAST HOTFIX
+   ======================================== */
+.sidebar-tabs .tab .feather-icon,
+.sidebar-tabs .tab .ikonli-font-icon,
+.sidebar-tabs .tab .tab-label .feather-icon,
+.sidebar-tabs .tab .tab-label .ikonli-font-icon {
+    -fx-icon-color: -fx-text-main;
+    -fx-fill: -fx-text-main;
+    -fx-opacity: 1.0;
+}
+
+.sidebar-tabs .tab:hover .feather-icon,
+.sidebar-tabs .tab:hover .ikonli-font-icon,
+.sidebar-tabs .tab:hover .tab-label .feather-icon,
+.sidebar-tabs .tab:hover .tab-label .ikonli-font-icon {
+    -fx-icon-color: -fx-hover-text;
+    -fx-fill: -fx-hover-text;
+}
+
+.sidebar-tabs .tab:selected .feather-icon,
+.sidebar-tabs .tab:selected .ikonli-font-icon,
+.sidebar-tabs .tab:selected .tab-label .feather-icon,
+.sidebar-tabs .tab:selected .tab-label .ikonli-font-icon,
+.sidebar-tabs .tab:selected:hover .feather-icon,
+.sidebar-tabs .tab:selected:hover .ikonli-font-icon,
+.sidebar-tabs .tab:selected:hover .tab-label .feather-icon,
+.sidebar-tabs .tab:selected:hover .tab-label .ikonli-font-icon {
+    -fx-icon-color: -fx-selected-text;
+    -fx-fill: -fx-selected-text;
+    -fx-opacity: 1.0;
+}
