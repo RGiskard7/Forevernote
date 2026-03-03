@@ -19,8 +19,6 @@ import java.util.prefs.Preferences;
 import java.sql.Connection;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.kordamp.ikonli.javafx.FontIcon;
-import com.example.forevernote.event.events.UIEvents;
 
 import com.example.forevernote.config.LoggerConfig;
 import com.example.forevernote.data.database.SQLiteDB;
@@ -114,7 +112,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private TabPane navigationTabPane;
     private TreeView<Folder> folderTreeView;
     private TextField filterFoldersField;
-    private TreeItem<Folder> allNotesItem;
     private ListView<String> tagListView;
     private TreeView<Component> trashTreeView;
     private TextField filterTrashField;
@@ -158,18 +155,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private final Map<SystemActionEvent.ActionType, Runnable> systemActionHandlers = new EnumMap<>(
             SystemActionEvent.ActionType.class);
     @FXML
-    private Separator toolbarSeparator2;
-    @FXML
-    private Separator toolbarSeparator3;
-    @FXML
-    private Button closeRightPanelBtn;
-
-    @FXML
     private VBox rightPanel;
-    @FXML
-    private VBox rightPanelContent;
-    @FXML
-    private VBox noteInfoSection;
     @FXML
     private HBox noteInfoHeader;
     @FXML
@@ -201,11 +187,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private Label statusLabel;
     @FXML
     private Label noteCountLabel;
-    @FXML
-    private Label syncStatusLabel;
-
-    @FXML
-    private Menu pluginsMenu;
     private final Map<String, Menu> pluginCategoryMenus = new HashMap<>();
     private final Map<String, List<MenuItem>> pluginMenuItems = new HashMap<>();
 
@@ -271,7 +252,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     private double uiFontSize = 13.0;
     private double editorFontSize = 14.0;
-    private final PauseTransition noteModifiedDebounce = new PauseTransition(Duration.millis(120));
+    private final PauseTransition noteModifiedDebounce = new PauseTransition(Duration.millis(220));
     private final PauseTransition toolbarSearchDebounce = new PauseTransition(Duration.millis(180));
     private final PauseTransition autosaveDebounce = new PauseTransition(
             Duration.millis(UiPreferencesWorkflow.DEFAULT_AUTOSAVE_IDLE_MS));
@@ -294,6 +275,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private boolean autosaveRunning = false;
     private String themeSource = UiPreferencesWorkflow.THEME_SOURCE_BUILTIN;
     private String externalThemeId = "";
+    private boolean customAccentEnabled = false;
+    private String customAccentColor = "#7c3aed";
+    private String lastPreviewRenderKey = "";
 
     private enum SaveDialogDecision {
         SAVE,
@@ -422,6 +406,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             updateStatus(java.text.MessageFormat.format(getString("status.error_details"), e.getMessage()));
         }
     }
+
     private void initializeDatabase() {
         try {
 
@@ -645,90 +630,85 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
         uiEventSubscriptions.forEach(EventBus.Subscription::cancel);
         uiEventSubscriptions.clear();
-        uiEventSubscriptions.addAll(uiEventSubscriptionWorkflow.subscribeUiEvents(eventBus, new UiEventSubscriptionWorkflow.Port() {
-            @Override
-            public void applyTheme(String theme) {
-                currentTheme = theme;
-                prefs.put("theme", currentTheme);
-                // Theme changes coming from ToolbarController via EventBus must force built-in mode.
-                // Otherwise, a previously selected external theme can override light/dark/system.
-                themeSource = UiPreferencesWorkflow.THEME_SOURCE_BUILTIN;
-                externalThemeId = "";
-                prefs.put(UiPreferencesWorkflow.THEME_SOURCE_KEY, themeSource);
-                prefs.put(UiPreferencesWorkflow.THEME_EXTERNAL_ID_KEY, externalThemeId);
-                MainController.this.applyTheme();
-            }
+        uiEventSubscriptions
+                .addAll(uiEventSubscriptionWorkflow.subscribeUiEvents(eventBus, new UiEventSubscriptionWorkflow.Port() {
+                    @Override
+                    public void applyTheme(String theme) {
+                        currentTheme = theme;
+                        prefs.put("theme", currentTheme);
+                        MainController.this.applyTheme();
+                    }
 
-            @Override
-            public void updateThemeMenuSelection() {
-                MainController.this.updateThemeMenuSelection();
-            }
+                    @Override
+                    public void updateThemeMenuSelection() {
+                        MainController.this.updateThemeMenuSelection();
+                    }
 
-            @Override
-            public void loadNoteInEditor(Note note) {
-                MainController.this.loadNoteInEditor(note);
-            }
+                    @Override
+                    public void loadNoteInEditor(Note note) {
+                        MainController.this.loadNoteInEditor(note);
+                    }
 
-            @Override
-            public void handleNotesLoaded(NoteEvents.NotesLoadedEvent event) {
-                MainController.this.handleUiNotesLoaded(event);
-            }
+                    @Override
+                    public void handleNotesLoaded(NoteEvents.NotesLoadedEvent event) {
+                        MainController.this.handleUiNotesLoaded(event);
+                    }
 
-            @Override
-            public void updateStatus(String message) {
-                MainController.this.updateStatus(message);
-            }
+                    @Override
+                    public void updateStatus(String message) {
+                        MainController.this.updateStatus(message);
+                    }
 
-            @Override
-            public void showCommandPalette() {
-                MainController.this.showCommandPalette();
-            }
+                    @Override
+                    public void showCommandPalette() {
+                        MainController.this.showCommandPalette();
+                    }
 
-            @Override
-            public void showQuickSwitcher() {
-                MainController.this.showQuickSwitcher();
-            }
+                    @Override
+                    public void showQuickSwitcher() {
+                        MainController.this.showQuickSwitcher();
+                    }
 
-            @Override
-            public void handleNoteDeleted(String noteId) {
-                MainController.this.handleUiNoteDeleted(noteId);
-            }
+                    @Override
+                    public void handleNoteDeleted(String noteId) {
+                        MainController.this.handleUiNoteDeleted(noteId);
+                    }
 
-            @Override
-            public void handleFolderDeleted(String folderId) {
-                MainController.this.handleUiFolderDeleted(folderId);
-            }
+                    @Override
+                    public void handleFolderDeleted(String folderId) {
+                        MainController.this.handleUiFolderDeleted(folderId);
+                    }
 
-            @Override
-            public void handleTrashItemDeleted() {
-                MainController.this.handleUiTrashItemDeleted();
-            }
+                    @Override
+                    public void handleTrashItemDeleted() {
+                        MainController.this.handleUiTrashItemDeleted();
+                    }
 
-            @Override
-            public void handleFolderSelected(Folder folder) {
-                MainController.this.handleUiFolderSelected(folder);
-            }
+                    @Override
+                    public void handleFolderSelected(Folder folder) {
+                        MainController.this.handleUiFolderSelected(folder);
+                    }
 
-            @Override
-            public void handleTagSelected(Tag tag) {
-                MainController.this.handleUiTagSelected(tag);
-            }
+                    @Override
+                    public void handleTagSelected(Tag tag) {
+                        MainController.this.handleUiTagSelected(tag);
+                    }
 
-            @Override
-            public void handleNoteOpenRequest(Note note) {
-                MainController.this.handleUiNoteOpenRequest(note);
-            }
+                    @Override
+                    public void handleNoteOpenRequest(Note note) {
+                        MainController.this.handleUiNoteOpenRequest(note);
+                    }
 
-            @Override
-            public void handleTrashItemSelected(Component component) {
-                MainController.this.handleUiTrashItemSelected(component);
-            }
+                    @Override
+                    public void handleTrashItemSelected(Component component) {
+                        MainController.this.handleUiTrashItemSelected(component);
+                    }
 
-            @Override
-            public void handleNoteModified(Note note) {
-                MainController.this.handleUiNoteModified(note);
-            }
-        }));
+                    @Override
+                    public void handleNoteModified(Note note) {
+                        MainController.this.handleUiNoteModified(note);
+                    }
+                }));
     }
 
     private void handleUiNotesLoaded(NoteEvents.NotesLoadedEvent event) {
@@ -737,12 +717,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     private void handleUiNoteDeleted(String noteId) {
-        uiEventHandlerWorkflow.onNoteDeleted(noteId, this::getCurrentNote, editorController, tagsFlowPane, previewWebView,
+        uiEventHandlerWorkflow.onNoteDeleted(noteId, this::getCurrentNote, editorController, tagsFlowPane,
+                previewWebView,
                 this::refreshNotesList, sidebarController);
     }
 
     private void handleUiFolderDeleted(String folderId) {
-        currentFolder = uiEventHandlerWorkflow.onFolderDeleted(folderId, currentFolder, folderTreeView, sidebarController);
+        currentFolder = uiEventHandlerWorkflow.onFolderDeleted(folderId, currentFolder, folderTreeView,
+                sidebarController);
     }
 
     private void handleUiTrashItemDeleted() {
@@ -790,7 +772,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private void configureNoteModifiedDebounce() {
         noteModifiedDebounce.setOnFinished(e -> {
             Note active = getCurrentNote();
-            if (active == null || pendingModifiedNoteId == null || !Objects.equals(pendingModifiedNoteId, active.getId())) {
+            if (active == null || pendingModifiedNoteId == null
+                    || !Objects.equals(pendingModifiedNoteId, active.getId())) {
                 return;
             }
             updateWordCount();
@@ -821,7 +804,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 return;
             }
             Note active = getCurrentNote();
-            if (active == null || pendingModifiedNoteId == null || !Objects.equals(pendingModifiedNoteId, active.getId())) {
+            if (active == null || pendingModifiedNoteId == null
+                    || !Objects.equals(pendingModifiedNoteId, active.getId())) {
                 return;
             }
             if (!isModified()) {
@@ -845,12 +829,15 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         autosaveIdleMs = uiPrefs.autosaveIdleMs();
         themeSource = uiPrefs.themeSource();
         externalThemeId = uiPrefs.externalThemeId();
+        customAccentEnabled = uiPrefs.accentEnabled();
+        customAccentColor = uiPrefs.accentColor();
         autosaveDebounce.setDuration(Duration.millis(autosaveIdleMs));
 
         if (sidebarController != null) {
             sidebarController.applySidebarTabPresentation(sidebarTabsMode);
         }
         applyEditorButtonsPresentation();
+        applyRootInlineStyle();
     }
 
     private void bindToolbarSearchFieldDebounced() {
@@ -891,6 +878,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private void handlePluginManager(ActionEvent event) {
         showPluginManager();
     }
+
     @Override
     public void registerMenuItem(String pluginId, String category, String itemName, Runnable action) {
         registerMenuItem(pluginId, category, itemName, null, action);
@@ -934,7 +922,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     public boolean isPluginEnabled(String pluginId) {
         return pluginManager != null && pluginManager.isPluginEnabled(pluginId);
     }
-
 
     @Override
     public void registerSidePanel(String pluginId, String panelId, String title, javafx.scene.Node content,
@@ -982,7 +969,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     public boolean isPluginPanelsVisible() {
         return pluginUiWorkflow.isPluginPanelsVisible(pluginPanelsContainer);
     }
-
 
     public void registerStatusBarItem(String pluginId, String itemId, javafx.scene.Node content) {
         pluginUiWorkflow.registerStatusBarItem(
@@ -1204,13 +1190,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         systemActionHandlers.put(SystemActionEvent.ActionType.SWITCH_STORAGE, this::handleSwitchStorage);
         systemActionHandlers.put(SystemActionEvent.ActionType.DOCUMENTATION, () -> handleDocumentation(null));
         systemActionHandlers.put(SystemActionEvent.ActionType.ABOUT, () -> handleAbout(null));
-        systemActionHandlers.put(SystemActionEvent.ActionType.SORT_FOLDERS, () -> sidebarController.handleSortFolders(null));
+        systemActionHandlers.put(SystemActionEvent.ActionType.SORT_FOLDERS,
+                () -> sidebarController.handleSortFolders(null));
         systemActionHandlers.put(SystemActionEvent.ActionType.EXPAND_ALL_FOLDERS,
                 () -> sidebarController.handleExpandAllFolders(null));
         systemActionHandlers.put(SystemActionEvent.ActionType.COLLAPSE_ALL_FOLDERS,
                 () -> sidebarController.handleCollapseAllFolders(null));
-        systemActionHandlers.put(SystemActionEvent.ActionType.SORT_TRASH, () -> sidebarController.handleSortTrash(null));
-        systemActionHandlers.put(SystemActionEvent.ActionType.EMPTY_TRASH, () -> sidebarController.handleEmptyTrash(null));
+        systemActionHandlers.put(SystemActionEvent.ActionType.SORT_TRASH,
+                () -> sidebarController.handleSortTrash(null));
+        systemActionHandlers.put(SystemActionEvent.ActionType.EMPTY_TRASH,
+                () -> sidebarController.handleEmptyTrash(null));
         systemActionHandlers.put(SystemActionEvent.ActionType.REFRESH_NOTES, () -> handleRefresh(null));
         systemActionHandlers.put(SystemActionEvent.ActionType.TOGGLE_TAGS, () -> handleToggleTags(null));
         systemActionHandlers.put(SystemActionEvent.ActionType.EDITOR_ONLY_MODE, () -> handleEditorOnlyMode(null));
@@ -1743,12 +1732,28 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (previewWebView == null || getCurrentNote() == null) {
             return;
         }
+        if (currentViewMode == UiLayoutWorkflow.ViewMode.EDITOR_ONLY) {
+            return;
+        }
+        if (previewPane != null && (!previewPane.isVisible() || previewPane.getWidth() < 40 || previewPane.getHeight() < 40)) {
+            return;
+        }
         if (previewWorkflow == null) {
             previewWorkflow = new PreviewWorkflow();
         }
         String content = noteContentArea != null ? noteContentArea.getText() : "";
         boolean isDarkTheme = "dark".equals(resolveThemeToApply());
         Note currentNote = getCurrentNote();
+        String previewKey = Integer.toHexString(Objects.hash(
+                currentNote != null ? currentNote.getId() : "",
+                content,
+                isDarkTheme,
+                previewStorageType,
+                previewFileSystemRootDirectory,
+                new TreeSet<>(previewEnhancers.keySet())));
+        if (previewKey.equals(lastPreviewRenderKey)) {
+            return;
+        }
         PreviewWorkflow.PreviewContext previewContext = new PreviewWorkflow.PreviewContext(
                 previewStorageType,
                 previewFileSystemRootDirectory,
@@ -1757,6 +1762,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 ? previewWorkflow.buildPreviewHtml(content, isDarkTheme, previewEnhancers.values(), previewContext)
                 : previewWorkflow.buildEmptyHtml(isDarkTheme);
         previewWebView.getEngine().loadContent(html, "text/html");
+        lastPreviewRenderKey = previewKey;
     }
 
     private void updateStatus(String message) {
@@ -1819,7 +1825,6 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             event.consume();
         }
     }
-
 
     @FXML
     private void handleNewNote(ActionEvent event) {
@@ -2167,10 +2172,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     private void applyUiZoom() {
-        if (toolbarController != null && toolbarController.getToolbarHBox() != null
-                && toolbarController.getToolbarHBox().getScene() != null) {
-            toolbarController.getToolbarHBox().getScene().getRoot().setStyle("-fx-font-size: " + uiFontSize + "px;");
-        }
+        applyRootInlineStyle();
     }
 
     @FXML
@@ -2240,11 +2242,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     @FXML
     private void handleLightTheme(ActionEvent event) {
+        switchToBuiltinThemeSource();
         currentTheme = themeCommandWorkflow.setLightTheme(prefs);
-        themeSource = UiPreferencesWorkflow.THEME_SOURCE_BUILTIN;
-        externalThemeId = "";
-        prefs.put(UiPreferencesWorkflow.THEME_SOURCE_KEY, themeSource);
-        prefs.put(UiPreferencesWorkflow.THEME_EXTERNAL_ID_KEY, externalThemeId);
         updateThemeMenuSelection();
         applyTheme();
         updateStatus(getString("status.theme_light"));
@@ -2252,11 +2251,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     @FXML
     private void handleDarkTheme(ActionEvent event) {
+        switchToBuiltinThemeSource();
         currentTheme = themeCommandWorkflow.setDarkTheme(prefs);
-        themeSource = UiPreferencesWorkflow.THEME_SOURCE_BUILTIN;
-        externalThemeId = "";
-        prefs.put(UiPreferencesWorkflow.THEME_SOURCE_KEY, themeSource);
-        prefs.put(UiPreferencesWorkflow.THEME_EXTERNAL_ID_KEY, externalThemeId);
         updateThemeMenuSelection();
         applyTheme();
         updateStatus(getString("status.theme_dark"));
@@ -2264,18 +2260,23 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     @FXML
     private void handleSystemTheme(ActionEvent event) {
+        switchToBuiltinThemeSource();
         ThemeCommandWorkflow.SystemThemeResult result = themeCommandWorkflow.setSystemTheme(
                 prefs,
                 this::detectWindowsTheme,
                 e -> logger.log(Level.WARNING, "Could not detect macOS theme", e));
         currentTheme = result.currentTheme();
-        themeSource = UiPreferencesWorkflow.THEME_SOURCE_BUILTIN;
-        externalThemeId = "";
-        prefs.put(UiPreferencesWorkflow.THEME_SOURCE_KEY, themeSource);
-        prefs.put(UiPreferencesWorkflow.THEME_EXTERNAL_ID_KEY, externalThemeId);
         updateThemeMenuSelection();
         applyTheme();
         updateStatus(java.text.MessageFormat.format(getString("status.theme_system"), result.detectedTheme()));
+    }
+
+    private void switchToBuiltinThemeSource() {
+        if (!UiPreferencesWorkflow.THEME_SOURCE_EXTERNAL.equals(themeSource)) {
+            return;
+        }
+        themeSource = UiPreferencesWorkflow.THEME_SOURCE_BUILTIN;
+        prefs.put(UiPreferencesWorkflow.THEME_SOURCE_KEY, UiPreferencesWorkflow.THEME_SOURCE_BUILTIN);
     }
 
     private boolean detectWindowsTheme() {
@@ -2298,11 +2299,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         previewWebView.getStyleClass().add("webview-theme");
                     }
                     String bgColor = external.darkLike() ? "#00160c" : "#f5f5f5";
-                    previewWebView.getEngine().executeScript("document.body.style.backgroundColor = '" + bgColor + "';");
+                    previewWebView.getEngine()
+                            .executeScript("document.body.style.backgroundColor = '" + bgColor + "';");
                 }
                 if (getCurrentNote() != null) {
                     updatePreview();
                 }
+                applyRootInlineStyle();
                 logger.info("Applied external theme: " + external.id());
                 return;
             }
@@ -2323,6 +2326,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 },
                 logger::info,
                 logger::warning);
+        applyRootInlineStyle();
     }
 
     private String detectSystemTheme() {
@@ -2374,7 +2378,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 autosaveEnabled,
                 autosaveIdleMs,
                 themeSource,
-                externalThemeId);
+                externalThemeId,
+                customAccentEnabled,
+                customAccentColor);
         List<ThemeCatalogWorkflow.ThemeDescriptor> themes = themeCatalogWorkflow.getAvailableThemes();
         Optional<UiDialogWorkflow.PreferencesDialogResult> result = uiDialogWorkflow.showPreferences(
                 this::getString,
@@ -2390,11 +2396,87 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 values.autosaveEnabled(),
                 values.autosaveIdleMs(),
                 values.themeSource(),
-                values.externalThemeId());
+                values.externalThemeId(),
+                values.accentEnabled(),
+                values.accentColor());
         uiPreferencesWorkflow.save(prefs, newPrefs);
         applyUiPreferencesFromStore();
         applyTheme();
         updateStatus(getString("status.preferences_saved"));
+    }
+
+    private void applyRootInlineStyle() {
+        javafx.scene.Scene scene = mainSplitPane != null ? mainSplitPane.getScene() : null;
+        if (scene == null || scene.getRoot() == null) {
+            return;
+        }
+        StringBuilder style = new StringBuilder();
+        style.append("-fx-font-size: ").append(uiFontSize).append("px;");
+        if (customAccentEnabled && isCustomAccentApplicable()) {
+            String accent = normalizeHexColor(customAccentColor);
+            String accentHover = deriveColor(accent, isDarkThemeActive() ? 1.12 : 0.88);
+            String accentStrong = deriveColor(accent, 1.25);
+            String accentDim = deriveColor(accent, 0.78);
+            String selectedBg = accent;
+            String selectedStrongBg = isDarkThemeActive() ? deriveColor(accent, 0.72) : deriveColor(accent, 0.92);
+            String accentContrast = isLightColor(accent) ? "#111111" : "#ffffff";
+            style.append("-fx-accent: ").append(accent).append(";");
+            style.append("-fx-accent-hover: ").append(accentHover).append(";");
+            style.append("-fx-accent-strong: ").append(accentStrong).append(";");
+            style.append("-fx-accent-dim: ").append(accentDim).append(";");
+            style.append("-fx-selected-bg: ").append(selectedBg).append(";");
+            style.append("-fx-selected-strong-bg: ").append(selectedStrongBg).append(";");
+            style.append("-fx-accent-contrast: ").append(accentContrast).append(";");
+            style.append("-fx-focus-color: ").append(accent).append(";");
+        }
+        scene.getRoot().setStyle(style.toString());
+    }
+
+    private boolean isCustomAccentApplicable() {
+        if (UiPreferencesWorkflow.THEME_SOURCE_BUILTIN.equals(themeSource)) {
+            return true;
+        }
+        if (!UiPreferencesWorkflow.THEME_SOURCE_EXTERNAL.equals(themeSource)) {
+            return false;
+        }
+        ThemeCatalogWorkflow.ThemeDescriptor external = themeCatalogWorkflow.findById(
+                themeCatalogWorkflow.getAvailableThemes(),
+                externalThemeId);
+        return external != null && external.supportsAccentOverride();
+    }
+
+    private String normalizeHexColor(String color) {
+        if (color == null) {
+            return "#7c3aed";
+        }
+        String candidate = color.trim();
+        if (!candidate.startsWith("#")) {
+            candidate = "#" + candidate;
+        }
+        if (candidate.matches("^#[0-9a-fA-F]{6}$")) {
+            return candidate.toLowerCase();
+        }
+        return "#7c3aed";
+    }
+
+    private String deriveColor(String hexColor, double factor) {
+        String normalized = normalizeHexColor(hexColor);
+        int r = Integer.parseInt(normalized.substring(1, 3), 16);
+        int g = Integer.parseInt(normalized.substring(3, 5), 16);
+        int b = Integer.parseInt(normalized.substring(5, 7), 16);
+        int rr = (int) Math.max(0, Math.min(255, Math.round(r * factor)));
+        int gg = (int) Math.max(0, Math.min(255, Math.round(g * factor)));
+        int bb = (int) Math.max(0, Math.min(255, Math.round(b * factor)));
+        return String.format("#%02x%02x%02x", rr, gg, bb);
+    }
+
+    private boolean isLightColor(String hexColor) {
+        String normalized = normalizeHexColor(hexColor);
+        int r = Integer.parseInt(normalized.substring(1, 3), 16);
+        int g = Integer.parseInt(normalized.substring(3, 5), 16);
+        int b = Integer.parseInt(normalized.substring(5, 7), 16);
+        double luminance = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0;
+        return luminance > 0.62;
     }
 
     @FXML
@@ -2501,8 +2583,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (pinButton == null)
             return;
 
-            if (getCurrentNote() != null && getCurrentNote().isPinned()) {
-                pinButton.setSelected(true);
+        if (getCurrentNote() != null && getCurrentNote().isPinned()) {
+            pinButton.setSelected(true);
             pinButton.setTooltip(new Tooltip(getString("action.unpin_note")));
         } else {
             pinButton.setSelected(false);

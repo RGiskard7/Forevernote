@@ -29,6 +29,10 @@ import javafx.scene.paint.Color;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import java.util.prefs.Preferences;
+
+import com.example.forevernote.ui.controller.MainController;
+import com.example.forevernote.ui.workflow.UiPreferencesWorkflow;
 import javafx.util.Duration;
 
 /**
@@ -108,7 +112,7 @@ public class QuickSwitcher {
         String border = isDarkTheme ? "#3a3a3a" : "#e0e0e0";
         String searchBg = isDarkTheme ? "#252525" : "#f5f5f5";
         String hoverBg = isDarkTheme ? "#333333" : "#f0f0f0";
-        String accentColor = "#7c3aed";
+        String accentColor = resolveAccentColor();
         String mutedColor = isDarkTheme ? "#888888" : "#666666";
         String favoriteColor = "#f39c12";
         
@@ -322,6 +326,26 @@ public class QuickSwitcher {
                 }
             }
         };
+    }
+
+    private String resolveAccentColor() {
+        Preferences prefs = Preferences.userNodeForPackage(MainController.class);
+        boolean enabled = prefs.getBoolean(UiPreferencesWorkflow.ACCENT_ENABLED_KEY, false);
+        String color = prefs.get(UiPreferencesWorkflow.ACCENT_COLOR_KEY, "#7c3aed");
+        if (!enabled) {
+            return "#7c3aed";
+        }
+        if (color == null) {
+            return "#7c3aed";
+        }
+        String normalized = color.trim();
+        if (!normalized.startsWith("#")) {
+            normalized = "#" + normalized;
+        }
+        if (normalized.matches("^#[0-9a-fA-F]{6}$")) {
+            return normalized.toLowerCase();
+        }
+        return "#7c3aed";
     }
     
     private void setupEventHandlers() {

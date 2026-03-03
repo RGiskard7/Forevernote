@@ -27,6 +27,7 @@ case "$OS_NAME" in
         else
             PLATFORM_SUFFIX="mac"
         fi
+        JAVA_OPTS_EXTRA="-Dprism.lcdtext=false"
         ;;
     Linux*)
         if [ "$ARCH" = "aarch64" ]; then
@@ -34,9 +35,11 @@ case "$OS_NAME" in
         else
             PLATFORM_SUFFIX="linux"
         fi
+        JAVA_OPTS_EXTRA=""
         ;;
     *)
         PLATFORM_SUFFIX=""
+        JAVA_OPTS_EXTRA=""
         ;;
 esac
 
@@ -101,10 +104,10 @@ if [ -f "$JAR" ]; then
     # Launch with module-path if JavaFX modules were found
     if [ -n "$JAVAFX_MODULES" ]; then
         echo "Using JavaFX module-path..."
-        java --module-path "$JAVAFX_MODULES" --add-modules javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.media,javafx.web -jar "$JAR"
+        java $JAVA_OPTS_EXTRA --module-path "$JAVAFX_MODULES" --add-modules javafx.base,javafx.controls,javafx.fxml,javafx.graphics,javafx.media,javafx.web -jar "$JAR"
     else
         echo "JavaFX modules not found in Maven repository. Attempting standard JAR launch..."
-        java -jar "$JAR"
+        java $JAVA_OPTS_EXTRA -jar "$JAR"
     fi
     
     if [ $? -ne 0 ]; then

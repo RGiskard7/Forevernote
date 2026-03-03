@@ -20,8 +20,11 @@ import javafx.scene.control.Separator;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.CheckBox;
+import javafx.scene.control.ColorPicker;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.VBox;
 import javafx.scene.layout.HBox;
+import javafx.scene.paint.Color;
 
 /**
  * Centralizes lightweight app dialogs used from MainController.
@@ -34,7 +37,9 @@ public class UiDialogWorkflow {
             boolean autosaveEnabled,
             int autosaveIdleMs,
             String themeSource,
-            String externalThemeId) {
+            String externalThemeId,
+            boolean accentEnabled,
+            String accentColor) {
     }
 
     public Optional<PreferencesDialogResult> showPreferences(
@@ -117,6 +122,37 @@ public class UiDialogWorkflow {
             externalThemeCombo.setDisable(themeModeCombo.getSelectionModel().getSelectedIndex() != 1);
         });
 
+        CheckBox accentEnabledCheck = new CheckBox(i18n.apply("dialog.preferences.accent_enabled"));
+        accentEnabledCheck.setSelected(current.accentEnabled());
+        ColorPicker accentColorPicker = new ColorPicker(parseColor(current.accentColor(), Color.web("#7c3aed")));
+        accentColorPicker.setPrefWidth(260);
+        accentColorPicker.setMinWidth(260);
+        Label accentHintLabel = new Label(i18n.apply("dialog.preferences.accent_scope_hint"));
+        accentHintLabel.setStyle("-fx-text-fill: gray; -fx-font-size: 11px;");
+        accentHintLabel.setWrapText(true);
+
+        Runnable refreshAccentAvailability = () -> {
+            boolean externalSource = themeModeCombo.getSelectionModel().getSelectedIndex() == 1;
+            boolean supportsAccent = !externalSource
+                    || externalThemeSupportsAccentOverride(themes, externalThemeCombo.getSelectionModel().getSelectedItem());
+            accentEnabledCheck.setDisable(!supportsAccent);
+            if (!supportsAccent) {
+                accentEnabledCheck.setSelected(false);
+            }
+            accentColorPicker.setDisable(!supportsAccent || !accentEnabledCheck.isSelected());
+            String hint = supportsAccent ? i18n.apply("dialog.preferences.accent_scope_hint")
+                    : i18n.apply("dialog.preferences.accent_scope_external");
+            accentHintLabel.setText(hint);
+            accentHintLabel.setTooltip(new Tooltip(hint));
+        };
+        accentEnabledCheck.selectedProperty()
+                .addListener((obs, oldVal, newVal) -> refreshAccentAvailability.run());
+        themeModeCombo.getSelectionModel().selectedItemProperty()
+                .addListener((obs, oldVal, newVal) -> refreshAccentAvailability.run());
+        externalThemeCombo.getSelectionModel().selectedItemProperty()
+                .addListener((obs, oldVal, newVal) -> refreshAccentAvailability.run());
+        refreshAccentAvailability.run();
+
         content.getChildren().addAll(
                 new Label(i18n.apply("dialog.preferences.general_settings")),
                 dbLabel, dbPathLabel,
@@ -127,7 +163,9 @@ public class UiDialogWorkflow {
                 new HBox(8, autosaveIntervalLabel, autosaveIntervalCombo),
                 new Separator(),
                 themeModeLabel, themeModeCombo,
-                externalThemeLabel, externalThemeCombo);
+                externalThemeLabel, externalThemeCombo,
+                new Separator(),
+                accentEnabledCheck, accentColorPicker, accentHintLabel);
 
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().setPrefSize(480, 520);
@@ -164,9 +202,64 @@ public class UiDialogWorkflow {
                     autosaveEnabledCheck.isSelected(),
                     autosaveMs,
                     themeSource,
-                    externalThemeId);
+                    externalThemeId,
+                    accentEnabledCheck.isSelected(),
+                    toHex(accentColorPicker.getValue()));
         });
         return dialog.showAndWait();
+    }
+
+    private Color parseColor(String hex, Color fallback) {
+        if (hex == null || hex.isBlank()) {
+            return fallback;
+        }
+        try {
+            return Color.web(hex.trim());
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    private String toHex(Color color) {
+        if (color == null) {
+            return "#7c3aed";
+        }
+        int r = (int) Math.round(color.getRed() * 255);
+        int g = (int) Math.round(color.getGreen() * 255);
+        int b = (int) Math.round(color.getBlue() * 255);
+        return String.format("#%02x%02x%02x", r, g, b);
+    }
+
+    private boolean externalThemeSupportsAccentOverride(
+            List<ThemeCatalogWorkflow.ThemeDescriptor> themes,
+            String selectedExternalDisplay) {
+        if (themes == null || selectedExternalDisplay == null || selectedExternalDisplay.isBlank()) {
+            return false;
+        }
+        String id = extractExternalThemeId(selectedExternalDisplay);
+        if (id.isBlank()) {
+            return false;
+        }
+        for (ThemeCatalogWorkflow.ThemeDescriptor descriptor : themes) {
+            if (id.equals(descriptor.id())) {
+                return descriptor.supportsAccentOverride();
+            }
+        }
+        return false;
+    }
+
+    private String extractExternalThemeId(String selectedExternalDisplay) {
+        if (selectedExternalDisplay == null) {
+            return "";
+        }
+        String value = selectedExternalDisplay.trim();
+        if (value.contains("[") && value.endsWith("]")) {
+            int start = value.lastIndexOf('[');
+            if (start >= 0 && start < value.length() - 1) {
+                return value.substring(start + 1, value.length() - 1).trim();
+            }
+        }
+        return "";
     }
 
     public void showDocumentation(Function<String, String> i18n) {

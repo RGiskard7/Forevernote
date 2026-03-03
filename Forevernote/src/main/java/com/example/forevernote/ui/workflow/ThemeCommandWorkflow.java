@@ -6,8 +6,6 @@ import java.net.URL;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.prefs.Preferences;
 
 import javafx.scene.Scene;
@@ -93,8 +91,9 @@ public class ThemeCommandWorkflow {
             return;
         }
 
-        scene.getStylesheets().removeIf(stylesheet -> stylesheet.contains("modern-theme.css") ||
-                stylesheet.contains("dark-theme.css"));
+        scene.getStylesheets().removeIf(stylesheet -> stylesheet.contains("modern-theme.css")
+                || stylesheet.contains("dark-theme.css")
+                || stylesheet.contains("/themes/"));
 
         String themeToApply = resolvedThemeSupplier.get();
         URL themeResource = themeResourceResolver.apply(themeToApply);

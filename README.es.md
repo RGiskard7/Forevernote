@@ -67,10 +67,6 @@ Forevernote es una app Java 17 + JavaFX 21 inspirada en flujos tipo Obsidian:
 - Render Markdown con tablas GFM, autolinks y strikethrough
 - Vista previa en vivo y modo dividido
 - Resaltado de sintaxis para bloques de código (highlight.js)
-- Soporte de emoticonos/emoji en preview:
-  - Unicode (ej. `😄`)
-  - Shortcodes comunes (ej. `:smile:`, `:rocket:`)
-  - Emoticonos clásicos (ej. `:)`, `:D`, `<3`)
 
 ### UI/UX
 
@@ -227,6 +223,11 @@ mvn -f Forevernote/pom.xml clean package -DskipTests
 .\scripts\package-windows.ps1
 ```
 
+Los scripts de empaquetado ya preparan automáticamente plugins y temas externos antes de ejecutar `jpackage`:
+- `package-macos.sh` -> ejecuta `build-plugins.sh` + `build-themes.sh`
+- `package-linux.sh` -> ejecuta `build-plugins.sh` + `build-themes.sh`
+- `package-windows.ps1` -> ejecuta `build-plugins.ps1` + `build-themes.ps1`
+
 ### Ejecución Maven (desarrollo)
 
 ```bash
@@ -290,6 +291,23 @@ themes/<theme-id>/theme.css
 
 - Coloca JARs de plugin en `plugins/`
 - Usa el gestor de plugins del menú Herramientas para habilitar/deshabilitar
+
+### ¿Hay Que Mover Plugins/Temas Manualmente?
+
+Respuesta corta: normalmente **no**.
+
+- Ejecución en desarrollo (`run_all.*` / `launch-forevernote.*`):
+  - `build-plugins.*` deja los JARs en `Forevernote/plugins/`
+  - `build-themes.*` deja los temas en `Forevernote/themes/`
+  - La app resuelve ambas rutas directamente, sin mover nada.
+
+- Instaladores empaquetados (`package-*`):
+  - Los scripts ya compilan/preparan plugins y temas automáticamente.
+  - Si tu JDK soporta `jpackage --app-content`, plugins/temas se incluyen en el paquete.
+  - Si no (habitual con JDK 17), la app funciona igual pero el usuario debe copiarlos en AppData:
+    - Windows: `%APPDATA%\Forevernote\plugins` y `%APPDATA%\Forevernote\themes`
+    - macOS: `~/Library/Application Support/Forevernote/plugins` y `~/Library/Application Support/Forevernote/themes`
+    - Linux: `~/.config/Forevernote/plugins` y `~/.config/Forevernote/themes`
 
 ## Documentación
 

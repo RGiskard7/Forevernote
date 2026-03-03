@@ -14,7 +14,6 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SplitPane;
-import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.VBox;
 
 /**
@@ -24,7 +23,8 @@ public class NavigationCommandWorkflow {
 
     public boolean handleSearch(ToolbarController toolbarController, Function<String, String> i18n,
             Consumer<String> statusConsumer) {
-        if (toolbarController == null || toolbarController.getSearchField() == null || i18n == null || statusConsumer == null) {
+        if (toolbarController == null || toolbarController.getSearchField() == null || i18n == null
+                || statusConsumer == null) {
             return false;
         }
         toolbarController.getSearchField().requestFocus();
@@ -140,7 +140,8 @@ public class NavigationCommandWorkflow {
 
     public void refreshByContext(String currentFilterType, Folder currentFolder, Tag currentTag,
             NoteService noteService, ListView<Note> notesListView, ComboBox<String> sortComboBox, Label noteCountLabel,
-            Runnable refreshNotesListAction, Consumer<Folder> folderSelectionAction, Consumer<String> loadNotesForTagAction,
+            Runnable refreshNotesListAction, Consumer<Folder> folderSelectionAction,
+            Consumer<String> loadNotesForTagAction,
             Function<String, String> searchTextProvider, Consumer<String> performSearchAction,
             Function<String, String> i18n, Consumer<String> statusConsumer, Consumer<Exception> errorConsumer) {
         try {
@@ -199,12 +200,11 @@ public class NavigationCommandWorkflow {
         }
     }
 
-
-
     public boolean switchLayout(boolean currentStackedLayout, SplitPane mainSplitPane, SplitPane contentSplitPane,
             SplitPane navSplitPane, VBox sidebarPane, VBox notesPanel, VBox editorContainer,
             ToolbarController toolbarController, Function<String, String> i18n, Consumer<String> statusConsumer) {
-        if (mainSplitPane == null || contentSplitPane == null || navSplitPane == null || sidebarPane == null || notesPanel == null
+        if (mainSplitPane == null || contentSplitPane == null || navSplitPane == null || sidebarPane == null
+                || notesPanel == null
                 || editorContainer == null || i18n == null || statusConsumer == null) {
             return currentStackedLayout;
         }

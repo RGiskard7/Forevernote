@@ -163,6 +163,25 @@ if (Test-Path $buildPluginsScript) {
     Write-Host "Warning: build-plugins.ps1 not found. Packaged app will run without plugins." -ForegroundColor Yellow
 }
 
+# Build themes (required for packaged app to have external themes available)
+$buildThemesScript = Join-Path $root "scripts\build-themes.ps1"
+if (Test-Path $buildThemesScript) {
+    Write-Host ""
+    Write-Host "Building themes..." -ForegroundColor Cyan
+    & $buildThemesScript
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Warning: Theme build failed. Packaged app will run without bundled external themes." -ForegroundColor Yellow
+    } else {
+        $themesDir = Join-Path (Get-Location) "themes"
+        if (Test-Path $themesDir) {
+            $themeCount = (Get-ChildItem -Path $themesDir -Directory -ErrorAction SilentlyContinue).Count
+            Write-Host "Themes built: $themeCount theme(s) in themes/" -ForegroundColor Green
+        }
+    }
+} else {
+    Write-Host "Warning: build-themes.ps1 not found. Packaged app will run without bundled external themes." -ForegroundColor Yellow
+}
+
 Write-Host ""
 Write-Host "Creating Windows installer..." -ForegroundColor Cyan
 Write-Host ""
@@ -250,21 +269,45 @@ try {
         Write-Host "Icon not found at $iconPath, skipping icon..." -ForegroundColor Yellow
     }
 
-    # Include plugins: --app-content (JDK 18+) includes them in both app-image and MSI
-    # For JDK 17 app-image only, we copy plugins after jpackage (see below)
+    # Include plugins/themes: --app-content (JDK 18+) includes them in both app-image and MSI
+    # For JDK 17 app-image only, we copy plugins/themes after jpackage (see below)
     $sourcePluginsDir = Join-Path (Get-Location) "plugins"
+    $sourceThemesDir = Join-Path (Get-Location) "themes"
     $pluginsIncludedViaAppContent = $false
+    $themesIncludedViaAppContent = $false
     $jpackageSupportsAppContent = $false
+    $appContentDir = Join-Path $tempInputDir "app-content"
     try {
         $helpOut = & $jpackagePath --help 2>&1
         if ($helpOut -match "app-content") { $jpackageSupportsAppContent = $true }
     } catch { }
-    if ($jpackageSupportsAppContent -and (Test-Path $sourcePluginsDir)) {
-        $pluginJars = Get-ChildItem -Path $sourcePluginsDir -Filter "*.jar" -ErrorAction SilentlyContinue
-        if ($pluginJars.Count -gt 0) {
-            $jpackageArgs += @("--app-content", $sourcePluginsDir)
-            $pluginsIncludedViaAppContent = $true
-            Write-Host "Including plugins via --app-content ($($pluginJars.Count) JAR(s))" -ForegroundColor Green
+    if ($jpackageSupportsAppContent) {
+        New-Item -ItemType Directory -Path $appContentDir -Force | Out-Null
+
+        if (Test-Path $sourcePluginsDir) {
+            $pluginJars = Get-ChildItem -Path $sourcePluginsDir -Filter "*.jar" -ErrorAction SilentlyContinue
+            if ($pluginJars.Count -gt 0) {
+                $pluginsTargetDir = Join-Path $appContentDir "plugins"
+                New-Item -ItemType Directory -Path $pluginsTargetDir -Force | Out-Null
+                Copy-Item -Path $pluginJars.FullName -Destination $pluginsTargetDir -Force
+                $pluginsIncludedViaAppContent = $true
+                Write-Host "Including plugins via --app-content ($($pluginJars.Count) JAR(s))" -ForegroundColor Green
+            }
+        }
+
+        if (Test-Path $sourceThemesDir) {
+            $themeDirs = Get-ChildItem -Path $sourceThemesDir -Directory -ErrorAction SilentlyContinue
+            if ($themeDirs.Count -gt 0) {
+                $themesTargetDir = Join-Path $appContentDir "themes"
+                New-Item -ItemType Directory -Path $themesTargetDir -Force | Out-Null
+                Copy-Item -Path (Join-Path $sourceThemesDir "*") -Destination $themesTargetDir -Recurse -Force
+                $themesIncludedViaAppContent = $true
+                Write-Host "Including themes via --app-content ($($themeDirs.Count) theme(s))" -ForegroundColor Green
+            }
+        }
+
+        if ($pluginsIncludedViaAppContent -or $themesIncludedViaAppContent) {
+            $jpackageArgs += @("--app-content", $appContentDir)
         }
     }
     
@@ -306,7 +349,7 @@ try {
             $appImagePath = Join-Path $outputDir $installerName
             Write-Host "Application image location: $appImagePath" -ForegroundColor Cyan
 
-            # Copy plugins to app image if not already included via --app-content (JDK 17 fallback)
+            # Copy plugins/themes to app image if not already included via --app-content (JDK 17 fallback)
             if (-not $pluginsIncludedViaAppContent) {
                 $destPluginsDir = Join-Path $appImagePath "plugins"
                 if (Test-Path $sourcePluginsDir) {
@@ -315,6 +358,17 @@ try {
                         New-Item -ItemType Directory -Force -Path $destPluginsDir | Out-Null
                         Copy-Item -Path $pluginJars.FullName -Destination $destPluginsDir -Force
                         Write-Host "Plugins included: $($pluginJars.Count) JAR(s) copied to app image" -ForegroundColor Green
+                    }
+                }
+            }
+            if (-not $themesIncludedViaAppContent) {
+                $destThemesDir = Join-Path $appImagePath "themes"
+                if (Test-Path $sourceThemesDir) {
+                    $themeDirs = Get-ChildItem -Path $sourceThemesDir -Directory -ErrorAction SilentlyContinue
+                    if ($themeDirs.Count -gt 0) {
+                        New-Item -ItemType Directory -Force -Path $destThemesDir | Out-Null
+                        Copy-Item -Path (Join-Path $sourceThemesDir "*") -Destination $destThemesDir -Recurse -Force
+                        Write-Host "Themes included: $($themeDirs.Count) theme(s) copied to app image" -ForegroundColor Green
                     }
                 }
             }
@@ -364,4 +418,3 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Pop-Location
-

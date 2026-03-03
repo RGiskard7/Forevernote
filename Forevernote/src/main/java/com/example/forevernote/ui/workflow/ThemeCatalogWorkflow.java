@@ -21,17 +21,23 @@ public class ThemeCatalogWorkflow {
 
     private static final Logger logger = Logger.getLogger(ThemeCatalogWorkflow.class.getName());
 
-    public record ThemeDescriptor(String id, String name, String source, String cssPath, boolean darkLike) {
+    public record ThemeDescriptor(
+            String id,
+            String name,
+            String source,
+            String cssPath,
+            boolean darkLike,
+            boolean supportsAccentOverride) {
     }
 
     public List<ThemeDescriptor> getAvailableThemes() {
         List<ThemeDescriptor> out = new ArrayList<>();
         out.add(new ThemeDescriptor("light", "Light", "builtin",
-                "/com/example/forevernote/ui/css/modern-theme.css", false));
+                "/com/example/forevernote/ui/css/modern-theme.css", false, true));
         out.add(new ThemeDescriptor("dark", "Dark", "builtin",
-                "/com/example/forevernote/ui/css/dark-theme.css", true));
+                "/com/example/forevernote/ui/css/dark-theme.css", true, true));
         out.add(new ThemeDescriptor("system", "System", "builtin",
-                "/com/example/forevernote/ui/css/modern-theme.css", false));
+                "/com/example/forevernote/ui/css/modern-theme.css", false, true));
 
         List<Path> baseDirs = List.of(
                 Paths.get(AppDataDirectory.getBaseDirectory(), "themes"),
@@ -90,13 +96,17 @@ public class ThemeCatalogWorkflow {
         String name = valueOrDefault(p.getProperty("name"), id);
         String css = valueOrDefault(p.getProperty("css"), "theme.css");
         boolean darkLike = Boolean.parseBoolean(valueOrDefault(p.getProperty("darkLike"), "false"));
+        boolean supportsAccentOverride = Boolean.parseBoolean(
+                valueOrDefault(
+                        p.getProperty("supportsAccentOverride"),
+                        valueOrDefault(p.getProperty("accentOverride"), "false")));
 
         Path cssPath = dir.resolve(css).normalize();
         if (!Files.exists(cssPath) || !Files.isRegularFile(cssPath)) {
             logger.warning("Theme '" + id + "' ignored (css not found): " + cssPath);
             return null;
         }
-        return new ThemeDescriptor(id, name, "external", cssPath.toUri().toString(), darkLike);
+        return new ThemeDescriptor(id, name, "external", cssPath.toUri().toString(), darkLike, supportsAccentOverride);
     }
 
     private String valueOrDefault(String value, String fallback) {

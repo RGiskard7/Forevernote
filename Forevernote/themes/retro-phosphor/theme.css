@@ -1,6 +1,6 @@
 .root,
 .root-container {
-    -fx-font-family: "JetBrains Mono", "Cascadia Mono", "Consolas", monospace;
+    -fx-font-family: "Menlo", "Monaco", "SF Mono", "Consolas", monospace;
     -fx-font-size: 13px;
 
     -fx-base-bg: #06120d;
@@ -9,6 +9,7 @@
     -fx-panel-2-bg: #123026;
 
     -fx-accent: #7dffb3;
+    -fx-accent-contrast: #07130d;
     -fx-accent-strong: #d4ff70;
     -fx-accent-dim: #52d08b;
     -fx-accent-amber: #ffcb65;
@@ -31,15 +32,14 @@
     -fx-text-fill: -fx-text-main;
 }
 
-/* CRT backdrop: glow + subtle scanline feel */
+/* CRT backdrop: subtle and performant (no heavy effects) */
 .root {
     -fx-background-color:
-        linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 1.4%, rgba(0,0,0,0.0) 1.5%, rgba(0,0,0,0.0) 3.0%),
-        linear-gradient(to bottom, rgba(14, 40, 30, 0.96), rgba(7, 18, 14, 0.98)),
+        radial-gradient(center 50% 45%, radius 120%, rgba(19,56,41,0.22), rgba(3,9,7,0.94)),
+        linear-gradient(to bottom, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 1.2%, rgba(0,0,0,0.0) 1.3%, rgba(0,0,0,0.0) 2.6%),
+        linear-gradient(to bottom, rgba(12, 35, 26, 0.97), rgba(5, 14, 10, 0.99)),
         -fx-base-bg;
-    -fx-effect:
-        innershadow(gaussian, rgba(125,255,179,0.18), 34, 0.35, 0, 0),
-        dropshadow(gaussian, rgba(108,255,170,0.07), 24, 0.22, 0, 0);
+    -fx-effect: null;
 }
 
 .label,
@@ -68,13 +68,10 @@
 .sidebar-tree .folder-cell-icon,
 .sidebar-list .folder-cell-icon,
 .tree-cell .folder-cell-icon,
-.tree-cell:selected .folder-cell-icon,
 .tree-cell:hover .folder-cell-icon,
 .sidebar-tree .tree-cell .folder-cell-icon,
-.sidebar-tree .tree-cell:selected .folder-cell-icon,
 .sidebar-tree .tree-cell:hover .folder-cell-icon,
 .sidebar-list .tree-cell .folder-cell-icon,
-.sidebar-list .tree-cell:selected .folder-cell-icon,
 .sidebar-list .tree-cell:hover .folder-cell-icon {
     -fx-text-fill: -fx-accent;
     -fx-fill: -fx-accent;
@@ -112,8 +109,32 @@
 }
 
 .menu-item:hover,
-.menu-item:focused {
+.menu-item:focused,
+.menu-item:armed,
+.menu-item:selected {
     -fx-background-color: -fx-selected-bg;
+}
+
+.menu-item:focused:disabled,
+.menu-item:selected:disabled {
+    -fx-background-color: transparent;
+}
+
+.menu-item:hover .label,
+.menu-item:focused .label,
+.menu-item:armed .label,
+.menu-item:selected .label,
+.menu-item:hover .feather-icon,
+.menu-item:focused .feather-icon,
+.menu-item:armed .feather-icon,
+.menu-item:selected .feather-icon,
+.menu-item:hover .ikonli-font-icon,
+.menu-item:focused .ikonli-font-icon,
+.menu-item:armed .ikonli-font-icon,
+.menu-item:selected .ikonli-font-icon {
+    -fx-text-fill: -fx-accent-contrast;
+    -fx-icon-color: -fx-accent-contrast;
+    -fx-fill: -fx-accent-contrast;
 }
 
 .toolbar,
@@ -175,7 +196,7 @@
 .panel-close-btn:hover,
 .sidebar-btn:hover {
     -fx-background-color: linear-gradient(to bottom, #1f533d, #17402f);
-    -fx-border-color: #68e0a0;
+    -fx-border-color: -fx-accent;
 }
 
 .button:pressed,
@@ -194,16 +215,17 @@
 .modern-toggle-btn:selected,
 .icon-btn:selected,
 .icon-btn-small:selected,
-.format-btn:selected {
-    -fx-background-color: linear-gradient(to bottom, #318761, #256d4f);
-    -fx-border-color: -fx-accent-strong;
-    -fx-text-fill: #f2fff7;
+.format-btn:selected,
+.sidebar-btn:selected {
+    -fx-background-color: linear-gradient(to bottom, -fx-accent, -fx-accent-dim);
+    -fx-border-color: -fx-accent;
+    -fx-text-fill: -fx-accent-contrast;
 }
 
 .toolbar-btn-primary {
-    -fx-background-color: linear-gradient(to bottom, #3b9469, #2a7757);
+    -fx-background-color: linear-gradient(to bottom, -fx-accent, -fx-accent-dim);
     -fx-border-color: -fx-accent;
-    -fx-text-fill: #f4fff8;
+    -fx-text-fill: -fx-accent-contrast;
 }
 
 .toolbar-btn-danger {
@@ -233,7 +255,7 @@
 .icon-btn-small:hover .feather-icon,
 .modern-toggle-btn:hover .feather-icon,
 .sidebar-btn:hover .feather-icon {
-    -fx-icon-color: #cdffe4;
+    -fx-icon-color: -fx-text-main;
 }
 
 .toolbar-btn:hover .ikonli-font-icon,
@@ -241,21 +263,23 @@
 .icon-btn-small:hover .ikonli-font-icon,
 .modern-toggle-btn:hover .ikonli-font-icon,
 .sidebar-btn:hover .ikonli-font-icon {
-    -fx-icon-color: #cdffe4;
+    -fx-icon-color: -fx-text-main;
 }
 
 .toolbar-btn:selected .feather-icon,
 .icon-btn:selected .feather-icon,
 .icon-btn-small:selected .feather-icon,
-.modern-toggle-btn:selected .feather-icon {
-    -fx-icon-color: -fx-accent;
+.modern-toggle-btn:selected .feather-icon,
+.sidebar-btn:selected .feather-icon {
+    -fx-icon-color: -fx-accent-contrast;
 }
 
 .toolbar-btn:selected .ikonli-font-icon,
 .icon-btn:selected .ikonli-font-icon,
 .icon-btn-small:selected .ikonli-font-icon,
-.modern-toggle-btn:selected .ikonli-font-icon {
-    -fx-icon-color: -fx-accent;
+.modern-toggle-btn:selected .ikonli-font-icon,
+.sidebar-btn:selected .ikonli-font-icon {
+    -fx-icon-color: -fx-accent-contrast;
 }
 
 .button:disabled .feather-icon,
@@ -266,7 +290,7 @@
 .icon-btn:disabled .ikonli-font-icon,
 .icon-btn-small:disabled .feather-icon,
 .icon-btn-small:disabled .ikonli-font-icon {
-    -fx-icon-color: #5ea486;
+    -fx-icon-color: -fx-text-faint;
 }
 
 .search-field,
@@ -284,7 +308,7 @@
 .editor-area:focused,
 .text-area:focused {
     -fx-border-color: -fx-accent;
-    -fx-effect: dropshadow(gaussian, rgba(125,255,179,0.25), 8, 0.25, 0, 0);
+    -fx-effect: none;
 }
 
 .combo-box .list-cell,
@@ -297,6 +321,7 @@
 .combo-box-popup .list-view .list-cell:hover,
 .combo-box-popup .list-view .list-cell:selected {
     -fx-background-color: -fx-selected-bg;
+    -fx-text-fill: -fx-accent-contrast;
 }
 
 .tab-pane,
@@ -322,7 +347,40 @@
 }
 
 .tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label {
-    -fx-text-fill: -fx-accent;
+    -fx-text-fill: -fx-accent-contrast;
+}
+
+.tab-pane > .tab-header-area > .headers-region > .tab:selected .tab-label .text {
+    -fx-fill: -fx-accent-contrast;
+}
+
+/* Sidebar tab icons: enforce contrast parity with the rest of selected buttons */
+.sidebar-tabs .tab .feather-icon,
+.sidebar-tabs .tab .ikonli-font-icon {
+    -fx-icon-color: -fx-accent;
+    -fx-fill: -fx-accent;
+}
+
+.sidebar-tabs .tab:hover .feather-icon,
+.sidebar-tabs .tab:hover .ikonli-font-icon {
+    -fx-icon-color: -fx-text-main;
+    -fx-fill: -fx-text-main;
+}
+
+.sidebar-tabs .tab:selected .feather-icon,
+.sidebar-tabs .tab:selected .ikonli-font-icon,
+.sidebar-tabs .tab:selected:hover .feather-icon,
+.sidebar-tabs .tab:selected:hover .ikonli-font-icon {
+    -fx-icon-color: -fx-accent-contrast;
+    -fx-fill: -fx-accent-contrast;
+}
+
+.sidebar-tabs .tab:selected .tab-label,
+.sidebar-tabs .tab:selected:hover .tab-label,
+.sidebar-tabs .tab:selected .tab-label .text,
+.sidebar-tabs .tab:selected:hover .tab-label .text {
+    -fx-text-fill: -fx-accent-contrast;
+    -fx-fill: -fx-accent-contrast;
 }
 
 .tree-view,
@@ -356,12 +414,22 @@
     -fx-text-fill: -fx-text-main;
 }
 
+.notes-list .list-cell {
+    -fx-padding: 9 12 9 12;
+    -fx-border-color: transparent transparent -fx-retro-border transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.notes-list .list-cell:empty {
+    -fx-border-color: transparent;
+}
+
 .tree-cell:hover,
 .list-cell:hover,
 .sidebar-tree .tree-cell:hover,
 .notes-list .list-cell:hover,
 .sidebar-list .list-cell:hover {
-    -fx-background-color: rgba(45, 127, 93, 0.45);
+    -fx-background-color: -fx-hover-bg;
 }
 
 .tree-cell:selected,
@@ -370,16 +438,31 @@
 .notes-list .list-cell:selected,
 .sidebar-list .list-cell:selected {
     -fx-background-color: -fx-selected-strong-bg;
-    -fx-text-fill: #f3fff8;
+    -fx-text-fill: -fx-accent-contrast;
+}
+
+.tree-cell:selected .folder-cell-icon,
+.list-cell:selected .folder-cell-icon,
+.sidebar-tree .tree-cell:selected .folder-cell-icon,
+.sidebar-list .list-cell:selected .folder-cell-icon,
+.sidebar-list .tree-cell:selected .folder-cell-icon {
+    -fx-text-fill: -fx-accent-contrast;
+    -fx-fill: -fx-accent-contrast;
+}
+
+.list-cell:selected .note-cell-title,
+.list-cell:selected .note-cell-preview,
+.list-cell:selected .note-cell-date {
+    -fx-text-fill: -fx-accent-contrast;
 }
 
 .note-card {
-    -fx-background-color: #143226;
-    -fx-border-color: #3a966c;
+    -fx-background-color: #10291f;
+    -fx-border-color: #2f7f5d;
     -fx-border-width: 1;
-    -fx-background-radius: 8;
-    -fx-border-radius: 8;
-    -fx-effect: dropshadow(gaussian, rgba(72, 190, 128, 0.18), 8, 0.16, 0, 1);
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-effect: null;
 }
 
 .note-card .label,
@@ -388,9 +471,9 @@
 }
 
 .note-card:hover {
-    -fx-background-color: #1f4a38;
+    -fx-background-color: #16382b;
     -fx-border-color: -fx-accent;
-    -fx-effect: dropshadow(gaussian, rgba(125, 255, 179, 0.22), 10, 0.2, 0, 1);
+    -fx-effect: null;
 }
 
 .note-card-title {
@@ -422,8 +505,8 @@
     -fx-background-color: #0b2018;
     -fx-control-inner-background: #0b2018;
     -fx-text-fill: -fx-text-main;
-    -fx-highlight-fill: #2f7f5d;
-    -fx-highlight-text-fill: #f4fff9;
+    -fx-highlight-fill: -fx-selected-bg;
+    -fx-highlight-text-fill: -fx-accent-contrast;
     -fx-prompt-text-fill: -fx-text-faint;
     -fx-border-color: -fx-retro-border;
 }
@@ -466,12 +549,12 @@
 }
 
 .scroll-bar .thumb {
-    -fx-background-color: #3a946b;
+    -fx-background-color: -fx-accent-dim;
     -fx-background-radius: 6;
 }
 
 .scroll-bar .thumb:hover {
-    -fx-background-color: #57bd88;
+    -fx-background-color: -fx-accent;
 }
 
 .status-bar {
@@ -494,7 +577,148 @@
 }
 
 .drag-over-target {
-    -fx-background-color: rgba(212, 255, 112, 0.2);
-    -fx-border-color: -fx-accent-strong;
+    -fx-background-color: -fx-selected-bg;
+    -fx-border-color: -fx-accent;
     -fx-border-width: 1;
+}
+
+/* ========================================
+   FINAL INTERACTION CONSISTENCY (RETRO)
+   Keep all controls coherent with custom accent colors
+   ======================================== */
+
+.toolbar-btn,
+.modern-toggle-btn,
+.icon-btn,
+.icon-btn-small,
+.format-btn,
+.sidebar-btn,
+.view-btn {
+    -fx-text-fill: -fx-text-main;
+    -fx-border-color: -fx-retro-border-strong;
+}
+
+.toolbar-btn:hover,
+.modern-toggle-btn:hover,
+.icon-btn:hover,
+.icon-btn-small:hover,
+.format-btn:hover,
+.sidebar-btn:hover,
+.view-btn:hover {
+    -fx-border-color: -fx-accent;
+}
+
+.toolbar-btn:pressed,
+.modern-toggle-btn:pressed,
+.icon-btn:pressed,
+.icon-btn-small:pressed,
+.format-btn:pressed,
+.sidebar-btn:pressed,
+.view-btn:pressed {
+    -fx-background-color: -fx-hover-bg;
+}
+
+.toolbar-btn:selected,
+.modern-toggle-btn:selected,
+.icon-btn:selected,
+.icon-btn-small:selected,
+.format-btn:selected,
+.sidebar-btn:selected,
+.view-btn:selected,
+.toggle-button:selected {
+    -fx-background-color: linear-gradient(to bottom, -fx-accent, -fx-accent-dim);
+    -fx-border-color: -fx-accent;
+    -fx-text-fill: -fx-accent-contrast;
+}
+
+.toolbar-btn:selected:hover,
+.modern-toggle-btn:selected:hover,
+.icon-btn:selected:hover,
+.icon-btn-small:selected:hover,
+.format-btn:selected:hover,
+.sidebar-btn:selected:hover,
+.view-btn:selected:hover,
+.toggle-button:selected:hover {
+    -fx-background-color: linear-gradient(to bottom, -fx-accent-dim, -fx-accent);
+    -fx-border-color: -fx-accent;
+    -fx-text-fill: -fx-accent-contrast;
+}
+
+.toolbar-btn .feather-icon,
+.toolbar-btn .ikonli-font-icon,
+.modern-toggle-btn .feather-icon,
+.modern-toggle-btn .ikonli-font-icon,
+.icon-btn .feather-icon,
+.icon-btn .ikonli-font-icon,
+.icon-btn-small .feather-icon,
+.icon-btn-small .ikonli-font-icon,
+.format-btn .feather-icon,
+.format-btn .ikonli-font-icon,
+.sidebar-btn .feather-icon,
+.sidebar-btn .ikonli-font-icon,
+.view-btn .feather-icon,
+.view-btn .ikonli-font-icon {
+    -fx-icon-color: -fx-accent;
+    -fx-fill: -fx-accent;
+}
+
+.toolbar-btn:hover .feather-icon,
+.toolbar-btn:hover .ikonli-font-icon,
+.modern-toggle-btn:hover .feather-icon,
+.modern-toggle-btn:hover .ikonli-font-icon,
+.icon-btn:hover .feather-icon,
+.icon-btn:hover .ikonli-font-icon,
+.icon-btn-small:hover .feather-icon,
+.icon-btn-small:hover .ikonli-font-icon,
+.format-btn:hover .feather-icon,
+.format-btn:hover .ikonli-font-icon,
+.sidebar-btn:hover .feather-icon,
+.sidebar-btn:hover .ikonli-font-icon,
+.view-btn:hover .feather-icon,
+.view-btn:hover .ikonli-font-icon {
+    -fx-icon-color: -fx-text-main;
+    -fx-fill: -fx-text-main;
+}
+
+.toolbar-btn:selected .feather-icon,
+.toolbar-btn:selected .ikonli-font-icon,
+.modern-toggle-btn:selected .feather-icon,
+.modern-toggle-btn:selected .ikonli-font-icon,
+.icon-btn:selected .feather-icon,
+.icon-btn:selected .ikonli-font-icon,
+.icon-btn-small:selected .feather-icon,
+.icon-btn-small:selected .ikonli-font-icon,
+.format-btn:selected .feather-icon,
+.format-btn:selected .ikonli-font-icon,
+.sidebar-btn:selected .feather-icon,
+.sidebar-btn:selected .ikonli-font-icon,
+.view-btn:selected .feather-icon,
+.view-btn:selected .ikonli-font-icon {
+    -fx-icon-color: -fx-accent-contrast;
+    -fx-fill: -fx-accent-contrast;
+}
+
+/* Context menus: selected/armed option must always be readable */
+.context-menu .menu-item:focused,
+.context-menu .menu-item:hover,
+.context-menu .menu-item:armed,
+.context-menu .menu-item:selected {
+    -fx-background-color: -fx-selected-bg;
+}
+
+.context-menu .menu-item:focused .label,
+.context-menu .menu-item:hover .label,
+.context-menu .menu-item:armed .label,
+.context-menu .menu-item:selected .label,
+.context-menu .menu-item:focused .feather-icon,
+.context-menu .menu-item:hover .feather-icon,
+.context-menu .menu-item:armed .feather-icon,
+.context-menu .menu-item:selected .feather-icon,
+.context-menu .menu-item:focused .ikonli-font-icon,
+.context-menu .menu-item:hover .ikonli-font-icon,
+.context-menu .menu-item:armed .ikonli-font-icon,
+.context-menu .menu-item:selected .ikonli-font-icon {
+    -fx-text-fill: -fx-accent-contrast;
+    -fx-icon-color: -fx-accent-contrast;
+    -fx-fill: -fx-accent-contrast;
 }

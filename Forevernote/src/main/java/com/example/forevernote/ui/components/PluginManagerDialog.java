@@ -21,6 +21,10 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import java.util.prefs.Preferences;
+
+import com.example.forevernote.ui.controller.MainController;
+import com.example.forevernote.ui.workflow.UiPreferencesWorkflow;
 import javafx.stage.StageStyle;
 
 /**
@@ -91,7 +95,7 @@ public class PluginManagerDialog {
         String fg = isDarkTheme ? "#e0e0e0" : "#1e1e1e";
         String cardBg = isDarkTheme ? "#252525" : "#f5f5f5";
         String borderColor = isDarkTheme ? "#3a3a3a" : "#e0e0e0";
-        String accentColor = "#7c3aed";
+        String accentColor = resolveAccentColor();
         String mutedColor = isDarkTheme ? "#888888" : "#666666";
         
         // Main container
@@ -188,6 +192,26 @@ public class PluginManagerDialog {
             VBox pluginCard = createPluginCard(plugin);
             pluginListContainer.getChildren().add(pluginCard);
         }
+    }
+
+    private String resolveAccentColor() {
+        Preferences prefs = Preferences.userNodeForPackage(MainController.class);
+        boolean enabled = prefs.getBoolean(UiPreferencesWorkflow.ACCENT_ENABLED_KEY, false);
+        String color = prefs.get(UiPreferencesWorkflow.ACCENT_COLOR_KEY, "#7c3aed");
+        if (!enabled) {
+            return "#7c3aed";
+        }
+        if (color == null) {
+            return "#7c3aed";
+        }
+        String normalized = color.trim();
+        if (!normalized.startsWith("#")) {
+            normalized = "#" + normalized;
+        }
+        if (normalized.matches("^#[0-9a-fA-F]{6}$")) {
+            return normalized.toLowerCase();
+        }
+        return "#7c3aed";
     }
     
     /**

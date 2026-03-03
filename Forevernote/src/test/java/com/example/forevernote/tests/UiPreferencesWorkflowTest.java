@@ -23,6 +23,8 @@ class UiPreferencesWorkflowTest {
         assertEquals(UiPreferencesWorkflow.MODE_TEXT, loaded.editorViewModeButtonsMode());
         assertTrue(loaded.autosaveEnabled());
         assertEquals(UiPreferencesWorkflow.DEFAULT_AUTOSAVE_IDLE_MS, loaded.autosaveIdleMs());
+        assertEquals(false, loaded.accentEnabled());
+        assertEquals("#7c3aed", loaded.accentColor());
     }
 
     @Test
@@ -37,7 +39,9 @@ class UiPreferencesWorkflowTest {
                 false,
                 5000,
                 UiPreferencesWorkflow.THEME_SOURCE_EXTERNAL,
-                "retro-phosphor");
+                "retro-phosphor",
+                true,
+                "#00ffaa");
         workflow.save(prefs, value);
 
         UiPreferences loaded = workflow.load(prefs);
@@ -47,5 +51,7 @@ class UiPreferencesWorkflowTest {
         assertEquals(5000, loaded.autosaveIdleMs());
         assertEquals(UiPreferencesWorkflow.THEME_SOURCE_EXTERNAL, loaded.themeSource());
         assertEquals("retro-phosphor", loaded.externalThemeId());
+        assertEquals(true, loaded.accentEnabled());
+        assertEquals("#00ffaa", loaded.accentColor());
     }
 }

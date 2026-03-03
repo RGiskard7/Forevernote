@@ -79,6 +79,7 @@ case "$OS_NAME" in
         else
             PLATFORM_SUFFIX="mac"
         fi
+        JAVA_OPTS_EXTRA="-Dprism.lcdtext=false"
         ;;
     Linux*)
         if [ "$ARCH" = "aarch64" ]; then
@@ -86,9 +87,11 @@ case "$OS_NAME" in
         else
             PLATFORM_SUFFIX="linux"
         fi
+        JAVA_OPTS_EXTRA=""
         ;;
     *)
         PLATFORM_SUFFIX=""
+        JAVA_OPTS_EXTRA=""
         ;;
 esac
 
@@ -105,7 +108,7 @@ if [ ! -d "$JAVAFX_BASE" ]; then
     echo "Attempting to launch without module-path (may fail)..."
     echo ""
     cd "$FORVERNOTE_DIR"
-    java -jar "$JAR"
+    java $JAVA_OPTS_EXTRA -jar "$JAR"
     exit $?
 fi
 
@@ -126,7 +129,7 @@ if [ -z "$JAVAFX_VERSION" ]; then
     echo "Attempting to launch without module-path..."
     echo ""
     cd "$FORVERNOTE_DIR"
-    java -jar "$JAR"
+    java $JAVA_OPTS_EXTRA -jar "$JAR"
     exit $?
 fi
 
@@ -188,7 +191,7 @@ if [ -z "$MODULE_PATH" ]; then
     echo "Attempting to launch without module-path..."
     echo ""
     cd "$FORVERNOTE_DIR"
-    java -jar "$JAR"
+    java $JAVA_OPTS_EXTRA -jar "$JAR"
     exit $?
 fi
 
@@ -201,7 +204,7 @@ echo ""
 cd "$FORVERNOTE_DIR"
 
 # Launch with module-path
-java --module-path "$MODULE_PATH" --add-modules "$MODULES" -jar "$JAR"
+java $JAVA_OPTS_EXTRA --module-path "$MODULE_PATH" --add-modules "$MODULES" -jar "$JAR"
 
 EXIT_CODE=$?
 

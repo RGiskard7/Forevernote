@@ -15,10 +15,7 @@ import com.example.forevernote.service.FolderService;
 import com.example.forevernote.service.NoteService;
 import com.example.forevernote.ui.controller.MainController;
 
-import javafx.scene.control.Alert;
-import javafx.scene.control.TreeView;
 import javafx.scene.control.TextInputDialog;
-import javafx.scene.control.ListView;
 import javafx.stage.FileChooser;
 
 /**
@@ -129,7 +126,8 @@ public class FileCommandWorkflow {
 
         if (!creation.success() || creation.folder() == null) {
             if (creation.errorMessage() != null && !creation.errorMessage().isBlank()) {
-                uiPort.onStatus(java.text.MessageFormat.format(i18n.apply("status.error_details"), creation.errorMessage()));
+                uiPort.onStatus(
+                        java.text.MessageFormat.format(i18n.apply("status.error_details"), creation.errorMessage()));
             } else {
                 uiPort.onStatus(i18n.apply("status.error_creating_folder"));
             }
@@ -138,7 +136,8 @@ public class FileCommandWorkflow {
 
         uiPort.refreshFolders();
         uiPort.refreshTree();
-        uiPort.onStatus(java.text.MessageFormat.format(i18n.apply("status.folder_created"), creation.folder().getTitle()));
+        uiPort.onStatus(
+                java.text.MessageFormat.format(i18n.apply("status.folder_created"), creation.folder().getTitle()));
         return true;
     }
 
@@ -175,7 +174,8 @@ public class FileCommandWorkflow {
 
         uiPort.refreshFolders();
         uiPort.refreshTree();
-        uiPort.onStatus(java.text.MessageFormat.format(i18n.apply("status.subfolder_created"), creation.folder().getTitle()));
+        uiPort.onStatus(
+                java.text.MessageFormat.format(i18n.apply("status.subfolder_created"), creation.folder().getTitle()));
         return true;
     }
 
@@ -220,9 +220,11 @@ public class FileCommandWorkflow {
 
         uiPort.refreshAfterImport();
 
-        String message = java.text.MessageFormat.format(i18n.apply("status.imported_notes"), importResult.importedCount());
+        String message = java.text.MessageFormat.format(i18n.apply("status.imported_notes"),
+                importResult.importedCount());
         if (importResult.failedCount() > 0) {
-            message += "\n" + java.text.MessageFormat.format(i18n.apply("status.import_failed_count"), importResult.failedCount());
+            message += "\n" + java.text.MessageFormat.format(i18n.apply("status.import_failed_count"),
+                    importResult.failedCount());
         }
         uiPort.onStatus(message);
         uiPort.showInfo(i18n.apply("status.import_complete"), i18n.apply("dialog.import_finished"), message);

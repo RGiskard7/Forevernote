@@ -90,6 +90,24 @@ else
     echo "Warning: build-plugins.sh not found. Packaged app will run without plugins."
 fi
 
+# Build themes (required for packaged app to have external themes available)
+BUILD_THEMES_SCRIPT="$ROOT_DIR/scripts/build-themes.sh"
+if [ -f "$BUILD_THEMES_SCRIPT" ]; then
+    echo ""
+    echo "Building themes..."
+    if "$BUILD_THEMES_SCRIPT"; then
+        THEMES_DIR="$FORVERNOTE_DIR/themes"
+        if [ -d "$THEMES_DIR" ]; then
+            THEME_COUNT=$(find "$THEMES_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+            echo "Themes built: $THEME_COUNT theme(s) in themes/"
+        fi
+    else
+        echo "Warning: Theme build failed. Packaged app will run without bundled external themes."
+    fi
+else
+    echo "Warning: build-themes.sh not found. Packaged app will run without bundled external themes."
+fi
+
 echo ""
 echo "Creating macOS DMG installer..."
 echo ""
@@ -102,9 +120,11 @@ TEMP_INPUT_DIR=$(mktemp -d -t Forevernote-jpackage-input-XXXXXX)
 JAR_PATH="target/forevernote-1.0.0-uber.jar"
 cp "$JAR_PATH" "$TEMP_INPUT_DIR/"
 
-# Include plugins if available (for --app-content)
+# Include plugins/themes if available (for --app-content)
 SOURCE_PLUGINS_DIR="$FORVERNOTE_DIR/plugins"
+SOURCE_THEMES_DIR="$FORVERNOTE_DIR/themes"
 PLUGINS_INCLUDED=false
+THEMES_INCLUDED=false
 
 # Cleanup function
 cleanup() {
@@ -141,17 +161,36 @@ else
     echo "Icon not found at $ICON_PATH, skipping icon..."
 fi
 
-# Include plugins via --app-content if jpackage supports it and we have plugins
-if [ -d "$SOURCE_PLUGINS_DIR" ]; then
-    PLUGIN_JARS=$(find "$SOURCE_PLUGINS_DIR" -maxdepth 1 -name "*.jar" 2>/dev/null)
-    if [ -n "$PLUGIN_JARS" ]; then
-        JPACKAGE_HELP=$(jpackage --help 2>&1 || true)
-        if echo "$JPACKAGE_HELP" | grep -q "app-content"; then
-            JPACKAGE_CMD="$JPACKAGE_CMD --app-content \"$SOURCE_PLUGINS_DIR\""
+# Include plugins/themes via --app-content if jpackage supports it
+JPACKAGE_HELP=$(jpackage --help 2>&1 || true)
+if echo "$JPACKAGE_HELP" | grep -q "app-content"; then
+    APP_CONTENT_DIR="$TEMP_INPUT_DIR/app-content"
+    mkdir -p "$APP_CONTENT_DIR"
+
+    if [ -d "$SOURCE_PLUGINS_DIR" ]; then
+        PLUGIN_JARS=$(find "$SOURCE_PLUGINS_DIR" -maxdepth 1 -name "*.jar" 2>/dev/null)
+        if [ -n "$PLUGIN_JARS" ]; then
+            mkdir -p "$APP_CONTENT_DIR/plugins"
+            cp "$SOURCE_PLUGINS_DIR"/*.jar "$APP_CONTENT_DIR/plugins/"
             PLUGINS_INCLUDED=true
             PLUGIN_COUNT=$(echo "$PLUGIN_JARS" | wc -l | tr -d ' ')
             echo "Including plugins via --app-content ($PLUGIN_COUNT JAR(s))"
         fi
+    fi
+
+    if [ -d "$SOURCE_THEMES_DIR" ]; then
+        THEME_DIRS=$(find "$SOURCE_THEMES_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+        if [ -n "$THEME_DIRS" ]; then
+            mkdir -p "$APP_CONTENT_DIR/themes"
+            cp -R "$SOURCE_THEMES_DIR"/. "$APP_CONTENT_DIR/themes/"
+            THEMES_INCLUDED=true
+            THEME_COUNT=$(echo "$THEME_DIRS" | wc -l | tr -d ' ')
+            echo "Including themes via --app-content ($THEME_COUNT theme(s))"
+        fi
+    fi
+
+    if [ "$PLUGINS_INCLUDED" = true ] || [ "$THEMES_INCLUDED" = true ]; then
+        JPACKAGE_CMD="$JPACKAGE_CMD --app-content \"$APP_CONTENT_DIR\""
     fi
 fi
 
@@ -171,6 +210,13 @@ if [ $? -eq 0 ]; then
         if [ -n "$PLUGIN_JARS" ]; then
             echo "Note: Plugins could not be included via --app-content (JDK may be < 18)."
             echo "  Users can add plugins to: ~/Library/Application Support/$APP_NAME/plugins/"
+        fi
+    fi
+    if [ "$THEMES_INCLUDED" = false ] && [ -d "$SOURCE_THEMES_DIR" ]; then
+        THEME_DIRS=$(find "$SOURCE_THEMES_DIR" -mindepth 1 -maxdepth 1 -type d 2>/dev/null)
+        if [ -n "$THEME_DIRS" ]; then
+            echo "Note: Themes could not be included via --app-content (JDK may be < 18)."
+            echo "  Users can add themes to: ~/Library/Application Support/$APP_NAME/themes/"
         fi
     fi
     

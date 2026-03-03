@@ -59,10 +59,11 @@ public class PreviewWorkflow {
         html = resolveRelativeImageSourcesInHtml(html, context);
 
         Injections injections = collectInjections(enhancers);
-        String highlightCss = isDarkTheme ? HLJS_DARK_CSS : HLJS_LIGHT_CSS;
+        boolean shouldHighlight = hasCodeBlocks(markdownContent);
+        String highlightCss = shouldHighlight ? (isDarkTheme ? HLJS_DARK_CSS : HLJS_LIGHT_CSS) : "";
 
         String styleBlock = isDarkTheme ? darkStyles() : lightStyles();
-        String highlightScript = highlightScriptBlock();
+        String highlightScript = highlightScriptBlock(shouldHighlight);
 
         return """
                 <!DOCTYPE html>
@@ -496,14 +497,25 @@ public class PreviewWorkflow {
         }
     }
 
-    private String highlightScriptBlock() {
+    private String highlightScriptBlock(boolean shouldHighlight) {
         return """
-                if (typeof hljs !== 'undefined' && hljs && hljs.highlightElement) {
-                    document.querySelectorAll('pre code').forEach(function(block) {
-                        hljs.highlightElement(block);
-                    });
-                }
-                """;
+                (function() {
+                    if (!%s) return;
+                    if (typeof hljs !== 'undefined' && hljs && hljs.highlightElement) {
+                        document.querySelectorAll('pre code').forEach(function(block) {
+                            hljs.highlightElement(block);
+                        });
+                    }
+                })();
+                """.formatted(Boolean.toString(shouldHighlight));
+    }
+
+    private boolean hasCodeBlocks(String markdownContent) {
+        if (markdownContent == null || markdownContent.isBlank()) {
+            return false;
+        }
+        return markdownContent.contains("```")
+                || markdownContent.contains("~~~");
     }
 
     private String escapeHtml(String input) {

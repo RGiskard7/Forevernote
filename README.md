@@ -67,10 +67,6 @@ Forevernote is a Java 17 + JavaFX 21 desktop application inspired by Obsidian-li
 - Markdown rendering with GFM tables, autolinks, strikethrough
 - Live preview and split mode
 - Syntax highlighting for fenced code blocks (highlight.js)
-- Emoji support in preview:
-  - Unicode emoji (e.g., `😄`)
-  - Common shortcodes (e.g., `:smile:`, `:rocket:`)
-  - Classic emoticons (e.g., `:)`, `:D`, `<3`)
 
 ### UI/UX
 
@@ -227,6 +223,11 @@ mvn -f Forevernote/pom.xml clean package -DskipTests
 .\scripts\package-windows.ps1
 ```
 
+Packaging scripts now prepare both external plugins and external themes automatically before calling `jpackage`:
+- `package-macos.sh` -> runs `build-plugins.sh` + `build-themes.sh`
+- `package-linux.sh` -> runs `build-plugins.sh` + `build-themes.sh`
+- `package-windows.ps1` -> runs `build-plugins.ps1` + `build-themes.ps1`
+
 ### Maven Development Run
 
 ```bash
@@ -290,6 +291,23 @@ themes/<theme-id>/theme.css
 
 - Place plugin JAR files in `plugins/`
 - Open plugin manager from Tools menu for enable/disable operations
+
+### Do I Need to Move Plugins/Themes Manually?
+
+Short answer: usually **no**.
+
+- Development run (`run_all.*` / `launch-forevernote.*`):
+  - `build-plugins.*` places JARs into `Forevernote/plugins/`
+  - `build-themes.*` places themes into `Forevernote/themes/`
+  - App resolves both locations directly, no manual move required.
+
+- Packaged installers (`package-*`):
+  - Scripts already build plugins/themes automatically.
+  - If your JDK supports `jpackage --app-content`, plugins/themes are bundled.
+  - If not (common with JDK 17), app still works but users should place files in AppData:
+    - Windows: `%APPDATA%\Forevernote\plugins` and `%APPDATA%\Forevernote\themes`
+    - macOS: `~/Library/Application Support/Forevernote/plugins` and `~/Library/Application Support/Forevernote/themes`
+    - Linux: `~/.config/Forevernote/plugins` and `~/.config/Forevernote/themes`
 
 ## Documentation
 

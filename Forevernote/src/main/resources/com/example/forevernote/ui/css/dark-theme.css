@@ -155,9 +155,21 @@
     background-color: -fx-hover-bg;
 }
 
+.menu-item:armed,
+.menu-item:selected {
+    -fx-background-color: -fx-selected-bg;
+    background-color: -fx-selected-bg;
+}
+
 .menu-item .label {
     -fx-text-fill: -fx-text-main;
     color: -fx-text-main;
+}
+
+.menu-item:armed .label,
+.menu-item:selected .label {
+    -fx-text-fill: -fx-accent-contrast;
+    color: -fx-accent-contrast;
 }
 
 .menu-item:disabled .label {
@@ -1680,13 +1692,13 @@
 }
 
 .calendar-today {
-    -fx-background-color: #9f7aea;
+    -fx-background-color: -fx-accent;
     -fx-text-fill: #ffffff;
     -fx-font-weight: bold;
 }
 
 .calendar-today:hover {
-    -fx-background-color: #8b5cf6;
+    -fx-background-color: -fx-accent;
 }
 
 /* Outline Plugin Styles */
@@ -2010,4 +2022,75 @@
     -fx-icon-color: -fx-selected-text;
     -fx-fill: -fx-selected-text;
     -fx-opacity: 1.0;
+}
+
+/* ========================================
+   ACCENT CONTRAST FINAL OVERRIDES
+   Keep selected states readable with custom accent colors
+   ======================================== */
+
+.button:focused,
+.toggle-button:focused,
+.menu-button:focused,
+.list-view:focused,
+.tree-view:focused,
+.tab-pane:focused,
+.combo-box:focused,
+.text-field:focused {
+    -fx-focus-color: -fx-accent;
+    -fx-faint-focus-color: transparent;
+}
+
+.toolbar-btn:selected,
+.modern-toggle-btn:selected,
+.icon-btn:selected,
+.icon-btn-small:selected,
+.view-btn:selected,
+.format-btn:selected,
+.toggle-button:selected {
+    -fx-background-color: -fx-accent;
+    background-color: -fx-accent;
+    -fx-border-color: -fx-accent;
+    border-color: -fx-accent;
+    -fx-text-fill: -fx-accent-contrast;
+    color: -fx-accent-contrast;
+}
+
+.toolbar-btn:selected:hover,
+.modern-toggle-btn:selected:hover,
+.icon-btn:selected:hover,
+.icon-btn-small:selected:hover,
+.view-btn:selected:hover,
+.format-btn:selected:hover,
+.toggle-button:selected:hover {
+    -fx-background-color: -fx-accent-hover;
+    background-color: -fx-accent-hover;
+    -fx-border-color: -fx-accent-hover;
+    border-color: -fx-accent-hover;
+    -fx-text-fill: -fx-accent-contrast;
+    color: -fx-accent-contrast;
+}
+
+.toolbar-btn:selected .feather-icon,
+.toolbar-btn:selected .ikonli-font-icon,
+.modern-toggle-btn:selected .feather-icon,
+.modern-toggle-btn:selected .ikonli-font-icon,
+.icon-btn:selected .feather-icon,
+.icon-btn:selected .ikonli-font-icon,
+.icon-btn-small:selected .feather-icon,
+.icon-btn-small:selected .ikonli-font-icon,
+.view-btn:selected .feather-icon,
+.view-btn:selected .ikonli-font-icon,
+.format-btn:selected .feather-icon,
+.format-btn:selected .ikonli-font-icon,
+.toggle-button:selected .feather-icon,
+.toggle-button:selected .ikonli-font-icon {
+    -fx-icon-color: -fx-accent-contrast;
+    -fx-fill: -fx-accent-contrast;
+    fill: -fx-accent-contrast;
+}
+
+.drag-over-target {
+    -fx-background-color: -fx-accent;
+    -fx-border-color: -fx-accent;
 }
