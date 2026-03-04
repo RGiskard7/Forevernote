@@ -115,4 +115,19 @@ class PreviewWorkflowTest {
 
         assertTrue(html.contains("🔌"));
     }
+
+    @Test
+    void buildPreviewHtmlConvertsWikiLinksToInternalLinks() {
+        PreviewWorkflow workflow = new PreviewWorkflow();
+        PreviewWorkflow.PreviewContext context = new PreviewWorkflow.PreviewContext(
+                "filesystem",
+                "/tmp",
+                "note.md",
+                (rawTarget, sourceNoteId) -> "forevernote://note/" + rawTarget.replace(" ", "_"));
+        String html = workflow.buildPreviewHtml("Relacion [[Mi Nota|Abrir nota]]", false, List.of(), context);
+
+        assertTrue(html.contains("class=\"fn-wikilink\""));
+        assertTrue(html.contains("forevernote://note/"));
+        assertTrue(html.contains("Abrir nota"));
+    }
 }

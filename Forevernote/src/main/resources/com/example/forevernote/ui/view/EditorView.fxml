@@ -64,6 +64,8 @@
             </graphic>
         </ToggleButton>
     </HBox>
+
+    <TabPane fx:id="noteTabsPane" tabClosingPolicy="ALL_TABS" styleClass="note-tabs"/>
     
     <!-- Tags Bar (Collapsible) -->
     <VBox fx:id="tagsContainer" visible="false" managed="false">

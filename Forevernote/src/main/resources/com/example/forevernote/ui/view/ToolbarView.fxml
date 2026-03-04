@@ -37,6 +37,8 @@
         <Menu text="%menu.view">
             <MenuItem fx:id="toggleSidebarMenuItem" text="%action.toggle_sidebar" onAction="#handleToggleSidebar" accelerator="F9"/>
             <MenuItem fx:id="toggleNotesListMenuItem" text="%action.toggle_notes_list" onAction="#handleToggleNotesPanel" accelerator="F8"/>
+            <MenuItem text="%action.open_graph" onAction="#handleOpenGraph"/>
+            <MenuItem text="%action.reindex_links" onAction="#handleReindexLinks"/>
             <SeparatorMenuItem/>
             <MenuItem text="%action.zoom_in" onAction="#handleZoomIn" accelerator="Shortcut+Plus"/>
             <MenuItem text="%action.zoom_out" onAction="#handleZoomOut" accelerator="Shortcut+Minus"/>

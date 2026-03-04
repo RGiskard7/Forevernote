@@ -50,6 +50,8 @@ public class EditorController {
     private ToggleButton favoriteButton;
     @FXML
     private ToggleButton infoButton;
+    @FXML
+    private TabPane noteTabsPane;
 
     // Tags Bar
     @FXML
@@ -197,6 +199,10 @@ public class EditorController {
 
     public ToggleButton getInfoButton() {
         return infoButton;
+    }
+
+    public TabPane getNoteTabsPane() {
+        return noteTabsPane;
     }
 
     public VBox getTagsContainer() {

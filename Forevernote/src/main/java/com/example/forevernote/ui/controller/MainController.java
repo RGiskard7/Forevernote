@@ -4,6 +4,10 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.input.*;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.paint.Color;
+import javafx.scene.Node;
 import javafx.application.Platform;
 import javafx.animation.PauseTransition;
 import javafx.event.ActionEvent;
@@ -68,6 +72,10 @@ import com.example.forevernote.ui.workflow.ThemeCatalogWorkflow;
 import com.example.forevernote.ui.workflow.PluginUiWorkflow;
 import com.example.forevernote.ui.workflow.AppSettingsWorkflow;
 import com.example.forevernote.ui.workflow.UiPreferencesWorkflow;
+import com.example.forevernote.ui.workflow.TabCommandWorkflow;
+import com.example.forevernote.ui.workflow.graph.GraphWorkflow;
+import com.example.forevernote.service.tabs.TabSessionService;
+import com.example.forevernote.service.links.LinkIndexService;
 
 public class MainController implements PluginMenuRegistry, SidePanelRegistry, PreviewEnhancerRegistry {
 
@@ -138,6 +146,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private ToggleButton pinButton;
     private ToggleButton favoriteButton;
     private ToggleButton infoButton;
+    private TabPane noteTabsPane;
     private VBox tagsContainer;
     private FlowPane tagsFlowPane;
     private Label modifiedDateLabel;
@@ -192,6 +201,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
     @FXML
     private VBox pluginPanelsContainer;
+    @FXML
+    private VBox rightPanelContent;
+    private ListView<Note> backlinksListView;
     private final Map<String, VBox> pluginPanels = new HashMap<>();
     private final Map<String, List<String>> pluginPanelIds = new HashMap<>();
 
@@ -244,6 +256,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private final UiPreferencesWorkflow uiPreferencesWorkflow = new UiPreferencesWorkflow();
     private final PluginUiWorkflow pluginUiWorkflow = new PluginUiWorkflow();
     private final AppSettingsWorkflow appSettingsWorkflow = new AppSettingsWorkflow();
+    private final TabCommandWorkflow tabCommandWorkflow = new TabCommandWorkflow();
+    private final GraphWorkflow graphWorkflow = new GraphWorkflow();
+    private final TabSessionService tabSessionService = new TabSessionService();
+    private final LinkIndexService linkIndexService = new LinkIndexService();
     private final List<EventBus.Subscription> uiEventSubscriptions = new ArrayList<>();
     private EventBus.Subscription systemActionSubscription = EventBus.Subscription.NO_OP;
 
@@ -278,6 +294,34 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private boolean customAccentEnabled = false;
     private String customAccentColor = "#7c3aed";
     private String lastPreviewRenderKey = "";
+    private boolean featureTabsEnabled = true;
+    private boolean featureGraphEnabled = true;
+    private boolean featureObsidianLinksEnabled = true;
+    private boolean switchingTabSelection = false;
+    private final Map<String, Tab> uiTabsById = new HashMap<>();
+    private boolean previewLinkHandlerBound = false;
+    private Canvas graphCanvas;
+    private ComboBox<String> graphModeCombo;
+    private Spinner<Integer> graphDepthSpinner;
+    private CheckBox graphUnresolvedCheck;
+    private final Map<String, GraphWorkflow.GraphNode> graphNodeHitMap = new HashMap<>();
+    private VBox graphWorkspaceContainer;
+    private Canvas graphWorkspaceCanvas;
+    private ComboBox<String> graphWorkspaceModeCombo;
+    private Spinner<Integer> graphWorkspaceDepthSpinner;
+    private CheckBox graphWorkspaceUnresolvedCheck;
+    private double graphWorkspaceScale = 1.0;
+    private double graphWorkspaceOffsetX = 0.0;
+    private double graphWorkspaceOffsetY = 0.0;
+    private double graphWorkspaceDragStartX = 0.0;
+    private double graphWorkspaceDragStartY = 0.0;
+    private GraphWorkflow.GraphData graphWorkspaceData = new GraphWorkflow.GraphData(List.of(), List.of());
+    private String graphWorkspaceHoverNodeId;
+    private Label graphWorkspaceStatsLabel;
+    private boolean graphWorkspaceVisible = false;
+    private boolean graphWorkspacePrevRightPanelVisible = true;
+    private static final String PREF_TABS_SESSION_IDS = "tabs.session.ids";
+    private static final String PREF_TABS_SESSION_ACTIVE_ID = "tabs.session.active_note_id";
 
     private enum SaveDialogDecision {
         SAVE,
@@ -368,6 +412,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 wordCountLabel = editorController.getWordCountLabel();
                 previewPane = editorController.getPreviewPane();
                 previewWebView = editorController.getPreviewWebView();
+                noteTabsPane = editorController.getNoteTabsPane();
                 if (toggleTagsBtn != null) {
                     toggleTagsBtn.setSelected(false);
                 }
@@ -384,6 +429,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             initializeIcons();
             initializeRightPanelSections();
             setupToolbarResponsiveness();
+            initializeFeatureFlags();
+            initializeNoteTabs();
+            initializePreviewLinkHandler();
+            initializeBacklinksPanel();
+            initializeGraphPanel();
             initializeThemeMenu();
             initializeLanguageMenu();
             applyUiPreferencesFromStore();
@@ -393,6 +443,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             sidebarController.loadRecentNotes();
             sidebarController.loadFavorites();
             sidebarController.loadTrashTree();
+            rebuildLinkIndex();
+            restoreTabSession();
 
             Platform.runLater(this::initializeKeyboardShortcuts);
 
@@ -720,6 +772,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         uiEventHandlerWorkflow.onNoteDeleted(noteId, this::getCurrentNote, editorController, tagsFlowPane,
                 previewWebView,
                 this::refreshNotesList, sidebarController);
+        if (noteId != null) {
+            tabSessionService.findByNoteId(noteId).ifPresent(tab -> {
+                tabSessionService.closeTab(tab.tabId());
+                syncTabsUi();
+            });
+        }
+        rebuildLinkIndex();
     }
 
     private void handleUiFolderDeleted(String folderId) {
@@ -764,6 +823,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
         pendingModifiedNoteId = note.getId();
         noteModifiedDebounce.playFromStart();
+        markCurrentTabDirty(true);
         if (autosaveEnabled) {
             autosaveDebounce.playFromStart();
         }
@@ -1041,6 +1101,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 this::registerCommandRoute,
                 commandRoutingWorkflow::registerAlias,
                 this::resolveCommandAction);
+        registerCommandRoute("cmd.tabs_next", "tab.next", () -> handleNextTab(null));
+        registerCommandRoute("cmd.tabs_prev", "tab.prev", () -> handlePreviousTab(null));
+        registerCommandRoute("cmd.tabs_close_current", "tab.close", () -> handleCloseCurrentTab(null));
+        registerCommandRoute("cmd.tabs_close_others", "tab.close_others", () -> handleCloseOtherTabs(null));
+        registerCommandRoute("cmd.tabs_close_all", "tab.close_all", () -> handleCloseAllTabs(null));
+        registerCommandRoute("cmd.graph_open", "graph.open", () -> handleOpenGraphPanel(null));
+        registerCommandRoute("cmd.graph_refresh", "graph.refresh", () -> handleRefreshGraph(null));
+        registerCommandRoute("cmd.links_reindex", "links.reindex", () -> handleReindexLinks(null));
     }
 
     private Runnable resolveCommandAction(String commandId) {
@@ -1094,6 +1162,22 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 return () -> handleToggleSidebar(null);
             case "cmd.toggle_info_panel":
                 return () -> handleToggleRightPanel(null);
+            case "cmd.tabs_next":
+                return () -> handleNextTab(null);
+            case "cmd.tabs_prev":
+                return () -> handlePreviousTab(null);
+            case "cmd.tabs_close_current":
+                return () -> handleCloseCurrentTab(null);
+            case "cmd.tabs_close_others":
+                return () -> handleCloseOtherTabs(null);
+            case "cmd.tabs_close_all":
+                return () -> handleCloseAllTabs(null);
+            case "cmd.graph_open":
+                return () -> handleOpenGraphPanel(null);
+            case "cmd.graph_refresh":
+                return () -> handleRefreshGraph(null);
+            case "cmd.links_reindex":
+                return () -> handleReindexLinks(null);
             case "cmd.editor_mode":
                 return () -> handleEditorOnlyMode(null);
             case "cmd.preview_mode":
@@ -1208,6 +1292,14 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         systemActionHandlers.put(SystemActionEvent.ActionType.TOGGLE_PIN, () -> handleTogglePin(null));
         systemActionHandlers.put(SystemActionEvent.ActionType.TOGGLE_FAVORITE, () -> handleToggleFavorite(null));
         systemActionHandlers.put(SystemActionEvent.ActionType.TOGGLE_RIGHT_PANEL, () -> handleToggleRightPanel(null));
+        systemActionHandlers.put(SystemActionEvent.ActionType.TABS_NEXT, () -> handleNextTab(null));
+        systemActionHandlers.put(SystemActionEvent.ActionType.TABS_PREVIOUS, () -> handlePreviousTab(null));
+        systemActionHandlers.put(SystemActionEvent.ActionType.TAB_CLOSE_CURRENT, () -> handleCloseCurrentTab(null));
+        systemActionHandlers.put(SystemActionEvent.ActionType.TAB_CLOSE_OTHERS, () -> handleCloseOtherTabs(null));
+        systemActionHandlers.put(SystemActionEvent.ActionType.TAB_CLOSE_ALL, () -> handleCloseAllTabs(null));
+        systemActionHandlers.put(SystemActionEvent.ActionType.GRAPH_OPEN, () -> handleOpenGraphPanel(null));
+        systemActionHandlers.put(SystemActionEvent.ActionType.GRAPH_REFRESH, () -> handleRefreshGraph(null));
+        systemActionHandlers.put(SystemActionEvent.ActionType.LINKS_REINDEX, () -> handleReindexLinks(null));
     }
 
     private Stage getPrimaryStage() {
@@ -1380,6 +1472,815 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
         double width = editorContainer != null ? editorContainer.getWidth() : 1200.0;
         editorController.applyViewModeButtonsPresentation(editorViewButtonsMode, width);
+    }
+
+    private void initializeFeatureFlags() {
+        featureTabsEnabled = prefs.getBoolean("feature.tabs.enabled", true);
+        featureGraphEnabled = prefs.getBoolean("feature.graph.enabled", true);
+        featureObsidianLinksEnabled = prefs.getBoolean("feature.obsidian_links.enabled", true);
+    }
+
+    private void initializeNoteTabs() {
+        if (noteTabsPane == null) {
+            return;
+        }
+        noteTabsPane.setVisible(featureTabsEnabled);
+        noteTabsPane.setManaged(featureTabsEnabled);
+        if (!featureTabsEnabled) {
+            return;
+        }
+        noteTabsPane.getSelectionModel().selectedItemProperty().addListener((obs, oldTab, newTab) -> {
+            if (switchingTabSelection || newTab == null) {
+                return;
+            }
+            String tabId = (String) newTab.getUserData();
+            if (tabId == null) {
+                return;
+            }
+            tabSessionService.activateTab(tabId);
+            tabSessionService.findByTabId(tabId).ifPresent(state -> {
+                Note note = noteService != null ? noteService.getNoteById(state.noteRef().noteId()).orElse(null) : null;
+                if (note != null) {
+                    loadNoteInEditor(note);
+                }
+            });
+            if (eventBus != null) {
+                eventBus.publish(new TabEvents.TabStateChangedEvent());
+            }
+        });
+        noteTabsPane.setTabClosingPolicy(TabPane.TabClosingPolicy.ALL_TABS);
+    }
+
+    private void restoreTabSession() {
+        if (!featureTabsEnabled || noteService == null || noteTabsPane == null) {
+            return;
+        }
+        String serialized = prefs.get(PREF_TABS_SESSION_IDS, "");
+        if (serialized == null || serialized.isBlank()) {
+            return;
+        }
+        String[] noteIds = serialized.split("\\R");
+        for (String noteId : noteIds) {
+            if (noteId == null || noteId.isBlank()) {
+                continue;
+            }
+            Note note = noteService.getNoteById(noteId).orElse(null);
+            if (note != null) {
+                tabSessionService.openNote(
+                        new TabSessionService.NoteRef(note.getId(), note.getTitle()),
+                        TabSessionService.OpenMode.ACTIVATE_OR_OPEN);
+            }
+        }
+        String activeNoteId = prefs.get(PREF_TABS_SESSION_ACTIVE_ID, "");
+        if (activeNoteId != null && !activeNoteId.isBlank()) {
+            tabSessionService.findByNoteId(activeNoteId).ifPresent(tab -> tabSessionService.activateTab(tab.tabId()));
+        }
+        syncTabsUi();
+        tabSessionService.getActiveTab()
+                .flatMap(tab -> noteService.getNoteById(tab.noteRef().noteId()))
+                .ifPresent(this::loadNoteInEditor);
+    }
+
+    private void syncTabsUi() {
+        if (noteTabsPane == null || !featureTabsEnabled) {
+            return;
+        }
+        List<TabSessionService.TabState> states = tabSessionService.listTabs();
+        Set<String> wanted = new HashSet<>();
+        for (TabSessionService.TabState state : states) {
+            wanted.add(state.tabId());
+            Tab tab = uiTabsById.get(state.tabId());
+            if (tab == null) {
+                tab = new Tab();
+                tab.setClosable(true);
+                tab.setUserData(state.tabId());
+                String tabId = state.tabId();
+                tab.setOnClosed(e -> {
+                    tabSessionService.closeTab(tabId);
+                    uiTabsById.remove(tabId);
+                    syncTabsUi();
+                });
+                uiTabsById.put(state.tabId(), tab);
+            }
+            String title = state.noteRef() != null ? state.noteRef().title() : getString("app.untitled");
+            tab.setText((state.dirty() ? "* " : "") + (title == null || title.isBlank() ? getString("app.untitled") : title));
+            if (!noteTabsPane.getTabs().contains(tab)) {
+                noteTabsPane.getTabs().add(tab);
+            }
+        }
+        List<String> toRemove = uiTabsById.keySet().stream().filter(id -> !wanted.contains(id)).toList();
+        for (String id : toRemove) {
+            Tab tab = uiTabsById.remove(id);
+            if (tab != null) {
+                noteTabsPane.getTabs().remove(tab);
+            }
+        }
+        tabSessionService.getActiveTab().ifPresent(active -> {
+            Tab activeTab = uiTabsById.get(active.tabId());
+            if (activeTab != null) {
+                switchingTabSelection = true;
+                noteTabsPane.getSelectionModel().select(activeTab);
+                switchingTabSelection = false;
+            }
+        });
+        persistTabSession();
+    }
+
+    private void persistTabSession() {
+        if (!featureTabsEnabled) {
+            prefs.remove(PREF_TABS_SESSION_IDS);
+            prefs.remove(PREF_TABS_SESSION_ACTIVE_ID);
+            return;
+        }
+        List<String> noteIds = tabSessionService.listTabs().stream()
+                .map(tab -> tab.noteRef() != null ? tab.noteRef().noteId() : null)
+                .filter(Objects::nonNull)
+                .filter(id -> !id.isBlank())
+                .toList();
+        if (noteIds.isEmpty()) {
+            prefs.remove(PREF_TABS_SESSION_IDS);
+            prefs.remove(PREF_TABS_SESSION_ACTIVE_ID);
+            return;
+        }
+        prefs.put(PREF_TABS_SESSION_IDS, String.join("\n", noteIds));
+        String activeNoteId = tabSessionService.getActiveTab()
+                .map(tab -> tab.noteRef() != null ? tab.noteRef().noteId() : null)
+                .orElse("");
+        if (activeNoteId != null && !activeNoteId.isBlank()) {
+            prefs.put(PREF_TABS_SESSION_ACTIVE_ID, activeNoteId);
+        } else {
+            prefs.remove(PREF_TABS_SESSION_ACTIVE_ID);
+        }
+    }
+
+    private void openNoteInTabs(Note note) {
+        if (!featureTabsEnabled || note == null || note.getId() == null || noteTabsPane == null) {
+            return;
+        }
+        tabSessionService.openNote(
+                new TabSessionService.NoteRef(note.getId(), note.getTitle()),
+                TabSessionService.OpenMode.ACTIVATE_OR_OPEN);
+        syncTabsUi();
+        if (eventBus != null) {
+            eventBus.publish(new TabEvents.TabStateChangedEvent());
+        }
+    }
+
+    private void markCurrentTabDirty(boolean dirty) {
+        if (!featureTabsEnabled) {
+            return;
+        }
+        tabSessionService.getActiveTab().ifPresent(active -> {
+            tabSessionService.markDirty(active.tabId(), dirty);
+            syncTabsUi();
+        });
+    }
+
+    private void initializePreviewLinkHandler() {
+        if (!featureObsidianLinksEnabled || previewWebView == null || previewLinkHandlerBound) {
+            return;
+        }
+        previewWebView.getEngine().locationProperty().addListener((obs, oldLoc, newLoc) -> {
+            if (newLoc == null || !newLoc.startsWith("forevernote://note/")) {
+                return;
+            }
+            String encoded = newLoc.substring("forevernote://note/".length());
+            String target = java.net.URLDecoder.decode(encoded, java.nio.charset.StandardCharsets.UTF_8);
+            LinkIndexService.Resolution resolution = linkIndexService.resolveTarget(target,
+                    getCurrentNote() != null ? getCurrentNote().getId() : null);
+            if (resolution.targetNoteId() != null && noteService != null) {
+                Note resolved = noteService.getNoteById(resolution.targetNoteId()).orElse(null);
+                if (resolved != null) {
+                    Platform.runLater(() -> loadNoteInEditor(resolved));
+                }
+            } else {
+                updateStatus(getString("status.no_note_selected") + " (" + target + ")");
+            }
+            previewWebView.getEngine().getLoadWorker().cancel();
+        });
+        previewLinkHandlerBound = true;
+    }
+
+    private void rebuildLinkIndex() {
+        if (!featureObsidianLinksEnabled || noteService == null) {
+            return;
+        }
+        try {
+            List<Note> rawNotes = noteService.getAllNotes();
+            List<Note> fullNotes = new ArrayList<>(rawNotes.size());
+            for (Note note : rawNotes) {
+                if (note == null) {
+                    continue;
+                }
+                String content = note.getContent();
+                if ((content == null || content.isBlank()) && note.getId() != null && !note.getId().isBlank()) {
+                    Note full = noteService.getNoteById(note.getId()).orElse(note);
+                    fullNotes.add(full);
+                } else {
+                    fullNotes.add(note);
+                }
+            }
+            linkIndexService.rebuildIndex(fullNotes);
+            int links = linkIndexService.outgoingIndexSnapshot().values().stream().mapToInt(List::size).sum();
+            logger.info("Link index rebuilt: notes=" + fullNotes.size() + ", links=" + links);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Failed to rebuild link index", e);
+        }
+        redrawGraph();
+        updateBacklinksPanel();
+    }
+
+    private void reindexCurrentNoteLinks() {
+        if (!featureObsidianLinksEnabled || getCurrentNote() == null) {
+            return;
+        }
+        try {
+            linkIndexService.reindexNote(getCurrentNote());
+            if (eventBus != null) {
+                eventBus.publish(new LinkEvents.NoteLinksChangedEvent(getCurrentNote().getId()));
+            }
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Failed to reindex note links", e);
+        }
+        redrawGraph();
+        updateBacklinksPanel();
+    }
+
+    private void initializeBacklinksPanel() {
+        if (!featureObsidianLinksEnabled || rightPanelContent == null) {
+            return;
+        }
+        VBox section = new VBox(8);
+        section.getStyleClass().add("panel-section");
+        Label title = new Label(getString("section.backlinks"));
+        title.getStyleClass().add("section-title");
+
+        backlinksListView = new ListView<>();
+        backlinksListView.setPrefHeight(140);
+        backlinksListView.setPlaceholder(new Label(getString("backlinks.empty")));
+        backlinksListView.setCellFactory(list -> new ListCell<>() {
+            @Override
+            protected void updateItem(Note item, boolean empty) {
+                super.updateItem(item, empty);
+                setText(empty || item == null ? null : (item.getTitle() == null || item.getTitle().isBlank()
+                        ? getString("app.untitled")
+                        : item.getTitle()));
+            }
+        });
+        backlinksListView.setOnMouseClicked(e -> {
+            if (e.getClickCount() < 2) {
+                return;
+            }
+            Note selected = backlinksListView.getSelectionModel().getSelectedItem();
+            if (selected != null) {
+                loadNoteInEditor(selected);
+            }
+        });
+        section.getChildren().addAll(title, backlinksListView);
+        rightPanelContent.getChildren().add(section);
+    }
+
+    private void updateBacklinksPanel() {
+        if (!featureObsidianLinksEnabled || backlinksListView == null || noteService == null || getCurrentNote() == null) {
+            if (backlinksListView != null) {
+                backlinksListView.getItems().clear();
+            }
+            return;
+        }
+        List<Note> incomingNotes = linkIndexService.getIncoming(getCurrentNote().getId()).stream()
+                .map(LinkIndexService.LinkEdge::sourceNoteId)
+                .distinct()
+                .map(id -> noteService.getNoteById(id).orElse(null))
+                .filter(Objects::nonNull)
+                .toList();
+        backlinksListView.getItems().setAll(incomingNotes);
+    }
+
+    private void initializeGraphPanel() {
+        if (!featureGraphEnabled || rightPanelContent == null) {
+            return;
+        }
+        VBox section = new VBox(8);
+        section.getStyleClass().add("panel-section");
+
+        Label title = new Label(getString("section.note_graph"));
+        title.getStyleClass().add("section-title");
+
+        HBox controls = new HBox(8);
+        controls.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        graphModeCombo = new ComboBox<>();
+        graphModeCombo.getItems().addAll(getString("graph.mode.local"), getString("graph.mode.global"));
+        graphModeCombo.getSelectionModel().select(0);
+        graphModeCombo.valueProperty().addListener((obs, oldV, newV) -> redrawGraph());
+        graphDepthSpinner = new Spinner<>(1, 6, 2);
+        graphDepthSpinner.setEditable(false);
+        graphDepthSpinner.valueProperty().addListener((obs, oldV, newV) -> redrawGraph());
+        graphUnresolvedCheck = new CheckBox(getString("graph.include_unresolved"));
+        graphUnresolvedCheck.setSelected(true);
+        graphUnresolvedCheck.selectedProperty().addListener((obs, oldV, newV) -> redrawGraph());
+        Button refreshGraphBtn = new Button(getString("action.refresh"));
+        refreshGraphBtn.setOnAction(e -> redrawGraph());
+        controls.getChildren().addAll(graphModeCombo, graphDepthSpinner, graphUnresolvedCheck, refreshGraphBtn);
+
+        graphCanvas = new Canvas(280, 220);
+        graphCanvas.widthProperty().bind(section.widthProperty().subtract(4));
+        graphCanvas.heightProperty().set(220);
+        graphCanvas.setOnMouseClicked(e -> {
+            String nodeId = findGraphNodeAt(e.getX(), e.getY());
+            if (nodeId == null || nodeId.startsWith("unresolved::") || noteService == null) {
+                return;
+            }
+            Note note = noteService.getNoteById(nodeId).orElse(null);
+            if (note != null) {
+                loadNoteInEditor(note);
+                if (eventBus != null) {
+                    eventBus.publish(new GraphEvents.GraphSelectionChangedEvent(nodeId));
+                }
+            }
+        });
+
+        section.getChildren().addAll(title, controls, graphCanvas);
+        rightPanelContent.getChildren().add(section);
+    }
+
+    private void redrawGraph() {
+        if (!featureGraphEnabled || graphCanvas == null || noteService == null) {
+            return;
+        }
+        List<Note> notes = noteService.getAllNotes();
+        GraphWorkflow.GraphFilter filter = new GraphWorkflow.GraphFilter(
+                Set.of(),
+                Set.of(),
+                graphUnresolvedCheck != null && graphUnresolvedCheck.isSelected(),
+                220);
+        GraphWorkflow.GraphData data;
+        boolean global = graphModeCombo != null && graphModeCombo.getSelectionModel().getSelectedIndex() == 1;
+        if (global) {
+            data = graphWorkflow.buildGlobalGraph(notes, linkIndexService, filter);
+        } else {
+            String center = getCurrentNote() != null ? getCurrentNote().getId() : null;
+            int depth = graphDepthSpinner != null ? graphDepthSpinner.getValue() : 2;
+            data = graphWorkflow.buildLocalGraph(center, depth, notes, linkIndexService, filter);
+        }
+        renderGraph(data);
+    }
+
+    private void renderGraph(GraphWorkflow.GraphData data) {
+        if (graphCanvas == null) {
+            return;
+        }
+        GraphicsContext gc = graphCanvas.getGraphicsContext2D();
+        double w = graphCanvas.getWidth();
+        double h = graphCanvas.getHeight();
+        gc.clearRect(0, 0, w, h);
+        gc.setFill(isDarkThemeActive() ? Color.web("#111827") : Color.web("#f8fafc"));
+        gc.fillRect(0, 0, w, h);
+
+        graphNodeHitMap.clear();
+        if (data == null || data.nodes().isEmpty()) {
+            gc.setFill(isDarkThemeActive() ? Color.web("#9ca3af") : Color.web("#6b7280"));
+            gc.fillText(getString("graph.empty"), 12, 20);
+            return;
+        }
+
+        gc.setLineWidth(1.2);
+        Map<String, GraphWorkflow.GraphNode> nodeById = new HashMap<>(data.nodes().size() * 2);
+        for (GraphWorkflow.GraphNode n : data.nodes()) {
+            nodeById.put(n.id(), n);
+        }
+        for (GraphWorkflow.GraphEdge edge : data.edges()) {
+            GraphWorkflow.GraphNode source = nodeById.get(edge.sourceId());
+            GraphWorkflow.GraphNode target = nodeById.get(edge.targetId());
+            if (source == null || target == null) {
+                continue;
+            }
+            gc.setStroke(edge.unresolved() ? Color.web("#f59e0b") : (isDarkThemeActive() ? Color.web("#374151") : Color.web("#94a3b8")));
+            gc.strokeLine(source.x() % w, source.y() % h, target.x() % w, target.y() % h);
+        }
+
+        for (GraphWorkflow.GraphNode node : data.nodes()) {
+            double x = node.x() % w;
+            double y = node.y() % h;
+            double r = node.unresolved() ? 4.0 : 5.5;
+            gc.setFill(node.unresolved() ? Color.web("#f59e0b") : Color.web(customAccentEnabled ? normalizeHexColor(customAccentColor) : (isDarkThemeActive() ? "#10b981" : "#2563eb")));
+            gc.fillOval(x - r, y - r, r * 2, r * 2);
+            gc.setFill(isDarkThemeActive() ? Color.web("#e5e7eb") : Color.web("#111827"));
+            gc.fillText(shortGraphTitle(node.title()), x + 7, y + 4);
+            graphNodeHitMap.put(node.id(), node);
+        }
+    }
+
+    private String findGraphNodeAt(double x, double y) {
+        for (GraphWorkflow.GraphNode node : graphNodeHitMap.values()) {
+            double dx = (node.x() % graphCanvas.getWidth()) - x;
+            double dy = (node.y() % graphCanvas.getHeight()) - y;
+            if (Math.hypot(dx, dy) <= 8) {
+                return node.id();
+            }
+        }
+        return null;
+    }
+
+    private String shortGraphTitle(String title) {
+        if (title == null || title.isBlank()) {
+            return "?";
+        }
+        return title.length() > 22 ? title.substring(0, 22) + "..." : title;
+    }
+
+    private void ensureGraphWorkspace() {
+        if (graphWorkspaceContainer != null || editorContainer == null) {
+            return;
+        }
+        graphWorkspaceContainer = new VBox(10);
+        graphWorkspaceContainer.getStyleClass().add("graph-workspace");
+        graphWorkspaceContainer.setFillWidth(true);
+        graphWorkspaceContainer.setVisible(false);
+        graphWorkspaceContainer.setManaged(false);
+        VBox.setVgrow(graphWorkspaceContainer, Priority.ALWAYS);
+
+        HBox toolbar = new HBox(8);
+        toolbar.setPadding(new javafx.geometry.Insets(10));
+        toolbar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        toolbar.getStyleClass().add("graph-workspace-toolbar");
+
+        Label title = new Label(getString("section.note_graph"));
+        title.getStyleClass().add("section-title");
+
+        graphWorkspaceModeCombo = new ComboBox<>();
+        graphWorkspaceModeCombo.getItems().addAll(getString("graph.mode.local"), getString("graph.mode.global"));
+        graphWorkspaceModeCombo.getSelectionModel().select(graphModeCombo != null ? graphModeCombo.getSelectionModel().getSelectedIndex() : 1);
+        graphWorkspaceModeCombo.valueProperty().addListener((obs, oldV, newV) -> redrawGraphWorkspace());
+
+        graphWorkspaceDepthSpinner = new Spinner<>(1, 6, graphDepthSpinner != null ? graphDepthSpinner.getValue() : 2);
+        graphWorkspaceDepthSpinner.setEditable(false);
+        graphWorkspaceDepthSpinner.valueProperty().addListener((obs, oldV, newV) -> redrawGraphWorkspace());
+
+        graphWorkspaceUnresolvedCheck = new CheckBox(getString("graph.include_unresolved"));
+        graphWorkspaceUnresolvedCheck.setSelected(graphUnresolvedCheck == null || graphUnresolvedCheck.isSelected());
+        graphWorkspaceUnresolvedCheck.selectedProperty().addListener((obs, oldV, newV) -> redrawGraphWorkspace());
+
+        Button fitBtn = new Button(getString("action.reset_zoom"));
+        fitBtn.setOnAction(e -> {
+            fitGraphWorkspaceToData();
+            renderGraphWorkspace();
+        });
+        Button refreshBtn = new Button(getString("action.refresh"));
+        refreshBtn.setOnAction(e -> redrawGraphWorkspace());
+        Button closeBtn = new Button(getString("action.close"));
+        closeBtn.setOnAction(e -> hideGraphWorkspace());
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        graphWorkspaceStatsLabel = new Label("");
+        graphWorkspaceStatsLabel.getStyleClass().add("meta-label");
+        toolbar.getChildren().addAll(title, graphWorkspaceModeCombo, graphWorkspaceDepthSpinner, graphWorkspaceUnresolvedCheck,
+                fitBtn, refreshBtn, graphWorkspaceStatsLabel, spacer, closeBtn);
+
+        graphWorkspaceCanvas = new Canvas(1400, 900);
+        StackPane canvasHost = new StackPane(graphWorkspaceCanvas);
+        VBox.setVgrow(canvasHost, Priority.ALWAYS);
+        canvasHost.setMinHeight(260);
+        canvasHost.setPrefHeight(900);
+        canvasHost.setPrefWidth(1200);
+
+        graphWorkspaceCanvas.setOnScroll(e -> {
+            double oldScale = graphWorkspaceScale;
+            graphWorkspaceScale = Math.max(0.20, Math.min(6.0, graphWorkspaceScale * (e.getDeltaY() > 0 ? 1.1 : 0.9)));
+            double mx = e.getX();
+            double my = e.getY();
+            graphWorkspaceOffsetX = mx - ((mx - graphWorkspaceOffsetX) * (graphWorkspaceScale / oldScale));
+            graphWorkspaceOffsetY = my - ((my - graphWorkspaceOffsetY) * (graphWorkspaceScale / oldScale));
+            renderGraphWorkspace();
+            e.consume();
+        });
+        graphWorkspaceCanvas.setOnMousePressed(e -> {
+            graphWorkspaceDragStartX = e.getX();
+            graphWorkspaceDragStartY = e.getY();
+        });
+        graphWorkspaceCanvas.setOnMouseDragged(e -> {
+            graphWorkspaceOffsetX += e.getX() - graphWorkspaceDragStartX;
+            graphWorkspaceOffsetY += e.getY() - graphWorkspaceDragStartY;
+            graphWorkspaceDragStartX = e.getX();
+            graphWorkspaceDragStartY = e.getY();
+            renderGraphWorkspace();
+        });
+        graphWorkspaceCanvas.setOnMouseMoved(e -> {
+            graphWorkspaceHoverNodeId = findGraphWorkspaceNodeAt(e.getX(), e.getY());
+            renderGraphWorkspace();
+        });
+        graphWorkspaceCanvas.setOnMouseClicked(e -> {
+            if (e.getClickCount() < 1) {
+                return;
+            }
+            String nodeId = findGraphWorkspaceNodeAt(e.getX(), e.getY());
+            if (nodeId == null || nodeId.startsWith("unresolved::") || noteService == null) {
+                return;
+            }
+            Note note = noteService.getNoteById(nodeId).orElse(null);
+            if (note != null) {
+                loadNoteInEditor(note);
+                if (eventBus != null) {
+                    eventBus.publish(new GraphEvents.GraphSelectionChangedEvent(nodeId));
+                }
+                hideGraphWorkspace();
+            }
+        });
+
+        graphWorkspaceContainer.getChildren().addAll(toolbar, canvasHost);
+        editorContainer.getChildren().add(graphWorkspaceContainer);
+        graphWorkspaceContainer.layoutBoundsProperty().addListener((obs, oldB, newB) -> {
+            if (newB == null) {
+                return;
+            }
+            double targetH = Math.max(260, newB.getHeight() - toolbar.getHeight() - 8);
+            canvasHost.setPrefHeight(targetH);
+            canvasHost.setMinHeight(Math.min(targetH, 260));
+            canvasHost.setPrefWidth(Math.max(400, newB.getWidth()));
+            graphWorkspaceCanvas.setWidth(Math.max(400, newB.getWidth() - 2));
+            graphWorkspaceCanvas.setHeight(targetH);
+            fitGraphWorkspaceToData();
+            renderGraphWorkspace();
+        });
+    }
+
+    private void showGraphWorkspace() {
+        ensureGraphWorkspace();
+        if (graphWorkspaceContainer == null) {
+            return;
+        }
+        if (graphWorkspaceModeCombo != null) {
+            graphWorkspaceModeCombo.getSelectionModel().select(1); // Global by default, Obsidian-like
+        }
+        graphWorkspaceVisible = true;
+        Node header = noteTitleField != null ? noteTitleField.getParent() : null;
+        setVisibleManaged(header, false);
+        setVisibleManaged(noteTabsPane, false);
+        setVisibleManaged(tagsContainer, false);
+        setVisibleManaged(editorPreviewSplitPane, false);
+        if (rightPanel != null) {
+            graphWorkspacePrevRightPanelVisible = rightPanel.isVisible();
+            setVisibleManaged(rightPanel, false);
+            if (infoButton != null) {
+                infoButton.setSelected(false);
+            }
+        }
+        setVisibleManaged(graphWorkspaceContainer, true);
+        redrawGraphWorkspace();
+        Platform.runLater(() -> {
+            fitGraphWorkspaceToData();
+            renderGraphWorkspace();
+        });
+    }
+
+    private void hideGraphWorkspace() {
+        if (!graphWorkspaceVisible) {
+            return;
+        }
+        graphWorkspaceVisible = false;
+        Node header = noteTitleField != null ? noteTitleField.getParent() : null;
+        setVisibleManaged(header, true);
+        setVisibleManaged(noteTabsPane, featureTabsEnabled);
+        setVisibleManaged(tagsContainer, toggleTagsBtn != null && toggleTagsBtn.isSelected());
+        setVisibleManaged(editorPreviewSplitPane, true);
+        if (rightPanel != null && graphWorkspacePrevRightPanelVisible) {
+            setVisibleManaged(rightPanel, true);
+            if (infoButton != null) {
+                infoButton.setSelected(true);
+            }
+        }
+        setVisibleManaged(graphWorkspaceContainer, false);
+    }
+
+    private void setVisibleManaged(Node node, boolean visible) {
+        if (node == null) {
+            return;
+        }
+        node.setVisible(visible);
+        node.setManaged(visible);
+    }
+
+    private void redrawGraphWorkspace() {
+        if (!featureGraphEnabled || graphWorkspaceCanvas == null || noteService == null) {
+            return;
+        }
+        try {
+            List<Note> notes = noteService.getAllNotes();
+            GraphWorkflow.GraphFilter filter = new GraphWorkflow.GraphFilter(
+                    Set.of(),
+                    Set.of(),
+                    graphWorkspaceUnresolvedCheck != null && graphWorkspaceUnresolvedCheck.isSelected(),
+                    5000);
+            boolean global = graphWorkspaceModeCombo != null && graphWorkspaceModeCombo.getSelectionModel().getSelectedIndex() == 1;
+            if (global) {
+                graphWorkspaceData = graphWorkflow.buildGlobalGraph(notes, linkIndexService, filter);
+            } else {
+                String center = getCurrentNote() != null ? getCurrentNote().getId() : null;
+                int depth = graphWorkspaceDepthSpinner != null ? graphWorkspaceDepthSpinner.getValue() : 2;
+                graphWorkspaceData = graphWorkflow.buildLocalGraph(center, depth, notes, linkIndexService, filter);
+            }
+            if (graphWorkspaceStatsLabel != null) {
+                int nodeCount = graphWorkspaceData != null ? graphWorkspaceData.nodes().size() : 0;
+                int edgeCount = graphWorkspaceData != null ? graphWorkspaceData.edges().size() : 0;
+                graphWorkspaceStatsLabel.setText(nodeCount + " nodos · " + edgeCount + " enlaces");
+                updateStatus("Grafo: " + nodeCount + " nodos, " + edgeCount + " enlaces");
+            }
+            fitGraphWorkspaceToData();
+            renderGraphWorkspace();
+        } catch (Exception ex) {
+            logger.log(Level.WARNING, "Graph redraw failed", ex);
+            updateStatus("Error grafo: " + ex.getClass().getSimpleName());
+        }
+    }
+
+    private void fitGraphWorkspaceToData() {
+        if (graphWorkspaceCanvas == null || graphWorkspaceData == null || graphWorkspaceData.nodes().isEmpty()) {
+            graphWorkspaceScale = 1.0;
+            graphWorkspaceOffsetX = 0.0;
+            graphWorkspaceOffsetY = 0.0;
+            return;
+        }
+        double minX = graphWorkspaceData.nodes().stream().mapToDouble(GraphWorkflow.GraphNode::x).min().orElse(0);
+        double maxX = graphWorkspaceData.nodes().stream().mapToDouble(GraphWorkflow.GraphNode::x).max().orElse(1000);
+        double minY = graphWorkspaceData.nodes().stream().mapToDouble(GraphWorkflow.GraphNode::y).min().orElse(0);
+        double maxY = graphWorkspaceData.nodes().stream().mapToDouble(GraphWorkflow.GraphNode::y).max().orElse(800);
+        double width = Math.max(1.0, maxX - minX);
+        double height = Math.max(1.0, maxY - minY);
+        double padding = Math.max(120.0, Math.min(graphWorkspaceCanvas.getWidth(), graphWorkspaceCanvas.getHeight()) * 0.12);
+        double canvasW = Math.max(100.0, graphWorkspaceCanvas.getWidth() - padding * 2.0);
+        double canvasH = Math.max(100.0, graphWorkspaceCanvas.getHeight() - padding * 2.0);
+        graphWorkspaceScale = Math.max(0.20, Math.min(2.2, Math.min(canvasW / width, canvasH / height) * 0.92));
+        double centerX = (minX + maxX) / 2.0;
+        double centerY = (minY + maxY) / 2.0;
+        graphWorkspaceOffsetX = graphWorkspaceCanvas.getWidth() / 2.0 - centerX * graphWorkspaceScale;
+        graphWorkspaceOffsetY = graphWorkspaceCanvas.getHeight() / 2.0 - centerY * graphWorkspaceScale;
+    }
+
+    private void renderGraphWorkspace() {
+        if (graphWorkspaceCanvas == null) {
+            return;
+        }
+        GraphicsContext gc = graphWorkspaceCanvas.getGraphicsContext2D();
+        double w = graphWorkspaceCanvas.getWidth();
+        double h = graphWorkspaceCanvas.getHeight();
+        gc.clearRect(0, 0, w, h);
+        gc.setFill(isDarkThemeActive() ? Color.web("#111827") : Color.web("#f8fafc"));
+        gc.fillRect(0, 0, w, h);
+
+        if (graphWorkspaceData == null || graphWorkspaceData.nodes().isEmpty()) {
+            gc.setFill(isDarkThemeActive() ? Color.web("#9ca3af") : Color.web("#6b7280"));
+            gc.fillText(getString("graph.empty"), 16, 24);
+            return;
+        }
+
+        gc.setLineWidth(Math.max(0.5, 0.9 * graphWorkspaceScale));
+        Map<String, GraphWorkflow.GraphNode> nodeById = new HashMap<>(graphWorkspaceData.nodes().size() * 2);
+        for (GraphWorkflow.GraphNode n : graphWorkspaceData.nodes()) {
+            nodeById.put(n.id(), n);
+        }
+        int totalEdges = graphWorkspaceData.edges().size();
+        int edgeStride = 1;
+        if (totalEdges > 25000 || graphWorkspaceData.nodes().size() > 2200) {
+            edgeStride = Math.max(2, totalEdges / 12000);
+        }
+        boolean renderEdges = graphWorkspaceScale >= 0.35 || totalEdges <= 8000;
+        for (int i = 0; i < totalEdges; i += edgeStride) {
+            if (!renderEdges) {
+                break;
+            }
+            GraphWorkflow.GraphEdge edge = graphWorkspaceData.edges().get(i);
+            GraphWorkflow.GraphNode source = nodeById.get(edge.sourceId());
+            GraphWorkflow.GraphNode target = nodeById.get(edge.targetId());
+            if (source == null || target == null) {
+                continue;
+            }
+            double sx = source.x() * graphWorkspaceScale + graphWorkspaceOffsetX;
+            double sy = source.y() * graphWorkspaceScale + graphWorkspaceOffsetY;
+            double tx = target.x() * graphWorkspaceScale + graphWorkspaceOffsetX;
+            double ty = target.y() * graphWorkspaceScale + graphWorkspaceOffsetY;
+            gc.setStroke(edge.unresolved()
+                    ? Color.web("#f59e0b", isDarkThemeActive() ? 0.70 : 0.78)
+                    : (isDarkThemeActive() ? Color.web("#9ca3af", 0.32) : Color.web("#64748b", 0.38)));
+            gc.strokeLine(sx, sy, tx, ty);
+        }
+
+        boolean drawLabels = graphWorkspaceScale >= 2.0 && graphWorkspaceData.nodes().size() <= 120;
+        for (GraphWorkflow.GraphNode node : graphWorkspaceData.nodes()) {
+            double x = node.x() * graphWorkspaceScale + graphWorkspaceOffsetX;
+            double y = node.y() * graphWorkspaceScale + graphWorkspaceOffsetY;
+            double baseRadius = node.unresolved() ? 1.35 : 1.9;
+            double r = Math.max(1.15, Math.min(5.0, baseRadius * Math.max(0.75, graphWorkspaceScale)));
+            Color fill = node.unresolved()
+                    ? Color.web("#f59e0b")
+                    : Color.web(customAccentEnabled ? normalizeHexColor(customAccentColor)
+                            : (isDarkThemeActive() ? "#10b981" : "#2563eb"));
+            Color stroke = isDarkThemeActive() ? Color.web("#0b1220", 0.95) : Color.web("#ffffff", 0.95);
+            gc.setFill(fill);
+            gc.fillOval(x - r, y - r, r * 2, r * 2);
+            gc.setStroke(stroke);
+            gc.setLineWidth(Math.max(0.65, r * 0.33));
+            gc.strokeOval(x - r, y - r, r * 2, r * 2);
+            if (drawLabels || Objects.equals(graphWorkspaceHoverNodeId, node.id())) {
+                gc.setFill(isDarkThemeActive() ? Color.web("#e5e7eb") : Color.web("#111827"));
+                gc.fillText(shortGraphTitle(node.title()), x + Math.max(8.0, 6.0 * graphWorkspaceScale), y + 3.0);
+            }
+        }
+
+        // Debug/estado visible para verificar render incluso con datasets grandes
+        gc.setFill(isDarkThemeActive() ? Color.web("#9ca3af") : Color.web("#475569"));
+        gc.fillText("Nodes: " + graphWorkspaceData.nodes().size() + "  Edges: " + graphWorkspaceData.edges().size(),
+                12, Math.max(18, h - 12));
+    }
+
+    private String findGraphWorkspaceNodeAt(double x, double y) {
+        if (graphWorkspaceData == null || graphWorkspaceCanvas == null) {
+            return null;
+        }
+        for (GraphWorkflow.GraphNode node : graphWorkspaceData.nodes()) {
+            double nx = node.x() * graphWorkspaceScale + graphWorkspaceOffsetX;
+            double ny = node.y() * graphWorkspaceScale + graphWorkspaceOffsetY;
+            double hit = Math.max(6.0, 8.0 * graphWorkspaceScale);
+            if (Math.hypot(nx - x, ny - y) <= hit) {
+                return node.id();
+            }
+        }
+        return null;
+    }
+
+    @FXML
+    private void handleNextTab(ActionEvent event) {
+        if (!featureTabsEnabled) {
+            return;
+        }
+        tabCommandWorkflow.next(tabSessionService)
+                .flatMap(tab -> noteService.getNoteById(tab.noteRef().noteId()))
+                .ifPresent(this::loadNoteInEditor);
+    }
+
+    @FXML
+    private void handlePreviousTab(ActionEvent event) {
+        if (!featureTabsEnabled) {
+            return;
+        }
+        tabCommandWorkflow.previous(tabSessionService)
+                .flatMap(tab -> noteService.getNoteById(tab.noteRef().noteId()))
+                .ifPresent(this::loadNoteInEditor);
+    }
+
+    @FXML
+    private void handleCloseCurrentTab(ActionEvent event) {
+        if (!featureTabsEnabled) {
+            return;
+        }
+        boolean closed = tabCommandWorkflow.closeCurrent(tabSessionService);
+        if (closed) {
+            syncTabsUi();
+            tabSessionService.getActiveTab()
+                    .flatMap(tab -> noteService.getNoteById(tab.noteRef().noteId()))
+                    .ifPresent(this::loadNoteInEditor);
+        }
+    }
+
+    @FXML
+    private void handleCloseOtherTabs(ActionEvent event) {
+        if (!featureTabsEnabled) {
+            return;
+        }
+        tabCommandWorkflow.closeOthers(tabSessionService);
+        syncTabsUi();
+    }
+
+    @FXML
+    private void handleCloseAllTabs(ActionEvent event) {
+        if (!featureTabsEnabled) {
+            return;
+        }
+        tabCommandWorkflow.closeAll(tabSessionService);
+        syncTabsUi();
+    }
+
+    @FXML
+    private void handleOpenGraphPanel(ActionEvent event) {
+        if (!featureGraphEnabled) {
+            updateStatus(getString("status.error"));
+            return;
+        }
+        showGraphWorkspace();
+        updateStatus(getString("section.note_graph"));
+    }
+
+    @FXML
+    private void handleRefreshGraph(ActionEvent event) {
+        redrawGraph();
+        if (graphWorkspaceVisible) {
+            redrawGraphWorkspace();
+        }
+    }
+
+    @FXML
+    private void handleReindexLinks(ActionEvent event) {
+        rebuildLinkIndex();
+        updateStatus(getString("status.links_reindexed"));
     }
 
     @FXML
@@ -1574,6 +2475,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     }
 
     private void loadNoteInEditor(Note note) {
+        if (graphWorkspaceVisible) {
+            hideGraphWorkspace();
+        }
         if (isModified() && getCurrentNote() != null) {
             SaveDialogDecision decision = showSaveDialog();
             if (decision == SaveDialogDecision.CANCEL) {
@@ -1587,6 +2491,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (editorController != null) {
             editorController.loadNote(note);
         }
+        if (note != null) {
+            openNoteInTabs(note);
+        }
 
         Note activeNote = getCurrentNote();
         if (activeNote == null) {
@@ -1599,6 +2506,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             if (previewWebView != null) {
                 updatePreview();
             }
+            updateBacklinksPanel();
             updateStatus(getString("status.no_note_selected"));
             return;
         }
@@ -1616,6 +2524,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         updateFavoriteButtonIcon();
 
         updatePinnedButtonIcon();
+        markCurrentTabDirty(false);
+        redrawGraph();
+        updateBacklinksPanel();
 
         updateStatus(java.text.MessageFormat.format(getString("status.note_loaded"), activeNote.getTitle()));
     }
@@ -1754,10 +2665,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (previewKey.equals(lastPreviewRenderKey)) {
             return;
         }
+        PreviewWorkflow.LinkResolver linkResolver = null;
+        if (featureObsidianLinksEnabled) {
+            linkResolver = (rawTarget, sourceId) -> {
+                LinkIndexService.Resolution resolution = linkIndexService.resolveTarget(rawTarget, sourceId);
+                if (resolution.targetNoteId() != null) {
+                    return "forevernote://note/"
+                            + java.net.URLEncoder.encode(resolution.targetNoteId(),
+                                    java.nio.charset.StandardCharsets.UTF_8);
+                }
+                return "forevernote://note/"
+                        + java.net.URLEncoder.encode(rawTarget, java.nio.charset.StandardCharsets.UTF_8);
+            };
+        }
         PreviewWorkflow.PreviewContext previewContext = new PreviewWorkflow.PreviewContext(
                 previewStorageType,
                 previewFileSystemRootDirectory,
-                currentNote != null ? currentNote.getId() : null);
+                currentNote != null ? currentNote.getId() : null,
+                linkResolver);
         String html = (content != null && !content.trim().isEmpty())
                 ? previewWorkflow.buildPreviewHtml(content, isDarkTheme, previewEnhancers.values(), previewContext)
                 : previewWorkflow.buildEmptyHtml(isDarkTheme);
@@ -1851,6 +2776,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                                 sidebarController.loadRecentNotes();
                                 sidebarController.loadFolders();
                             }
+                            rebuildLinkIndex();
                             updateStatus(getString("status.note_created"));
                         }
 
@@ -1931,6 +2857,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         if (sidebarController != null) {
                             sidebarController.loadRecentNotes();
                         }
+                        rebuildLinkIndex();
                     }
 
                     @Override
@@ -1957,6 +2884,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 sidebarController.loadRecentNotes();
                 sidebarController.loadFavorites();
             }
+            if (getCurrentNote() != null) {
+                tabSessionService.updateTabTitleForNote(getCurrentNote().getId(), getCurrentNote().getTitle());
+                syncTabsUi();
+            }
+            markCurrentTabDirty(false);
+            reindexCurrentNoteLinks();
         });
     }
 
@@ -2007,7 +2940,10 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                         sidebarController.loadFavorites();
                     }
                 },
-                this::refreshGridView);
+                () -> {
+                    refreshGridView();
+                    redrawGraph();
+                });
     }
 
     @FXML
@@ -2016,6 +2952,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             if (eventBus != null) {
                 eventBus.publish(new SystemActionEvent(SystemActionEvent.ActionType.DELETE));
             }
+            if (getCurrentNote() != null) {
+                tabSessionService.findByNoteId(getCurrentNote().getId()).ifPresent(tab -> {
+                    tabSessionService.closeTab(tab.tabId());
+                    syncTabsUi();
+                });
+            }
+            rebuildLinkIndex();
         });
     }
 

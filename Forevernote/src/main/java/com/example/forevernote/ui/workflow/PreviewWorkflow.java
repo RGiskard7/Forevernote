@@ -36,12 +36,22 @@ public class PreviewWorkflow {
             "/com/example/forevernote/ui/preview/highlightjs/vs2015.min.css");
 
     private static final Pattern OBSIDIAN_IMAGE_EMBED_PATTERN = Pattern.compile("!\\[\\[([^\\]]+)\\]\\]");
+    private static final Pattern OBSIDIAN_WIKILINK_PATTERN = Pattern.compile("(?<!!)\\[\\[([^\\]]+)\\]\\]");
     private static final Pattern HTML_IMG_SRC_PATTERN = Pattern.compile("<img([^>]*?)src=\"([^\"]+)\"([^>]*)>",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern SIZE_TOKEN_PATTERN = Pattern.compile("^(\\d+)(?:x(\\d+))?$");
     private static final Map<String, Path> PREVIEW_IMAGE_CACHE = new HashMap<>();
 
-    public record PreviewContext(String storageType, String filesystemRootDirectory, String noteId) {
+    public interface LinkResolver {
+        String resolveHref(String rawTarget, String sourceNoteId);
+    }
+
+    public record PreviewContext(String storageType, String filesystemRootDirectory, String noteId,
+            LinkResolver linkResolver) {
+        public PreviewContext(String storageType, String filesystemRootDirectory, String noteId) {
+            this(storageType, filesystemRootDirectory, noteId, null);
+        }
+
         public boolean isFileSystemStorage() {
             return "filesystem".equalsIgnoreCase(storageType);
         }
@@ -111,7 +121,7 @@ public class PreviewWorkflow {
 
     private ProcessedMarkdown preprocessMarkdown(String markdown, PreviewContext context) {
         ProcessedMarkdown withEmbeds = replaceObsidianImageEmbedsWithTokens(markdown, context);
-        return withEmbeds;
+        return replaceObsidianWikilinksWithTokens(withEmbeds.markdown(), withEmbeds.tokenToHtml(), context);
     }
 
     private ProcessedMarkdown replaceObsidianImageEmbedsWithTokens(String markdown, PreviewContext context) {
@@ -124,6 +134,46 @@ public class PreviewWorkflow {
             String replacementHtml = buildObsidianEmbedReplacement(rawInner, context);
             String token = "@@FN_OBS_EMBED_" + tokenIndex++ + "@@";
             tokenToHtml.put(token, replacementHtml);
+            matcher.appendReplacement(sb, Matcher.quoteReplacement(token));
+        }
+        matcher.appendTail(sb);
+        return new ProcessedMarkdown(sb.toString(), tokenToHtml);
+    }
+
+    private ProcessedMarkdown replaceObsidianWikilinksWithTokens(String markdown, Map<String, String> existingTokens,
+            PreviewContext context) {
+        if (context == null || context.linkResolver() == null) {
+            return new ProcessedMarkdown(markdown, existingTokens != null ? new HashMap<>(existingTokens) : new HashMap<>());
+        }
+        Matcher matcher = OBSIDIAN_WIKILINK_PATTERN.matcher(markdown);
+        StringBuffer sb = new StringBuffer();
+        Map<String, String> tokenToHtml = new HashMap<>();
+        if (existingTokens != null) {
+            tokenToHtml.putAll(existingTokens);
+        }
+        int tokenIndex = tokenToHtml.size();
+        while (matcher.find()) {
+            String rawInner = matcher.group(1) != null ? matcher.group(1).trim() : "";
+            if (rawInner.isBlank()) {
+                continue;
+            }
+            String[] parts = rawInner.split("\\|", 2);
+            String target = parts[0].trim();
+            String alias = parts.length > 1 && !parts[1].isBlank() ? parts[1].trim() : target;
+            String href = "forevernote://note/" + java.net.URLEncoder.encode(target, StandardCharsets.UTF_8);
+            if (context != null && context.linkResolver() != null) {
+                try {
+                    String resolved = context.linkResolver().resolveHref(target, context.noteId());
+                    if (resolved != null && !resolved.isBlank()) {
+                        href = resolved;
+                    }
+                } catch (Exception ignored) {
+                    // Keep fallback href
+                }
+            }
+            String token = "@@FN_OBS_LINK_" + tokenIndex++ + "@@";
+            tokenToHtml.put(token,
+                    "<a class=\"fn-wikilink\" href=\"" + escapeHtml(href) + "\">" + escapeHtml(alias) + "</a>");
             matcher.appendReplacement(sb, Matcher.quoteReplacement(token));
         }
         matcher.appendTail(sb);

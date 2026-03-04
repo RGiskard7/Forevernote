@@ -354,6 +354,67 @@
     -fx-fill: -fx-accent-contrast;
 }
 
+/* Note tabs (editor) */
+.note-tabs {
+    -fx-pref-height: 38px;
+    -fx-min-height: 34px;
+    -fx-max-height: 44px;
+    -fx-background-color: -fx-surface-bg;
+}
+
+.note-tabs > .tab-content-area {
+    -fx-max-height: 0;
+    -fx-padding: 0;
+    -fx-background-insets: 0;
+    -fx-opacity: 0;
+}
+
+.note-tabs > .tab-header-area {
+    -fx-padding: 2 4 2 4;
+    -fx-background-color: -fx-surface-bg;
+}
+
+.note-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: -fx-surface-bg;
+    -fx-border-color: -fx-retro-border;
+    -fx-border-width: 0 0 1 0;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: #132d23;
+    -fx-border-color: -fx-retro-border;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: -fx-text-main;
+    -fx-font-weight: 600;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab .tab-label .text {
+    -fx-fill: -fx-text-main;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: -fx-selected-bg;
+    -fx-border-color: -fx-accent;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label,
+.note-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label .text {
+    -fx-text-fill: -fx-accent-contrast;
+    -fx-fill: -fx-accent-contrast;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab .tab-close-button {
+    -fx-opacity: 0.85;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab:selected .tab-close-button {
+    -fx-background-color: transparent;
+}
+
 /* Sidebar tab icons: enforce contrast parity with the rest of selected buttons */
 .sidebar-tabs .tab .feather-icon,
 .sidebar-tabs .tab .ikonli-font-icon {

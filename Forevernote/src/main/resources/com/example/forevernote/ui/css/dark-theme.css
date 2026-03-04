@@ -2094,3 +2094,16 @@
     -fx-background-color: -fx-accent;
     -fx-border-color: -fx-accent;
 }
+
+.note-tabs {
+    -fx-pref-height: 38px;
+    -fx-min-height: 34px;
+    -fx-max-height: 44px;
+}
+
+.note-tabs > .tab-content-area {
+    -fx-max-height: 0;
+    -fx-padding: 0;
+    -fx-background-insets: 0;
+    -fx-opacity: 0;
+}

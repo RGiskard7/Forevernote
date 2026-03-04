@@ -3,6 +3,13 @@ package com.example.forevernote.data.dao.filesystem;
 import java.io.File;
 import java.io.IOException;
 import java.io.BufferedReader;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -162,6 +169,45 @@ public class NoteDAOFileSystem implements NoteDAO {
         return "";
     }
 
+    private String readTextFileWithFallback(Path path) throws IOException {
+        byte[] bytes = Files.readAllBytes(path);
+        if (bytes.length == 0) {
+            return "";
+        }
+        if (bytes.length >= 3 && (bytes[0] & 0xFF) == 0xEF && (bytes[1] & 0xFF) == 0xBB && (bytes[2] & 0xFF) == 0xBF) {
+            return new String(bytes, 3, bytes.length - 3, StandardCharsets.UTF_8);
+        }
+        if (bytes.length >= 2) {
+            if ((bytes[0] & 0xFF) == 0xFE && (bytes[1] & 0xFF) == 0xFF) {
+                return new String(bytes, 2, bytes.length - 2, StandardCharsets.UTF_16BE);
+            }
+            if ((bytes[0] & 0xFF) == 0xFF && (bytes[1] & 0xFF) == 0xFE) {
+                return new String(bytes, 2, bytes.length - 2, StandardCharsets.UTF_16LE);
+            }
+        }
+
+        Charset[] preferred = new Charset[] {
+                StandardCharsets.UTF_8,
+                StandardCharsets.UTF_16LE,
+                StandardCharsets.UTF_16BE,
+                StandardCharsets.ISO_8859_1,
+                Charset.forName("windows-1252")
+        };
+        for (Charset charset : preferred) {
+            try {
+                CharsetDecoder decoder = charset.newDecoder()
+                        .onMalformedInput(CodingErrorAction.REPORT)
+                        .onUnmappableCharacter(CodingErrorAction.REPORT);
+                CharBuffer decoded = decoder.decode(ByteBuffer.wrap(bytes));
+                return decoded.toString();
+            } catch (CharacterCodingException ignored) {
+                // Try next charset.
+            }
+        }
+        logger.warning("Falling back to UTF-8 replacement decoding for file: " + path);
+        return new String(bytes, StandardCharsets.UTF_8);
+    }
+
     @Override
     public String createNote(Note note) {
         FileSystemIoLock.LOCK.lock();
@@ -257,7 +303,7 @@ public class NoteDAOFileSystem implements NoteDAO {
         }
 
         try {
-            String content = Files.readString(path);
+            String content = readTextFileWithFallback(path);
             Note note = FrontmatterHandler.parse(content);
             // Override ID with our path-based ID
             note.setId(normalizedId);

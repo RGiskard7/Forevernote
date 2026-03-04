@@ -218,6 +218,16 @@ public class ToolbarController {
     }
 
     @FXML
+    private void handleOpenGraph(ActionEvent event) {
+        publishEvent(SystemActionEvent.ActionType.GRAPH_OPEN);
+    }
+
+    @FXML
+    private void handleReindexLinks(ActionEvent event) {
+        publishEvent(SystemActionEvent.ActionType.LINKS_REINDEX);
+    }
+
+    @FXML
     private void handleZoomIn(ActionEvent event) {
         publishEvent(SystemActionEvent.ActionType.ZOOM_IN);
     }

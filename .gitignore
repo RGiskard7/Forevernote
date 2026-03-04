@@ -100,3 +100,5 @@ Forevernote/data/database.db
 logs/
 Forevernote/logs/
 Forevernote/logs/app.log
+
+replica-grafo

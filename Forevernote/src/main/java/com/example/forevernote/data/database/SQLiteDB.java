@@ -78,6 +78,19 @@ public class SQLiteDB {
             + "MATCH SIMPLE ON UPDATE CASCADE ON DELETE CASCADE"
             + ")";
 
+    private static final String createTableNoteLinks = "CREATE TABLE IF NOT EXISTS note_links("
+            + "id TEXT PRIMARY KEY, "
+            + "source_note_id TEXT NOT NULL, "
+            + "target_note_id TEXT, "
+            + "raw_target TEXT NOT NULL, "
+            + "alias TEXT, "
+            + "is_embed INTEGER NOT NULL DEFAULT 0, "
+            + "is_unresolved INTEGER NOT NULL DEFAULT 0, "
+            + "updated_at TEXT NOT NULL, "
+            + "FOREIGN KEY (source_note_id) REFERENCES notes(note_id) ON DELETE CASCADE, "
+            + "FOREIGN KEY (target_note_id) REFERENCES notes(note_id) ON DELETE SET NULL"
+            + ")";
+
     // Performance indexes for common filters / joins used in folder tree and notes lists.
     private static final String createIndexNotesParentDeleted =
             "CREATE INDEX IF NOT EXISTS idx_notes_parent_deleted ON notes(parent_id, is_deleted)";
@@ -95,6 +108,10 @@ public class SQLiteDB {
             "CREATE INDEX IF NOT EXISTS idx_tagsnotes_tag ON tagsNotes(tag_id)";
     private static final String createIndexTagsNotesNote =
             "CREATE INDEX IF NOT EXISTS idx_tagsnotes_note ON tagsNotes(note_id)";
+    private static final String createIndexNoteLinksSource =
+            "CREATE INDEX IF NOT EXISTS idx_note_links_source ON note_links(source_note_id)";
+    private static final String createIndexNoteLinksTarget =
+            "CREATE INDEX IF NOT EXISTS idx_note_links_target ON note_links(target_note_id)";
 
     /**
      * Private constructor to prevent instantiation from other classes.
@@ -181,6 +198,7 @@ public class SQLiteDB {
             checkAndInitTable(connection, "notes", "note_id", createTableNotes);
             checkAndInitTable(connection, "tags", "tag_id", createTableTags);
             checkAndInitTable(connection, "tagsNotes", "id", createTableTagsNotes);
+            checkAndInitTable(connection, "note_links", "id", createTableNoteLinks);
 
             // Migrate existing databases: add necessary columns if they don't exist
             Statement stmt = connection.createStatement();
@@ -335,6 +353,8 @@ public class SQLiteDB {
             stmt.executeUpdate(createIndexFoldersDeleted);
             stmt.executeUpdate(createIndexTagsNotesTag);
             stmt.executeUpdate(createIndexTagsNotesNote);
+            stmt.executeUpdate(createIndexNoteLinksSource);
+            stmt.executeUpdate(createIndexNoteLinksTarget);
         }
     }
 }
