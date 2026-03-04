@@ -262,25 +262,84 @@ public class GraphWorkflow {
             adjacency.get(e.targetId()).add(e.sourceId());
         }
 
-        List<String> connected = new ArrayList<>();
         List<String> isolated = new ArrayList<>();
+        Set<String> nonIsolatedSet = new HashSet<>();
         for (GraphNode node : nodes) {
             if (adjacency.getOrDefault(node.id(), Set.of()).isEmpty()) {
                 isolated.add(node.id());
             } else {
-                connected.add(node.id());
+                nonIsolatedSet.add(node.id());
             }
         }
 
         Random rng = new Random(42);
         double centerX = 500.0;
         double centerY = 380.0;
+        double radius = Math.max(260.0, 190.0 + Math.sqrt(nodes.size()) * 8.0);
         Map<String, double[]> globalPos = new HashMap<>();
-        if (!connected.isEmpty()) {
-            Map<String, double[]> connectedPos = forceLayoutComponent(connected, adjacency, rng);
+
+        // Build connected components for non-isolated nodes.
+        List<List<String>> components = new ArrayList<>();
+        Set<String> visited = new HashSet<>();
+        for (String id : nonIsolatedSet) {
+            if (!visited.add(id)) {
+                continue;
+            }
+            ArrayDeque<String> dq = new ArrayDeque<>();
+            dq.add(id);
+            List<String> comp = new ArrayList<>();
+            while (!dq.isEmpty()) {
+                String cur = dq.poll();
+                comp.add(cur);
+                for (String nb : adjacency.getOrDefault(cur, Set.of())) {
+                    if (nonIsolatedSet.contains(nb) && visited.add(nb)) {
+                        dq.add(nb);
+                    }
+                }
+            }
+            components.add(comp);
+        }
+        components.sort((a, b) -> Integer.compare(b.size(), a.size()));
+
+        // Place component anchors across disk (instead of single center cluster).
+        List<double[]> anchors = new ArrayList<>();
+        for (List<String> comp : components) {
+            double compRadius = 10.0 + Math.sqrt(comp.size()) * 4.8;
+            double[] anchor = null;
+            for (int attempt = 0; attempt < 120; attempt++) {
+                double angle = rng.nextDouble() * Math.PI * 2.0;
+                double r = Math.sqrt(rng.nextDouble()) * (radius * 0.88);
+                double x = centerX + Math.cos(angle) * r;
+                double y = centerY + Math.sin(angle) * r;
+                boolean ok = true;
+                for (double[] prev : anchors) {
+                    double minDist = (prev[2] + compRadius) * 0.72;
+                    if (Math.hypot(x - prev[0], y - prev[1]) < minDist) {
+                        ok = false;
+                        break;
+                    }
+                }
+                if (ok) {
+                    anchor = new double[] { x, y, compRadius };
+                    break;
+                }
+            }
+            if (anchor == null) {
+                double angle = rng.nextDouble() * Math.PI * 2.0;
+                double r = Math.sqrt(rng.nextDouble()) * (radius * 0.9);
+                anchor = new double[] { centerX + Math.cos(angle) * r, centerY + Math.sin(angle) * r, compRadius };
+            }
+            anchors.add(anchor);
+        }
+
+        // Place connected components with force-based internal geometry.
+        for (int ci = 0; ci < components.size(); ci++) {
+            List<String> comp = components.get(ci);
+            double[] anchor = anchors.get(ci);
+            Map<String, double[]> local = forceLayoutComponent(comp, adjacency, rng);
             double minX = Double.POSITIVE_INFINITY, maxX = Double.NEGATIVE_INFINITY;
             double minY = Double.POSITIVE_INFINITY, maxY = Double.NEGATIVE_INFINITY;
-            for (double[] p : connectedPos.values()) {
+            for (double[] p : local.values()) {
                 minX = Math.min(minX, p[0]);
                 maxX = Math.max(maxX, p[0]);
                 minY = Math.min(minY, p[1]);
@@ -288,80 +347,47 @@ public class GraphWorkflow {
             }
             double w = Math.max(1.0, maxX - minX);
             double h = Math.max(1.0, maxY - minY);
-            // Keep linked notes compact in the center, like Obsidian's dense core.
-            double targetW = 340.0;
-            double targetH = 260.0;
-            double scale = Math.min(targetW / w, targetH / h);
-            double ox = centerX - ((minX + maxX) * 0.5) * scale;
-            double oy = centerY - ((minY + maxY) * 0.5) * scale;
-            for (String nodeId : connected) {
-                double[] p = connectedPos.get(nodeId);
-                globalPos.put(nodeId, new double[] {
-                        p[0] * scale + ox,
-                        p[1] * scale + oy
-                });
+            double scale = Math.max(0.8, anchor[2] / Math.max(w, h));
+            double localCx = (minX + maxX) * 0.5;
+            double localCy = (minY + maxY) * 0.5;
+            for (String nodeId : comp) {
+                double[] p = local.get(nodeId);
+                double x = anchor[0] + (p[0] - localCx) * scale;
+                double y = anchor[1] + (p[1] - localCy) * scale;
+                globalPos.put(nodeId, new double[] { x, y });
             }
         }
 
         if (!isolated.isEmpty()) {
-            // Random radial cloud (Obsidian-like), then quick relaxation to avoid heavy overlap.
             List<String> shuffled = new ArrayList<>(isolated);
             Collections.shuffle(shuffled, rng);
             int total = shuffled.size();
-            double innerRadius = connected.isEmpty() ? 40.0 : 170.0;
-            double outerRadius = Math.max(260.0, 220.0 + Math.sqrt(total) * 18.0);
-            Map<String, double[]> isoPos = new HashMap<>(total * 2);
-            for (int i = 0; i < total; i++) {
-                double angle = rng.nextDouble() * Math.PI * 2.0;
-                double radius = innerRadius + Math.sqrt(rng.nextDouble()) * (outerRadius - innerRadius);
-                double x = centerX + Math.cos(angle) * radius;
-                double y = centerY + Math.sin(angle) * radius;
-                isoPos.put(shuffled.get(i), new double[] { x, y });
-            }
-
-            int relaxIterations = 24;
-            double minDist = 8.5;
-            for (int it = 0; it < relaxIterations; it++) {
-                for (int i = 0; i < total; i++) {
-                    String idA = shuffled.get(i);
-                    double[] a = isoPos.get(idA);
-                    for (int s = 0; s < 4; s++) {
-                        String idB = shuffled.get(rng.nextInt(total));
-                        if (idA.equals(idB)) {
-                            continue;
-                        }
-                        double[] b = isoPos.get(idB);
-                        double dx = a[0] - b[0];
-                        double dy = a[1] - b[1];
-                        double dist = Math.max(0.0001, Math.hypot(dx, dy));
-                        if (dist < minDist) {
-                            double push = (minDist - dist) * 0.5;
-                            double nx = dx / dist;
-                            double ny = dy / dist;
-                            a[0] += nx * push;
-                            a[1] += ny * push;
-                            b[0] -= nx * push;
-                            b[1] -= ny * push;
-                        }
-                    }
-                    double ddx = a[0] - centerX;
-                    double ddy = a[1] - centerY;
-                    double rr = Math.hypot(ddx, ddy);
-                    if (rr > outerRadius) {
-                        double scale = outerRadius / Math.max(0.0001, rr);
-                        a[0] = centerX + ddx * scale;
-                        a[1] = centerY + ddy * scale;
-                    }
-                    if (rr < innerRadius) {
-                        double scale = innerRadius / Math.max(0.0001, rr);
-                        a[0] = centerX + ddx * scale;
-                        a[1] = centerY + ddy * scale;
+            double cell = Math.max(8.0, Math.min(15.0, Math.sqrt((Math.PI * radius * radius) / Math.max(1, total))));
+            int grid = Math.max(10, (int) Math.ceil((radius * 2) / cell));
+            List<double[]> candidates = new ArrayList<>(grid * grid);
+            for (int gy = 0; gy <= grid; gy++) {
+                for (int gx = 0; gx <= grid; gx++) {
+                    double x = centerX - radius + gx * cell;
+                    double y = centerY - radius + gy * cell;
+                    if (Math.hypot(x - centerX, y - centerY) <= radius * 0.985) {
+                        x += (rng.nextDouble() - 0.5) * cell * 0.45;
+                        y += (rng.nextDouble() - 0.5) * cell * 0.45;
+                        candidates.add(new double[] { x, y });
                     }
                 }
             }
-
-            for (String id : shuffled) {
-                globalPos.put(id, isoPos.get(id));
+            Collections.shuffle(candidates, rng);
+            int take = Math.min(total, candidates.size());
+            for (int i = 0; i < take; i++) {
+                globalPos.put(shuffled.get(i), candidates.get(i));
+            }
+            for (int i = take; i < total; i++) {
+                double angle = rng.nextDouble() * Math.PI * 2.0;
+                double r = Math.sqrt(rng.nextDouble()) * radius;
+                globalPos.put(shuffled.get(i), new double[] {
+                        centerX + Math.cos(angle) * r,
+                        centerY + Math.sin(angle) * r
+                });
             }
         }
 
@@ -378,9 +404,9 @@ public class GraphWorkflow {
             pos.put(id, new double[] { 60 + rng.nextDouble() * 320, 60 + rng.nextDouble() * 320 });
         }
         int n = nodes.size();
-        int iterations = Math.min(120, 38 + (int) Math.sqrt(n) * 7);
-        int repulsionSamples = Math.min(42, Math.max(10, (int) Math.sqrt(n) * 3));
-        double k = Math.max(14.0, 95.0 / Math.sqrt(Math.max(2, n)));
+        int iterations = Math.min(140, 46 + (int) Math.sqrt(n) * 8);
+        int repulsionSamples = Math.min(56, Math.max(12, (int) Math.sqrt(n) * 4));
+        double k = Math.max(16.0, 125.0 / Math.sqrt(Math.max(2, n)));
 
         for (int it = 0; it < iterations; it++) {
             Map<String, double[]> disp = new HashMap<>();

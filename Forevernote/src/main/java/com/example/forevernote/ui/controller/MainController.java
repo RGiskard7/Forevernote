@@ -1910,15 +1910,26 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         graphWorkspaceModeCombo = new ComboBox<>();
         graphWorkspaceModeCombo.getItems().addAll(getString("graph.mode.local"), getString("graph.mode.global"));
         graphWorkspaceModeCombo.getSelectionModel().select(graphModeCombo != null ? graphModeCombo.getSelectionModel().getSelectedIndex() : 1);
-        graphWorkspaceModeCombo.valueProperty().addListener((obs, oldV, newV) -> redrawGraphWorkspace());
+        graphWorkspaceModeCombo.setPrefWidth(150);
+        graphWorkspaceModeCombo.valueProperty().addListener((obs, oldV, newV) -> {
+            boolean global = graphWorkspaceModeCombo.getSelectionModel().getSelectedIndex() == 1;
+            if (graphWorkspaceDepthSpinner != null) {
+                graphWorkspaceDepthSpinner.setDisable(global);
+                graphWorkspaceDepthSpinner.setOpacity(global ? 0.65 : 1.0);
+            }
+            redrawGraphWorkspace();
+        });
 
         graphWorkspaceDepthSpinner = new Spinner<>(1, 6, graphDepthSpinner != null ? graphDepthSpinner.getValue() : 2);
         graphWorkspaceDepthSpinner.setEditable(false);
+        graphWorkspaceDepthSpinner.setPrefWidth(80);
         graphWorkspaceDepthSpinner.valueProperty().addListener((obs, oldV, newV) -> redrawGraphWorkspace());
 
         graphWorkspaceUnresolvedCheck = new CheckBox(getString("graph.include_unresolved"));
         graphWorkspaceUnresolvedCheck.setSelected(graphUnresolvedCheck == null || graphUnresolvedCheck.isSelected());
         graphWorkspaceUnresolvedCheck.selectedProperty().addListener((obs, oldV, newV) -> redrawGraphWorkspace());
+        graphWorkspaceDepthSpinner.setDisable(graphWorkspaceModeCombo.getSelectionModel().getSelectedIndex() == 1);
+        graphWorkspaceDepthSpinner.setOpacity(graphWorkspaceDepthSpinner.isDisable() ? 0.65 : 1.0);
 
         Button fitBtn = new Button(getString("action.reset_zoom"));
         fitBtn.setOnAction(e -> {
@@ -2159,8 +2170,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             double tx = target.x() * graphWorkspaceScale + graphWorkspaceOffsetX;
             double ty = target.y() * graphWorkspaceScale + graphWorkspaceOffsetY;
             gc.setStroke(edge.unresolved()
-                    ? Color.web("#f59e0b", isDarkThemeActive() ? 0.70 : 0.78)
-                    : (isDarkThemeActive() ? Color.web("#9ca3af", 0.32) : Color.web("#64748b", 0.38)));
+                    ? Color.web("#f59e0b", isDarkThemeActive() ? 0.82 : 0.85)
+                    : (isDarkThemeActive() ? Color.web("#9ca3af", 0.52) : Color.web("#64748b", 0.55)));
             gc.strokeLine(sx, sy, tx, ty);
         }
 
