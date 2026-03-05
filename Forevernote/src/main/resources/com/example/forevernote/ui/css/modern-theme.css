@@ -2826,3 +2826,153 @@
 .editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .label {
     -fx-text-fill: -fx-text-main;
 }
+
+/* ========================================
+   FINAL FIX PASS - CONTRAST + SPACING + GRAPH TOOLBAR HEIGHT
+   ======================================== */
+
+/* Note tabs close button contrast */
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab .tab-close-button {
+    -fx-background-color: -fx-text-muted;
+    -fx-opacity: 0.95;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:hover .tab-close-button {
+    -fx-background-color: -fx-text-main;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:selected .tab-close-button,
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:selected:hover .tab-close-button {
+    -fx-background-color: -fx-accent-contrast;
+    -fx-opacity: 1.0;
+}
+
+/* Sidebar tabs as separated button-like controls */
+.sidebar-tabs > .tab-header-area {
+    -fx-padding: 8 8 10 8;
+}
+
+.sidebar-tabs > .tab-header-area > .headers-region {
+    -fx-spacing: 8;
+}
+
+.sidebar-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-padding: 6 10 6 10;
+}
+
+/* Graph toolbar: force enough height to avoid bottom clipping */
+.editor-container > .graph-workspace > .graph-workspace-toolbar {
+    -fx-padding: 12 12 18 12;
+    -fx-min-height: 86;
+    -fx-pref-height: 86;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox {
+    -fx-min-height: 50;
+    -fx-pref-height: 50;
+    -fx-alignment: center-left;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .combo-box,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .spinner,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .button,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .check-box {
+    -fx-min-height: 42;
+    -fx-pref-height: 42;
+}
+
+/* Hover/selected contrast guard for icon buttons in default themes */
+.toolbar-btn:selected .feather-icon,
+.toolbar-btn:selected .ikonli-font-icon,
+.icon-btn:selected .feather-icon,
+.icon-btn:selected .ikonli-font-icon,
+.icon-btn-small:selected .feather-icon,
+.icon-btn-small:selected .ikonli-font-icon,
+.view-btn:selected .feather-icon,
+.view-btn:selected .ikonli-font-icon {
+    -fx-icon-color: -fx-accent-contrast;
+    -fx-fill: -fx-accent-contrast;
+}
+
+/* ========================================
+   FINAL FIX V2 - FORCE SIDEBAR GAP + GRAPH TOOLBAR NO-CLIP
+   ======================================== */
+
+/* 1) Sidebar icon tabs: visible horizontal gap like retro */
+.sidebar > .sidebar-tabs > .tab-header-area {
+    -fx-padding: 10 10 10 10;
+}
+
+.sidebar > .sidebar-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: -fx-header-bg;
+}
+
+.sidebar > .sidebar-tabs > .tab-header-area > .headers-region {
+    -fx-spacing: 10;
+}
+
+.sidebar > .sidebar-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-padding: 6 11 6 11;
+    -fx-background-insets: 0;
+    -fx-border-insets: 0;
+}
+
+/* 2) Note tab close button (X) contrast in selected tab */
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:selected .tab-close-button,
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:selected:hover .tab-close-button {
+    -fx-background-color: -fx-accent-contrast;
+    -fx-opacity: 1.0;
+}
+
+/* 3) Graph top toolbar: extra bottom room so controls are never cut */
+.editor-container > .graph-workspace > .graph-workspace-toolbar {
+    -fx-padding: 12 12 22 12;
+    -fx-min-height: 98;
+    -fx-pref-height: 98;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox {
+    -fx-padding: 0 0 8 0;
+    -fx-min-height: 58;
+    -fx-pref-height: 58;
+    -fx-alignment: center-left;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .combo-box,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .spinner,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .button,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .check-box,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .label {
+    -fx-min-height: 40;
+    -fx-pref-height: 40;
+}
+
+/* FINAL FIX V3 - graph toolbar a bit lower */
+.editor-container > .graph-workspace > .graph-workspace-toolbar {
+    -fx-padding: 13 12 26 12;
+    -fx-min-height: 112;
+    -fx-pref-height: 112;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox {
+    -fx-padding: 0 0 12 0;
+    -fx-min-height: 64;
+    -fx-pref-height: 64;
+}
+
+/* FINAL FIX V4 - graph toolbar much lower (user requested x3) */
+.editor-container > .graph-workspace > .graph-workspace-toolbar {
+    -fx-padding: 16 12 56 12;
+    -fx-min-height: 190;
+    -fx-pref-height: 190;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox {
+    -fx-padding: 0 0 28 0;
+    -fx-min-height: 92;
+    -fx-pref-height: 92;
+}
