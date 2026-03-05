@@ -1834,13 +1834,22 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         GraphicsContext gc = graphCanvas.getGraphicsContext2D();
         double w = graphCanvas.getWidth();
         double h = graphCanvas.getHeight();
+        boolean darkTheme = isDarkThemeActive();
+        Color backgroundColor = darkTheme ? Color.web("#111827") : Color.web("#f8fafc");
+        Color emptyTextColor = darkTheme ? Color.web("#9ca3af") : Color.web("#6b7280");
+        Color edgeColor = darkTheme ? Color.web("#374151") : Color.web("#94a3b8");
+        Color unresolvedColor = Color.web("#f59e0b");
+        Color nodeColor = Color.web(customAccentEnabled
+                ? normalizeHexColor(customAccentColor)
+                : (darkTheme ? "#10b981" : "#2563eb"));
+        Color labelColor = darkTheme ? Color.web("#e5e7eb") : Color.web("#111827");
         gc.clearRect(0, 0, w, h);
-        gc.setFill(isDarkThemeActive() ? Color.web("#111827") : Color.web("#f8fafc"));
+        gc.setFill(backgroundColor);
         gc.fillRect(0, 0, w, h);
 
         graphNodeHitMap.clear();
         if (data == null || data.nodes().isEmpty()) {
-            gc.setFill(isDarkThemeActive() ? Color.web("#9ca3af") : Color.web("#6b7280"));
+            gc.setFill(emptyTextColor);
             gc.fillText(getString("graph.empty"), 12, 20);
             return;
         }
@@ -1856,7 +1865,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             if (source == null || target == null) {
                 continue;
             }
-            gc.setStroke(edge.unresolved() ? Color.web("#f59e0b") : (isDarkThemeActive() ? Color.web("#374151") : Color.web("#94a3b8")));
+            gc.setStroke(edge.unresolved() ? unresolvedColor : edgeColor);
             gc.strokeLine(source.x() % w, source.y() % h, target.x() % w, target.y() % h);
         }
 
@@ -1864,9 +1873,9 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             double x = node.x() % w;
             double y = node.y() % h;
             double r = node.unresolved() ? 4.0 : 5.5;
-            gc.setFill(node.unresolved() ? Color.web("#f59e0b") : Color.web(customAccentEnabled ? normalizeHexColor(customAccentColor) : (isDarkThemeActive() ? "#10b981" : "#2563eb")));
+            gc.setFill(node.unresolved() ? unresolvedColor : nodeColor);
             gc.fillOval(x - r, y - r, r * 2, r * 2);
-            gc.setFill(isDarkThemeActive() ? Color.web("#e5e7eb") : Color.web("#111827"));
+            gc.setFill(labelColor);
             gc.fillText(shortGraphTitle(node.title()), x + 7, y + 4);
             graphNodeHitMap.put(node.id(), node);
         }
@@ -2182,12 +2191,23 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         GraphicsContext gc = graphWorkspaceCanvas.getGraphicsContext2D();
         double w = graphWorkspaceCanvas.getWidth();
         double h = graphWorkspaceCanvas.getHeight();
+        boolean darkTheme = isDarkThemeActive();
+        Color backgroundColor = darkTheme ? Color.web("#111827") : Color.web("#f8fafc");
+        Color emptyTextColor = darkTheme ? Color.web("#9ca3af") : Color.web("#6b7280");
+        Color unresolvedNodeColor = Color.web("#f59e0b");
+        Color resolvedNodeColor = Color.web(customAccentEnabled
+                ? normalizeHexColor(customAccentColor)
+                : (darkTheme ? "#10b981" : "#2563eb"));
+        Color nodeStrokeColor = darkTheme ? Color.web("#0b1220", 0.95) : Color.web("#ffffff", 0.95);
+        Color unresolvedEdgeColor = Color.web("#f59e0b", darkTheme ? 0.82 : 0.85);
+        Color resolvedEdgeColor = darkTheme ? Color.web("#9ca3af", 0.52) : Color.web("#64748b", 0.55);
+        Color statsColor = darkTheme ? Color.web("#9ca3af") : Color.web("#475569");
         gc.clearRect(0, 0, w, h);
-        gc.setFill(isDarkThemeActive() ? Color.web("#111827") : Color.web("#f8fafc"));
+        gc.setFill(backgroundColor);
         gc.fillRect(0, 0, w, h);
 
         if (graphWorkspaceData == null || graphWorkspaceData.nodes().isEmpty()) {
-            gc.setFill(isDarkThemeActive() ? Color.web("#9ca3af") : Color.web("#6b7280"));
+            gc.setFill(emptyTextColor);
             gc.fillText(getString("graph.empty"), 16, 24);
             return;
         }
@@ -2220,34 +2240,30 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             double sy = source.y() * graphWorkspaceScale + graphWorkspaceOffsetY;
             double tx = target.x() * graphWorkspaceScale + graphWorkspaceOffsetX;
             double ty = target.y() * graphWorkspaceScale + graphWorkspaceOffsetY;
-            gc.setStroke(edge.unresolved()
-                    ? Color.web("#f59e0b", isDarkThemeActive() ? 0.82 : 0.85)
-                    : (isDarkThemeActive() ? Color.web("#9ca3af", 0.52) : Color.web("#64748b", 0.55)));
+            gc.setStroke(edge.unresolved() ? unresolvedEdgeColor : resolvedEdgeColor);
             gc.strokeLine(sx, sy, tx, ty);
             degreeByNode.merge(edge.sourceId(), 1, Integer::sum);
             degreeByNode.merge(edge.targetId(), 1, Integer::sum);
         }
 
-        boolean drawLabels = !graphWorkspaceInteractiveMode && graphWorkspaceScale >= 1.0;
+        int nodeCount = graphWorkspaceData.nodes().size();
+        boolean denseGraph = nodeCount > 1800;
+        boolean drawLabels = !graphWorkspaceInteractiveMode && graphWorkspaceScale >= 1.0 && !denseGraph;
         List<GraphWorkflow.GraphNode> labelCandidates = new ArrayList<>();
         for (GraphWorkflow.GraphNode node : graphWorkspaceData.nodes()) {
             double x = node.x() * graphWorkspaceScale + graphWorkspaceOffsetX;
             double y = node.y() * graphWorkspaceScale + graphWorkspaceOffsetY;
             double baseRadius = node.unresolved() ? 1.35 : 1.9;
             double r = Math.max(1.15, Math.min(5.0, baseRadius * Math.max(0.75, graphWorkspaceScale)));
-            Color fill = node.unresolved()
-                    ? Color.web("#f59e0b")
-                    : Color.web(customAccentEnabled ? normalizeHexColor(customAccentColor)
-                            : (isDarkThemeActive() ? "#10b981" : "#2563eb"));
-            Color stroke = isDarkThemeActive() ? Color.web("#0b1220", 0.95) : Color.web("#ffffff", 0.95);
+            Color fill = node.unresolved() ? unresolvedNodeColor : resolvedNodeColor;
             gc.setFill(fill);
             gc.fillOval(x - r, y - r, r * 2, r * 2);
-            gc.setStroke(stroke);
+            gc.setStroke(nodeStrokeColor);
             gc.setLineWidth(Math.max(0.65, r * 0.33));
             gc.strokeOval(x - r, y - r, r * 2, r * 2);
             if (Objects.equals(graphWorkspaceHoverNodeId, node.id())) {
                 drawGraphLabel(gc, x + Math.max(8.0, 6.0 * graphWorkspaceScale), y + 3.0,
-                        shortGraphTitle(node.title()), true);
+                        shortGraphTitle(node.title()), true, darkTheme);
             } else if (drawLabels && !node.unresolved()
                     && x >= -20 && x <= (w + 20)
                     && y >= -20 && y <= (h + 20)) {
@@ -2292,24 +2308,24 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 if (collides) {
                     continue;
                 }
-                drawGraphLabel(gc, x, y, label, false);
+                drawGraphLabel(gc, x, y, label, false, darkTheme);
                 placed.add(new double[] { x, y });
                 drawn++;
             }
         }
 
         // Debug/estado visible para verificar render incluso con datasets grandes
-        gc.setFill(isDarkThemeActive() ? Color.web("#9ca3af") : Color.web("#475569"));
+        gc.setFill(statsColor);
         gc.fillText("Nodes: " + graphWorkspaceData.nodes().size() + "  Edges: " + graphWorkspaceData.edges().size(),
                 12, Math.max(18, h - 12));
     }
 
-    private void drawGraphLabel(GraphicsContext gc, double x, double y, String text, boolean hover) {
+    private void drawGraphLabel(GraphicsContext gc, double x, double y, String text, boolean hover, boolean darkTheme) {
         if (text == null || text.isBlank()) {
             return;
         }
-        Color stroke = isDarkThemeActive() ? Color.web("#0b1220", hover ? 0.98 : 0.92) : Color.web("#ffffff", hover ? 0.98 : 0.94);
-        Color fill = isDarkThemeActive() ? Color.web("#e5e7eb", hover ? 1.0 : 0.94) : Color.web("#111827", hover ? 1.0 : 0.93);
+        Color stroke = darkTheme ? Color.web("#0b1220", hover ? 0.98 : 0.92) : Color.web("#ffffff", hover ? 0.98 : 0.94);
+        Color fill = darkTheme ? Color.web("#e5e7eb", hover ? 1.0 : 0.94) : Color.web("#111827", hover ? 1.0 : 0.93);
         gc.setLineWidth(hover ? 3.2 : 2.4);
         gc.setStroke(stroke);
         gc.strokeText(text, x, y);

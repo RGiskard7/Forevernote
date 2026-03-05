@@ -67,6 +67,7 @@ Forevernote es una app Java 17 + JavaFX 21 inspirada en flujos tipo Obsidian:
 - Render Markdown con tablas GFM, autolinks y strikethrough
 - Vista previa en vivo y modo dividido
 - Resaltado de sintaxis para bloques de código (highlight.js)
+- Parseo/indexado de wikilinks estilo Obsidian (`[[nota]]`, `[[nota|alias]]`, `![[recurso]]`) para navegación y grafo
 
 ### UI/UX
 
@@ -75,6 +76,8 @@ Forevernote es una app Java 17 + JavaFX 21 inspirada en flujos tipo Obsidian:
 - Preferencias para mostrar tabs/botones en texto/iconos/auto
 - Vista de notas en lista y cuadrícula
 - Layout compacto y responsive
+- Pestañas múltiples de notas en el editor
+- Espacio de trabajo de grafo integrado (global/local) con zoom/pan y reindexado
 
 ### Extensibilidad
 
@@ -340,6 +343,11 @@ mvn -version
 ### Warnings de parent-POM JavaFX
 
 Warnings del tipo `Failed to build parent project for org.openjfx:javafx-*` son conocidos y no bloqueantes.
+
+### Notas sobre Preview Markdown
+
+- El render de emojis depende de las fuentes del sistema y del comportamiento de JavaFX WebView. Algunos glifos pueden no mostrarse igual en todos los SO.
+- Para embeds locales (`![[archivo.ext]]`), verifica que el archivo exista en la bóveda/ruta activa y usa formatos de imagen soportados (por ejemplo `png`, `jpg`, `jpeg`, `gif`, `svg`, `webp` según plataforma/runtime).
 
 ## Contribución
 
