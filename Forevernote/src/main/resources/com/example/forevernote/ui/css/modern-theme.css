@@ -259,6 +259,50 @@
     -fx-border-color: -fx-danger;
 }
 
+/* ========================================
+   GRAPH WORKSPACE
+   ======================================== */
+
+.graph-workspace {
+    -fx-background-color: -fx-base-bg;
+}
+
+.graph-workspace-toolbar {
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: transparent transparent -fx-fn-border-color transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 12 10 14 10;
+    -fx-min-height: 92;
+    -fx-pref-height: 92;
+}
+
+.graph-workspace-toolbar .label {
+    -fx-text-fill: -fx-text-main;
+}
+
+.graph-toolbar-scroll,
+.graph-toolbar-scroll > .viewport {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.graph-workspace-toolbar .combo-box,
+.graph-workspace-toolbar .spinner,
+.graph-workspace-toolbar .button,
+.graph-workspace-toolbar .check-box {
+    -fx-min-height: 46;
+    -fx-pref-height: 46;
+}
+
+.graph-workspace-toolbar .check-box {
+    -fx-alignment: center-left;
+}
+
+.graph-workspace-toolbar .graph-close-btn {
+    -fx-font-weight: 600;
+    -fx-min-width: 88;
+}
+
 .toolbar-btn-danger:hover {
     -fx-background-color: -fx-danger;
     background-color: -fx-danger;
@@ -2282,6 +2326,7 @@
     -fx-pref-height: 38px;
     -fx-min-height: 34px;
     -fx-max-height: 44px;
+    -fx-background-color: -fx-header-bg;
 }
 
 .note-tabs > .tab-content-area {
@@ -2289,4 +2334,495 @@
     -fx-padding: 0;
     -fx-background-insets: 0;
     -fx-opacity: 0;
+}
+
+.note-tabs > .tab-header-area {
+    -fx-padding: 2 6 4 6;
+    -fx-background-color: -fx-header-bg;
+}
+
+.note-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: transparent transparent -fx-fn-border-color transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.note-tabs > .tab-header-area > .headers-region {
+    -fx-spacing: 6;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-shape: null;
+    -fx-background-insets: 0;
+    -fx-border-insets: 0;
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: -fx-fn-border-color;
+    -fx-border-width: 1;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 6 12 6 12;
+    -fx-min-height: 36;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: -fx-hover-bg;
+    -fx-border-color: -fx-hover-border;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: -fx-accent;
+    -fx-border-color: -fx-accent;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: -fx-text-main;
+    -fx-font-weight: 600;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: -fx-accent-contrast;
+}
+
+/* ========================================
+   FINAL OVERRIDES - GRAPH TOOLBAR + NOTE TABS
+   ======================================== */
+
+.graph-workspace-toolbar {
+    -fx-padding: 12 10 16 10;
+    -fx-border-width: 0;
+    -fx-min-height: -1;
+    -fx-pref-height: -1;
+}
+
+.graph-workspace-toolbar > .hbox {
+    -fx-alignment: center-left;
+    -fx-spacing: 8;
+}
+
+.graph-workspace-toolbar .combo-box,
+.graph-workspace-toolbar .spinner,
+.graph-workspace-toolbar .button,
+.graph-workspace-toolbar .check-box {
+    -fx-min-height: 38;
+    -fx-pref-height: 38;
+}
+
+.note-tabs {
+    -fx-background-color: -fx-header-bg;
+}
+
+.note-tabs > .tab-header-area {
+    -fx-padding: 2 6 2 6;
+    -fx-background-color: -fx-header-bg;
+}
+
+.note-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+
+.note-tabs > .tab-header-area > .headers-region {
+    -fx-spacing: 6;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-shape: null;
+    -fx-background-insets: 0;
+    -fx-border-insets: 0;
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: -fx-fn-border-color;
+    -fx-border-width: 1;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 6 14 6 14;
+    -fx-min-height: 36;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: -fx-text-main;
+    -fx-font-weight: 600;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: -fx-hover-bg;
+    -fx-border-color: -fx-hover-border;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: -fx-selected-bg;
+    -fx-border-color: -fx-accent;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: -fx-selected-text;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab .tab-close-button {
+    -fx-opacity: 0.9;
+}
+
+/* ========================================
+   HARD OVERRIDE (DEFAULT LIGHT)
+   Graph toolbar + note tabs as retro-like buttons
+   ======================================== */
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar {
+    -fx-background-color: -fx-header-bg;
+    -fx-padding: 14 12 18 12;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+    -fx-background-insets: 0;
+    -fx-min-height: 78;
+    -fx-pref-height: 78;
+    -fx-max-height: 78;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox {
+    -fx-alignment: center-left;
+    -fx-spacing: 8;
+    -fx-min-height: 42;
+    -fx-pref-height: 42;
+    -fx-max-height: 42;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .combo-box,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .spinner,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .button,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .check-box {
+    -fx-min-height: 38;
+    -fx-pref-height: 38;
+    -fx-max-height: 38;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .label {
+    -fx-text-fill: -fx-text-main;
+}
+
+.editor-container > .note-tabs {
+    -fx-background-color: -fx-header-bg;
+}
+
+.editor-container > .note-tabs > .tab-header-area {
+    -fx-padding: 6 8 8 8;
+    -fx-background-color: -fx-header-bg;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: transparent;
+    -fx-border-width: 0;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region {
+    -fx-spacing: 6;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-shape: null;
+    -fx-background-insets: 0;
+    -fx-border-insets: 0;
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: -fx-fn-border-color;
+    -fx-border-width: 1;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 7 14 7 14;
+    -fx-min-height: 36;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: -fx-hover-bg;
+    -fx-border-color: -fx-hover-border;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: -fx-selected-bg;
+    -fx-border-color: -fx-accent;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: -fx-text-main;
+    -fx-font-weight: 600;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: -fx-selected-text;
+}
+
+/* ========================================
+   RETRO CLONE OVERRIDE (FINAL, DO NOT MOVE)
+   ======================================== */
+
+/* Graph toolbar: same visual behavior as retro, no forced clipping */
+.editor-container > .graph-workspace,
+.editor-container > .graph-workspace > .graph-workspace-toolbar {
+    -fx-background-color: -fx-header-bg;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar {
+    -fx-border-color: transparent transparent -fx-fn-border-color transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 8 10 10 10;
+    -fx-min-height: -1;
+    -fx-pref-height: -1;
+    -fx-max-height: -1;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox {
+    -fx-spacing: 8;
+    -fx-alignment: center-left;
+    -fx-min-height: -1;
+    -fx-pref-height: -1;
+    -fx-max-height: -1;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .combo-box,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .spinner,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .button,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .check-box {
+    -fx-min-height: -1;
+    -fx-pref-height: -1;
+    -fx-max-height: -1;
+}
+
+/* Note tabs: same boxy-button style as retro */
+.editor-container > .note-tabs {
+    -fx-pref-height: 38px;
+    -fx-min-height: 34px;
+    -fx-max-height: 44px;
+    -fx-background-color: -fx-header-bg;
+}
+
+.editor-container > .note-tabs > .tab-content-area {
+    -fx-max-height: 0;
+    -fx-padding: 0;
+    -fx-background-insets: 0;
+    -fx-opacity: 0;
+}
+
+.editor-container > .note-tabs > .tab-header-area {
+    -fx-padding: 2 4 2 4;
+    -fx-background-color: -fx-header-bg;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: -fx-fn-border-color;
+    -fx-border-width: 0 0 1 0;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region {
+    -fx-spacing: 4;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-shape: null;
+    -fx-background-insets: 0;
+    -fx-border-insets: 0;
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: -fx-fn-border-color;
+    -fx-border-width: 1;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-padding: 4 12 4 12;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: -fx-text-main;
+    -fx-font-weight: 600;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: -fx-selected-bg;
+    -fx-border-color: -fx-accent;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label,
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label .text {
+    -fx-text-fill: -fx-selected-text;
+    -fx-fill: -fx-selected-text;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab .tab-close-button {
+    -fx-opacity: 0.85;
+}
+
+/* ========================================
+   SIDEBAR POLISH (DEFAULT THEMES)
+   ======================================== */
+
+.sidebar-tabs {
+    -fx-border-color: -fx-fn-border-color;
+    -fx-border-width: 1;
+}
+
+.sidebar-tabs > .tab-header-area {
+    -fx-padding: 8 8 6 8;
+}
+
+.sidebar-tabs > .tab-header-area > .headers-region {
+    -fx-spacing: 6;
+}
+
+.sidebar-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: -fx-fn-border-color;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 4 10 4 10;
+    -fx-min-height: 36;
+}
+
+.sidebar-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: -fx-accent;
+    -fx-border-color: -fx-accent;
+}
+
+.tag-container {
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: -fx-fn-border-color;
+    -fx-border-width: 1;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-padding: 4 8 4 8;
+}
+
+/* Note tabs: button-like style in default themes */
+.note-tabs > .tab-header-area {
+    -fx-padding: 4 6 4 6;
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: transparent transparent -fx-fn-border-color transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.note-tabs > .tab-header-area > .headers-region {
+    -fx-spacing: 6;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: -fx-fn-border-color;
+    -fx-border-width: 1;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 6 12 6 12;
+    -fx-min-height: 34;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: -fx-hover-bg;
+    -fx-border-color: -fx-hover-border;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: -fx-accent;
+    -fx-border-color: -fx-accent;
+}
+
+.note-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: -fx-accent-contrast;
+}
+
+/* ========================================
+   FINAL OVERRIDE - RETRO-LIKE TABS + GRAPH TOOLBAR (DEFAULT THEMES)
+   ======================================== */
+
+.editor-container > .note-tabs {
+    -fx-background-color: -fx-header-bg;
+    -fx-min-height: 54;
+    -fx-pref-height: 54;
+    -fx-padding: 0 8 8 8;
+}
+
+.editor-container > .note-tabs > .tab-content-area {
+    -fx-max-height: 0;
+    -fx-padding: 0;
+    -fx-background-insets: 0;
+    -fx-opacity: 0;
+}
+
+.editor-container > .note-tabs > .tab-header-area {
+    -fx-padding: 8 0 8 0;
+    -fx-background-color: -fx-header-bg;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: -fx-header-bg;
+    -fx-border-color: transparent transparent -fx-fn-border-color transparent;
+    -fx-border-width: 0 0 1 0;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region {
+    -fx-spacing: 8;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: -fx-card-bg;
+    -fx-border-color: -fx-fn-border-color;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-background-insets: 0;
+    -fx-border-insets: 0;
+    -fx-padding: 7 14 7 14;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:hover {
+    -fx-background-color: -fx-hover-bg;
+    -fx-border-color: -fx-accent;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-background-color: -fx-accent;
+    -fx-border-color: -fx-accent;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab .tab-label,
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab .tab-label .text {
+    -fx-text-fill: -fx-text-main;
+    -fx-fill: -fx-text-main;
+    -fx-font-weight: 600;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label,
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label .text {
+    -fx-text-fill: -fx-accent-contrast;
+    -fx-fill: -fx-accent-contrast;
+}
+
+.editor-container > .note-tabs > .tab-header-area > .headers-region > .tab .tab-close-button {
+    -fx-opacity: 0.85;
+}
+
+.editor-container > .graph-workspace,
+.editor-container > .graph-workspace > .graph-workspace-toolbar {
+    -fx-background-color: -fx-header-bg;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar {
+    -fx-border-color: transparent transparent -fx-fn-border-color transparent;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 12 12 14 12;
+    -fx-min-height: 70;
+    -fx-pref-height: 70;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox {
+    -fx-alignment: center-left;
+    -fx-spacing: 8;
+    -fx-min-height: 42;
+    -fx-pref-height: 42;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .combo-box,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .spinner,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .button,
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .check-box {
+    -fx-min-height: 36;
+    -fx-pref-height: 36;
+}
+
+.editor-container > .graph-workspace > .graph-workspace-toolbar > .hbox > .label {
+    -fx-text-fill: -fx-text-main;
 }

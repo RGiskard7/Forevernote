@@ -320,6 +320,8 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
     private Label graphWorkspaceStatsLabel;
     private boolean graphWorkspaceVisible = false;
     private boolean graphWorkspacePrevRightPanelVisible = true;
+    private boolean graphWorkspaceInteractiveMode = false;
+    private long graphWorkspaceLastRenderNanos = 0L;
     private static final String PREF_TABS_SESSION_IDS = "tabs.session.ids";
     private static final String PREF_TABS_SESSION_ACTIVE_ID = "tabs.session.active_note_id";
 
@@ -1892,17 +1894,23 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         if (graphWorkspaceContainer != null || editorContainer == null) {
             return;
         }
-        graphWorkspaceContainer = new VBox(10);
+        graphWorkspaceContainer = new VBox(12);
         graphWorkspaceContainer.getStyleClass().add("graph-workspace");
         graphWorkspaceContainer.setFillWidth(true);
         graphWorkspaceContainer.setVisible(false);
         graphWorkspaceContainer.setManaged(false);
         VBox.setVgrow(graphWorkspaceContainer, Priority.ALWAYS);
 
-        HBox toolbar = new HBox(8);
-        toolbar.setPadding(new javafx.geometry.Insets(10));
-        toolbar.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        BorderPane toolbar = new BorderPane();
+        toolbar.setPadding(new javafx.geometry.Insets(10, 10, 12, 10));
         toolbar.getStyleClass().add("graph-workspace-toolbar");
+        toolbar.setMinHeight(Region.USE_COMPUTED_SIZE);
+        toolbar.setPrefHeight(Region.USE_COMPUTED_SIZE);
+
+        HBox toolbarControls = new HBox(8);
+        toolbarControls.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        toolbarControls.setMinHeight(Region.USE_COMPUTED_SIZE);
+        toolbarControls.setPrefHeight(Region.USE_COMPUTED_SIZE);
 
         Label title = new Label(getString("section.note_graph"));
         title.getStyleClass().add("section-title");
@@ -1922,7 +1930,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
 
         graphWorkspaceDepthSpinner = new Spinner<>(1, 6, graphDepthSpinner != null ? graphDepthSpinner.getValue() : 2);
         graphWorkspaceDepthSpinner.setEditable(false);
-        graphWorkspaceDepthSpinner.setPrefWidth(80);
+        graphWorkspaceDepthSpinner.setPrefWidth(96);
         graphWorkspaceDepthSpinner.valueProperty().addListener((obs, oldV, newV) -> redrawGraphWorkspace());
 
         graphWorkspaceUnresolvedCheck = new CheckBox(getString("graph.include_unresolved"));
@@ -1934,19 +1942,22 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         Button fitBtn = new Button(getString("action.reset_zoom"));
         fitBtn.setOnAction(e -> {
             fitGraphWorkspaceToData();
-            renderGraphWorkspace();
+            requestGraphWorkspaceRender(false);
         });
         Button refreshBtn = new Button(getString("action.refresh"));
         refreshBtn.setOnAction(e -> redrawGraphWorkspace());
         Button closeBtn = new Button(getString("action.close"));
+        closeBtn.getStyleClass().add("graph-close-btn");
+        closeBtn.setMinWidth(88);
         closeBtn.setOnAction(e -> hideGraphWorkspace());
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, Priority.ALWAYS);
         graphWorkspaceStatsLabel = new Label("");
         graphWorkspaceStatsLabel.getStyleClass().add("meta-label");
-        toolbar.getChildren().addAll(title, graphWorkspaceModeCombo, graphWorkspaceDepthSpinner, graphWorkspaceUnresolvedCheck,
-                fitBtn, refreshBtn, graphWorkspaceStatsLabel, spacer, closeBtn);
+        toolbarControls.getChildren().addAll(
+                title, graphWorkspaceModeCombo, graphWorkspaceDepthSpinner, graphWorkspaceUnresolvedCheck,
+                fitBtn, refreshBtn, closeBtn, graphWorkspaceStatsLabel);
+
+        toolbar.setCenter(toolbarControls);
 
         graphWorkspaceCanvas = new Canvas(1400, 900);
         StackPane canvasHost = new StackPane(graphWorkspaceCanvas);
@@ -1956,29 +1967,42 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         canvasHost.setPrefWidth(1200);
 
         graphWorkspaceCanvas.setOnScroll(e -> {
+            graphWorkspaceInteractiveMode = true;
             double oldScale = graphWorkspaceScale;
             graphWorkspaceScale = Math.max(0.20, Math.min(6.0, graphWorkspaceScale * (e.getDeltaY() > 0 ? 1.1 : 0.9)));
             double mx = e.getX();
             double my = e.getY();
             graphWorkspaceOffsetX = mx - ((mx - graphWorkspaceOffsetX) * (graphWorkspaceScale / oldScale));
             graphWorkspaceOffsetY = my - ((my - graphWorkspaceOffsetY) * (graphWorkspaceScale / oldScale));
-            renderGraphWorkspace();
+            requestGraphWorkspaceRender(true);
             e.consume();
         });
         graphWorkspaceCanvas.setOnMousePressed(e -> {
+            graphWorkspaceInteractiveMode = true;
             graphWorkspaceDragStartX = e.getX();
             graphWorkspaceDragStartY = e.getY();
         });
         graphWorkspaceCanvas.setOnMouseDragged(e -> {
+            graphWorkspaceInteractiveMode = true;
             graphWorkspaceOffsetX += e.getX() - graphWorkspaceDragStartX;
             graphWorkspaceOffsetY += e.getY() - graphWorkspaceDragStartY;
             graphWorkspaceDragStartX = e.getX();
             graphWorkspaceDragStartY = e.getY();
-            renderGraphWorkspace();
+            requestGraphWorkspaceRender(true);
+        });
+        graphWorkspaceCanvas.setOnMouseReleased(e -> {
+            graphWorkspaceInteractiveMode = false;
+            requestGraphWorkspaceRender(false);
         });
         graphWorkspaceCanvas.setOnMouseMoved(e -> {
+            if (graphWorkspaceInteractiveMode) {
+                return;
+            }
+            String prev = graphWorkspaceHoverNodeId;
             graphWorkspaceHoverNodeId = findGraphWorkspaceNodeAt(e.getX(), e.getY());
-            renderGraphWorkspace();
+            if (!Objects.equals(prev, graphWorkspaceHoverNodeId)) {
+                requestGraphWorkspaceRender(false);
+            }
         });
         graphWorkspaceCanvas.setOnMouseClicked(e -> {
             if (e.getClickCount() < 1) {
@@ -1998,8 +2022,16 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
         });
 
+        VBox.setMargin(toolbar, new javafx.geometry.Insets(0, 0, 6, 0));
         graphWorkspaceContainer.getChildren().addAll(toolbar, canvasHost);
         editorContainer.getChildren().add(graphWorkspaceContainer);
+        graphWorkspaceContainer.setFocusTraversable(true);
+        graphWorkspaceContainer.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+            if (e.getCode() == KeyCode.ESCAPE && graphWorkspaceVisible) {
+                hideGraphWorkspace();
+                e.consume();
+            }
+        });
         graphWorkspaceContainer.layoutBoundsProperty().addListener((obs, oldB, newB) -> {
             if (newB == null) {
                 return;
@@ -2011,7 +2043,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             graphWorkspaceCanvas.setWidth(Math.max(400, newB.getWidth() - 2));
             graphWorkspaceCanvas.setHeight(targetH);
             fitGraphWorkspaceToData();
-            renderGraphWorkspace();
+            requestGraphWorkspaceRender(false);
         });
     }
 
@@ -2037,10 +2069,11 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             }
         }
         setVisibleManaged(graphWorkspaceContainer, true);
+        graphWorkspaceContainer.requestFocus();
         redrawGraphWorkspace();
         Platform.runLater(() -> {
             fitGraphWorkspaceToData();
-            renderGraphWorkspace();
+            requestGraphWorkspaceRender(false);
         });
     }
 
@@ -2049,6 +2082,7 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             return;
         }
         graphWorkspaceVisible = false;
+        graphWorkspaceInteractiveMode = false;
         Node header = noteTitleField != null ? noteTitleField.getParent() : null;
         setVisibleManaged(header, true);
         setVisibleManaged(noteTabsPane, featureTabsEnabled);
@@ -2097,11 +2131,25 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                 updateStatus("Grafo: " + nodeCount + " nodos, " + edgeCount + " enlaces");
             }
             fitGraphWorkspaceToData();
-            renderGraphWorkspace();
+            requestGraphWorkspaceRender(false);
         } catch (Exception ex) {
             logger.log(Level.WARNING, "Graph redraw failed", ex);
             updateStatus("Error grafo: " + ex.getClass().getSimpleName());
         }
+    }
+
+    private void requestGraphWorkspaceRender(boolean interactive) {
+        if (graphWorkspaceCanvas == null) {
+            return;
+        }
+        graphWorkspaceInteractiveMode = interactive;
+        long now = System.nanoTime();
+        long minInterval = interactive ? 24_000_000L : 12_000_000L;
+        if ((now - graphWorkspaceLastRenderNanos) < minInterval) {
+            return;
+        }
+        graphWorkspaceLastRenderNanos = now;
+        renderGraphWorkspace();
     }
 
     private void fitGraphWorkspaceToData() {
@@ -2151,10 +2199,13 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         }
         int totalEdges = graphWorkspaceData.edges().size();
         int edgeStride = 1;
-        if (totalEdges > 25000 || graphWorkspaceData.nodes().size() > 2200) {
+        if (graphWorkspaceInteractiveMode && (totalEdges > 8000 || graphWorkspaceData.nodes().size() > 1200)) {
+            edgeStride = Math.max(4, totalEdges / 6000);
+        } else if (totalEdges > 25000 || graphWorkspaceData.nodes().size() > 2200) {
             edgeStride = Math.max(2, totalEdges / 12000);
         }
-        boolean renderEdges = graphWorkspaceScale >= 0.35 || totalEdges <= 8000;
+        boolean renderEdges = true;
+        Map<String, Integer> degreeByNode = new HashMap<>(graphWorkspaceData.nodes().size() * 2);
         for (int i = 0; i < totalEdges; i += edgeStride) {
             if (!renderEdges) {
                 break;
@@ -2173,9 +2224,12 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
                     ? Color.web("#f59e0b", isDarkThemeActive() ? 0.82 : 0.85)
                     : (isDarkThemeActive() ? Color.web("#9ca3af", 0.52) : Color.web("#64748b", 0.55)));
             gc.strokeLine(sx, sy, tx, ty);
+            degreeByNode.merge(edge.sourceId(), 1, Integer::sum);
+            degreeByNode.merge(edge.targetId(), 1, Integer::sum);
         }
 
-        boolean drawLabels = graphWorkspaceScale >= 2.0 && graphWorkspaceData.nodes().size() <= 120;
+        boolean drawLabels = !graphWorkspaceInteractiveMode && graphWorkspaceScale >= 1.0;
+        List<GraphWorkflow.GraphNode> labelCandidates = new ArrayList<>();
         for (GraphWorkflow.GraphNode node : graphWorkspaceData.nodes()) {
             double x = node.x() * graphWorkspaceScale + graphWorkspaceOffsetX;
             double y = node.y() * graphWorkspaceScale + graphWorkspaceOffsetY;
@@ -2191,9 +2245,56 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
             gc.setStroke(stroke);
             gc.setLineWidth(Math.max(0.65, r * 0.33));
             gc.strokeOval(x - r, y - r, r * 2, r * 2);
-            if (drawLabels || Objects.equals(graphWorkspaceHoverNodeId, node.id())) {
-                gc.setFill(isDarkThemeActive() ? Color.web("#e5e7eb") : Color.web("#111827"));
-                gc.fillText(shortGraphTitle(node.title()), x + Math.max(8.0, 6.0 * graphWorkspaceScale), y + 3.0);
+            if (Objects.equals(graphWorkspaceHoverNodeId, node.id())) {
+                drawGraphLabel(gc, x + Math.max(8.0, 6.0 * graphWorkspaceScale), y + 3.0,
+                        shortGraphTitle(node.title()), true);
+            } else if (drawLabels && !node.unresolved()
+                    && x >= -20 && x <= (w + 20)
+                    && y >= -20 && y <= (h + 20)) {
+                labelCandidates.add(node);
+            }
+        }
+
+        if (drawLabels && !labelCandidates.isEmpty()) {
+            labelCandidates.sort((a, b) -> Integer.compare(
+                    degreeByNode.getOrDefault(b.id(), 0),
+                    degreeByNode.getOrDefault(a.id(), 0)));
+            int maxLabels;
+            if (graphWorkspaceScale >= 2.2) {
+                maxLabels = 420;
+            } else if (graphWorkspaceScale >= 1.7) {
+                maxLabels = 260;
+            } else if (graphWorkspaceScale >= 1.3) {
+                maxLabels = 140;
+            } else {
+                maxLabels = 70;
+            }
+            double minLabelDist = graphWorkspaceScale >= 1.6 ? 24.0 : 34.0;
+            List<double[]> placed = new ArrayList<>();
+            int drawn = 0;
+            for (GraphWorkflow.GraphNode node : labelCandidates) {
+                if (drawn >= maxLabels) {
+                    break;
+                }
+                String label = shortGraphTitle(node.title());
+                if (label == null || label.isBlank()) {
+                    continue;
+                }
+                double x = node.x() * graphWorkspaceScale + graphWorkspaceOffsetX + Math.max(8.0, 6.0 * graphWorkspaceScale);
+                double y = node.y() * graphWorkspaceScale + graphWorkspaceOffsetY + 3.0;
+                boolean collides = false;
+                for (double[] p : placed) {
+                    if (Math.hypot(x - p[0], y - p[1]) < minLabelDist) {
+                        collides = true;
+                        break;
+                    }
+                }
+                if (collides) {
+                    continue;
+                }
+                drawGraphLabel(gc, x, y, label, false);
+                placed.add(new double[] { x, y });
+                drawn++;
             }
         }
 
@@ -2201,6 +2302,19 @@ public class MainController implements PluginMenuRegistry, SidePanelRegistry, Pr
         gc.setFill(isDarkThemeActive() ? Color.web("#9ca3af") : Color.web("#475569"));
         gc.fillText("Nodes: " + graphWorkspaceData.nodes().size() + "  Edges: " + graphWorkspaceData.edges().size(),
                 12, Math.max(18, h - 12));
+    }
+
+    private void drawGraphLabel(GraphicsContext gc, double x, double y, String text, boolean hover) {
+        if (text == null || text.isBlank()) {
+            return;
+        }
+        Color stroke = isDarkThemeActive() ? Color.web("#0b1220", hover ? 0.98 : 0.92) : Color.web("#ffffff", hover ? 0.98 : 0.94);
+        Color fill = isDarkThemeActive() ? Color.web("#e5e7eb", hover ? 1.0 : 0.94) : Color.web("#111827", hover ? 1.0 : 0.93);
+        gc.setLineWidth(hover ? 3.2 : 2.4);
+        gc.setStroke(stroke);
+        gc.strokeText(text, x, y);
+        gc.setFill(fill);
+        gc.fillText(text, x, y);
     }
 
     private String findGraphWorkspaceNodeAt(double x, double y) {
